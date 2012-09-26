@@ -23,14 +23,19 @@
 */
 long	ScPageSize=4096;
 
-#define	DO_ONLY_NO	(0) /* should be 0 */
-#define	DO_ONLY_READ	(1)
-#define	DO_ONLY_WRITE	(2)
+#define	DO_RANDOM_ACCESS_BOTH	(0) /* should be 0 */
+#define	DO_RANDOM_ACCESS_READ	(1)
+#define	DO_RANDOM_ACCESS_WRITE	(2)
+
+#define	DO_READ_FILE_NO		(0) /* should be 0 */
+#define	DO_READ_FILE_LIGHT	(1)
+#define	DO_READ_FILE_STRICT	(2)
 
 #define	DO_OPTION_NO	(0) /* should be 0 */
 #define	DO_OPTION_YES	(1)
 
 #define	DEF_FillFile	(0)
+#define	DEF_DoReadFile	(0)
 #define	DEF_FileSize	(0)
 #define	DEF_BlockSize	(4096)
 #define	DEF_BlocksMin	(256)
@@ -39,9 +44,10 @@ long	ScPageSize=4096;
 #define	DEF_BlockEnd	(INT64_MAX)
 #define	DEF_Repeats	(1000)
 #define	DEF_Seed	(0)
-#define	DEF_DoOnly	(DO_ONLY_NO)
-#define	DEF_DoDirect	(DO_OPTION_YES)
-#define	DEF_DoMark	(DO_OPTION_YES)
+#define	DEF_DoRandomAccess	(DO_RANDOM_ACCESS_BOTH)
+#define	DEF_DoDirect		(DO_OPTION_YES)
+#define	DEF_DoDirectRandomRW	(DO_OPTION_YES)
+#define	DEF_DoMark		(DO_OPTION_YES)
 
 
 /*! Command line argument holder. */
@@ -55,10 +61,12 @@ typedef struct {
 	long			Repeats;	/*!< -n n number of repeats. */
 	long			Seed;		/*!< -s n random seed number. */
 	char			*PathName;	/*!< Device or file path name to test. */
-	int			FillFile;	/*!< Fill work file. */
-	int			DoOnly;		/*!< Do Both, Do Read only, Do Write only. */
-	int			DoDirect;	/*!< Do O_DIRECT. io */
-	int			DoMark;		/*!< Do Block Marking. */
+	int			FillFile;	/*!< Sequential Fill work file. */
+	int			DoReadFile;	/*!< Sequential Read work file. */
+	int			DoRandomAccess;	/*!< Do Random access Both r/w, Read only, Write only. */
+	int			DoDirect;	/*!< Do O_DIRECT io */
+	int			DoDirectRandomRW; /*!< Do O_DIRECT io at random read/write. */
+	int			DoMark;		  /*!< Do Block Marking. */
 } TCommandLineOption;
 
 
@@ -73,8 +81,10 @@ TCommandLineOption	CommandLine={
 	.Repeats=DEF_Repeats,
 	.Seed=DEF_Seed,
 	.FillFile=DEF_FillFile,
-	.DoOnly=DEF_DoOnly,
+	.DoReadFile=DEF_DoReadFile,
+	.DoRandomAccess=DEF_DoRandomAccess,
 	.DoDirect=DEF_DoDirect,
+	.DoDirectRandomRW=DEF_DoDirectRandomRW,
 	.DoMark=DEF_DoMark
 };
 
@@ -82,8 +92,8 @@ TCommandLineOption	CommandLine={
 uint64_t	TouchSums=0;
 
 /*! Store milli second to timespec.
-    @arg ts point timespec to store.
-    @arg msec time in milli second.
+    @param ts point timespec to store.
+    @param msec time in milli second.
 */
 void timespecLoadMilliSec(struct timespec *ts, long msec)
 {	ldiv_t		sec_milli;
@@ -95,7 +105,7 @@ void timespecLoadMilliSec(struct timespec *ts, long msec)
 }
 
 /*! Convert timespec to double.
-    @arg ts points timespec structure.
+    @param ts points timespec structure.
     @return double second.
 */
 double timespecToDouble(const struct timespec *ts)
@@ -103,53 +113,54 @@ double timespecToDouble(const struct timespec *ts)
 }
 
 /*! Sub timespecs. *y=*a-*b.
-    @arg y point timespec structure to store *a-*b
-    @arg a point timespec structure.
-    @arg b point timespec structure.
+    @param y point timespec structure to store *a-*b
+    @param a point timespec structure.
+    @param b point timespec structure.
     @return struct timespec pointer equal to y.
     @note *a means end time, *b means start time.
 */
 struct timespec *timespecSub(struct timespec *y, const struct timespec *a, const struct timespec *b)
-{	struct	timespec tsa;
-	struct	timespec tsb;
+{	time_t	sec;
+	long	nsec;
 
-	tsa=*a;
-	tsb=*b;
-	y->tv_sec= tsa.tv_sec- tsb.tv_sec;
-	y->tv_nsec=tsa.tv_nsec-tsb.tv_nsec;
-	if ((y->tv_nsec)<0) {
+	sec= a->tv_sec- b->tv_sec;
+	nsec=a->tv_nsec-b->tv_nsec;
+	if (nsec<0) {
 		/* borrow */
-		y->tv_sec--;
-		y->tv_nsec+=1000L*1000L*1000L;
+		sec--;
+		nsec+=1000L*1000L*1000L;
 	}
+	y->tv_sec=sec;
+	y->tv_nsec=nsec;
 	return(y);
 }
 
 /*! Add timespecs. *y=*a+*b.
-    @arg y point timespec structure to store *a+*b
-    @arg a point timespec structure.
-    @arg b point timespec structure.
+    @param y point timespec structure to store *a+*b
+    @param a point timespec structure.
+    @param b point timespec structure.
     @return struct timespec pointer equal to y.
 */
 struct timespec *timespecAdd(struct timespec *y, const struct timespec *a, const struct timespec *b)
-{	struct	timespec tsa;
-	struct	timespec tsb;
+{	time_t	sec;
+	long	nsec;
 
-	tsa=*a;
-	tsb=*b;
-	y->tv_sec= tsa.tv_sec+ tsb.tv_sec;
-	y->tv_nsec=tsa.tv_nsec+tsb.tv_nsec;
-	if ((y->tv_nsec)>=1000L*1000L*1000L) {
+	sec=  a->tv_sec+ b->tv_sec;
+	nsec= a->tv_nsec+b->tv_nsec;
+
+	if (nsec>=1000L*1000L*1000L) {
 		/* Carry. */
-		y->tv_sec++;
-		y->tv_nsec-=1000L*1000L*1000L;
+		sec++;
+		nsec-=1000L*1000L*1000L;
 	}
+	y->tv_sec=sec;
+	y->tv_nsec=nsec;
 	return(y);
 }
 
 /*! Round up.
-    @arg a  value to round up.
-    @arg by round step value.
+    @param a  value to round up.
+    @param by round step value.
     @return long long rounded value.
 */
 long long RoundUpBy(long long a, long long by)
@@ -161,9 +172,9 @@ long long RoundUpBy(long long a, long long by)
 }
 
 /*! string to long with suffix.
-    @arg p  point char array to parse unsigned long number.
-    @arg p2 point char* to store pointer at stopping parse.
-    @arg radix default radix to parse.
+    @param p  point char array to parse unsigned long number.
+    @param p2 point char* to store pointer at stopping parse.
+    @param radix default radix to parse.
     @return unsigned long parsed number.
 */
 unsigned long long strtoulkmg(char *p, char **p2, int radix)
@@ -224,8 +235,8 @@ unsigned long long strtoulkmg(char *p, char **p2, int radix)
 }
 
 /*! long long to signed hex string
-    @arg buf point char buffer to store hex string.
-    @arg a long long value to convert signed hex.
+    @param buf point char buffer to store hex string.
+    @param a long long value to convert signed hex.
     @return char* equal to buf.
     @note format is +0x0123456789abcdef
 */
@@ -241,14 +252,41 @@ char *LLToHexStr(char *buf, long long a)
 	return(buf);
 }
 
+/*! Set O_DIRECT file descriptor flag.
+    @param fd file descriptor to set O_DIRECT flag.
+    @param o_direct 0: Clear O_DIRECT(Kernel buffered), 1: Set O_DIRECT(Kernel unbuffered).
+    @return int 0: Failed, 1: Success.
+*/
+int SetFdODirect(int fd, int o_direct)
+{	long	flags;
+
+	flags=fcntl(fd,F_GETFD);
+	if (flags<0) {
+		printf("fd(%d): F_GETFD failed. %s(%d)\n",fd,strerror(errno),errno);
+		return 0 /* Failed. */;
+	}
+	if (o_direct) {
+		/* Set O_DIRECT. */
+		flags|=O_DIRECT;
+	} else {
+		/* Clear O_DIRECT. */
+		flags&=~O_DIRECT;
+	}
+	if (fcntl(fd,F_SETFD,flags)!=0) {
+		printf("fd(%d): F_SETFD failed. %s(%d)\n",fd,strerror(errno),errno);
+		return 0 /* Failed. */;
+	}
+	return 1 /* Success. */;
+}
+
 #define TRY_WRITE_MAX	(1000)
 
 /*! Try write.
     Continue write, until all requested bytes are written.
-    @arg fd  file descriptor to write bytes.
-    @arg b   points byte array to write.
-    @arg len bytes to write.
-    @arg done points int variable to store success(!=0) or failed(==0).
+    @param fd  file descriptor to write bytes.
+    @param b   points byte array to write.
+    @param len bytes to write.
+    @param done points int variable to store success(!=0) or failed(==0).
     @return ssize_t written bytes.
 */
 ssize_t TryWrite(int fd, const char *b, size_t len, int *done)
@@ -290,10 +328,10 @@ ssize_t TryWrite(int fd, const char *b, size_t len, int *done)
 
 /*! Try read.
     Continue read, until all requested bytes are read or EOF.
-    @arg fd  file descriptor to read bytes.
-    @arg b   points byte array to store reads.
-    @arg len bytes to read.
-    @arg done points int variable to store success(!=0) or failed(==0).
+    @param fd  file descriptor to read bytes.
+    @param b   points byte array to store reads.
+    @param len bytes to read.
+    @param done points int variable to store success(!=0) or failed(==0).
     @return ssize_t read bytes.
 */
 ssize_t TryRead(int fd, char *b, size_t len, int *done)
@@ -339,9 +377,9 @@ ssize_t TryRead(int fd, char *b, size_t len, int *done)
 #define DUMP_BYTES_LINE	(0x10)
 
 /*! Dump memory image.
-    @arg buf    point memory to HEX dump.
-    @arg n      number of bytes to dump.
-    @arg offset meaning offset address pointed by buf.
+    @param buf    point memory to HEX dump.
+    @param n      number of bytes to dump.
+    @param offset meaning offset address pointed by buf.
     @return unsigned char* argument buf + n.
 */
 char *DumpMemory(char *buf, long long n, long long offset)
@@ -392,219 +430,289 @@ char *DumpMemory(char *buf, long long n, long long offset)
 
 
 /*! Parse command line arguments.
-    @arg opt points TCommandLineOption structure to store parsed values.
-    @arg argc  the argc value same as main() function's argc.
-    @arg argv0 the argv value same as main() function's argv.
+    @param opt points TCommandLineOption structure to store parsed values.
+    @param argc  the argc value same as main() function's argc.
+    @param argv0 the argv value same as main() function's argv.
     @return int 1: Success, 0: Failed (found invalid argument).
 */
 int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0)
 {	char	*p;
 	char	*p2;
-	char	*optval;
-	char	**argv;
-	char	opt_e;
-
-	argv=argv0;
-	argc--;
-	argv++;
-	opt_e=0;
-	while ((argc>0) && ((p=*argv)!=NULL)) {
-		if (*p=='-') {
-			/* option. */
-			int	optval_next;
-			char	opt_kind;
-
-			optval_next=0;
-			optval="";
-			p++;
-			opt_kind=*p;
-			if (opt_kind) {
-				/* It may be option. */
-				p++;
-				if (*p) {
-					/* The option and it's value are concatenated. */
-					optval=p;
+	int	c;
+	int	result;
+	
+	result=1;
+	while ((c=getopt(argc,argv0,"b:f:p:r:x:d:m:i:a:o:e:n:s:h")!=-1) {
+		switch (c) {
+			case 'b': { /* -b block_size */
+				const char error_message[]="-b: Need block size by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					off64_t	save;
+					save=opt->BlockSize;
+					opt->BlockSize=strtoulkmg(p,&p2,0);
+					if (opt->BlockSize<=0) {
+						/* Zero or negative BlockSize. */
+						opt->BlockSize=save;
+					}
 				} else {
-					/* The option and it's value are separated. */
-					if ((argc>=2) && (*(argv+1))) {
-						/* The next argv is available. */
-						optval_next=1;
-						optval=*(argv+1);
-					}
+					printf(error_message);
+					result=0;
 				}
+				break;
 			}
-			switch (opt_kind) {
-				case 'b': {
-					/* -b block size. */
-					if (*optval) {
-						off64_t	save;
-						save=opt->BlockSize;
-						opt->BlockSize=strtoulkmg(optval,&p2,0);
-						if (opt->BlockSize<=0) {
-							/* Zero or negative BlockSize. */
-							opt->BlockSize=save;
-						}
-					}
-					break;
+			case 'f': { /* -f file_size */
+				const char error_message[]="-f: Need file size by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					opt->FileSize=strtoulkmg(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
 				}
-				case 'f': {
-					/* -f file size. */
-					if (*optval) {
-						opt->FileSize=strtoulkmg(optval,&p2,0);
-					}
-					break;
-				}
-				case 'p': {
-					/* -p pre fill. */
-					switch (*optval) {
-						case 'y': {
+				break;
+			}
+			case 'p': { /* -p sequential pre fill. */
+				const char error_message[]="-p: Need sequential pre fill parameter by y|n\n";
+				p=optarg;
+				if (p) {
+					switch (*p) {
+						case 'y':
 							/* Do fill file. */
 							opt->FillFile=1;
 							break;
-						}
-						case 'n': {
+						case 'n':
 							/* Do truncate file. */
 							opt->FillFile=0;
 							break;
-						}
-						default: {
+						default:
 							/* invalid. */
-							printf("%s: Need parameter value y|n.\n",*argv);
+							printf(error_message);
+							result=0;
 							break;
-						}
 					}
-					break;
+				} else {
+					printf(error_message);
+					result=0;
 				}
-				case 'x': {
-					/* -x do only. */
-					switch (*optval) {
-						case 'b': {
-							/* Both read and write. */
+				break;
+			}
+			case 'r': { /* -r do sequential read file. */
+				const char error_message[]="-r: Need sequential read parameter by y|n\n";
+				p=optarg;
+				if (p) {
+					switch (*p) {
+						case 's':
+							/* Do read file. */
+							opt->DoReadFile=DO_READ_FILE_STRICT;
 							break;
-							opt->DoOnly=DO_ONLY_NO;
+						case 'y':
+							/* Do read file. */
+							opt->DoReadFile=DO_READ_FILE_LIGHT;
 							break;
-						}
-						case 'r': {
-							/* Read only. */
-							opt->DoOnly=DO_ONLY_READ;
+						case 'n':
+							/* Do read file. */
+							opt->DoReadFile=DO_READ_FILE_NO;
 							break;
-						}
-						case 'w': {
-							/* Write only. */
-							opt->DoOnly=DO_ONLY_WRITE;
-							break;
-						}
-						default: {
+						default:
 							/* invalid. */
-							printf("%s: Need parameter value b|r|w.\n",*argv);
+							printf(error_message);
+							result=0;
 							break;
-						}
 					}
-					break;
+				} else {
+					printf(error_message);
+					result=0;
 				}
-				case 'd': {
-					/* -d with O_DIRECT. */
-					switch (*optval) {
+				break;
+			}
+			case 'x': { /* -x do random access. */
+				const char error_message[]="-x: Need random access parameter by b|r|w\n";
+				p=optarg;
+				if (p) {
+					switch (*p) {
+					case 'b':
+						/* Both read and write. */
+						opt->DoRandomAccess=DO_RANDOM_ACCESS_BOTH;
+						break;
+					case 'r':
+						/* Read only. */
+						opt->DoRandomAccess=DO_RANDOM_ACCESS_READ;
+						break;
+					case 'w':
+						/* Write only. */
+						opt->DoRandomAccess=DO_RANDOM_ACCESS_WRITE;
+						break;
+					default:
+						/* invalid. */
+						printf(error_message);
+						result=0;
+						break;
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'd': { /* -d with O_DIRECT. */
+				const char error_message[]="-d: Need O_DIRECT parameter value by {y|n|Y|N}....\n";
+				p=optarg;
+				if (p) {
+					while (*p) {
+						switch (*p) {
+							case 'y': {
+								/* sequential read and write with O_DIRECT. */
+								opt->DoDirect=DO_OPTION_YES;
+								break;
+							}
+							case 'n': {
+								/* sequential read and write without O_DIRECT. */
+								opt->DoDirect=DO_OPTION_NO;
+								break;
+							}
+							case 'Y': {
+								/* random read and write with O_DIRECT. */
+								opt->DoDirectRandomRW=DO_OPTION_YES;
+								break;
+							}
+							case 'N': {
+								/* random read and write without O_DIRECT. */
+								opt->DoDirectRandomRW=DO_OPTION_NO;
+								break;
+							}
+							default: {
+								/* invalid. */
+								printf(error_message);
+								result=0;
+								break;
+							}
+						}
+						p++;
+					}
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'm': { /* -m Do Block Number Marking. */
+				const char error_message[]="-m: Need do block marking parameter by y|n\n";
+				p=optarg;
+				if (p) {
+					switch (*p) {
 						case 'y': {
-							/* open with O_DIRECT. */
-							opt->DoDirect=DO_OPTION_YES;
-							break;
-						}
-						case 'n': {
-							/* open without O_DIRECT. */
-							opt->DoDirect=DO_OPTION_NO;
-							break;
-						}
-						default: {
-							/* invalid. */
-							printf("%s: Need parameter value y|n.\n",*argv);
-							break;
-						}
-					}
-					break;
-				}
-				case 'm': {
-					/* -m Do Block Number Marking. */
-					switch (*optval) {
-						case 'y': {
-							/* open with O_DIRECT. */
+							/* Do block number marking. */
 							opt->DoMark=DO_OPTION_YES;
 							break;
 						}
 						case 'n': {
-							/* open without O_DIRECT. */
+							/* Do not block number marking. */
 							opt->DoMark=DO_OPTION_NO;
 							break;
 						}
 						default: {
 							/* invalid. */
-							printf("%s: Need parameter value y|n.\n",*argv);
+							printf(error_message);
+							result=0;
 							break;
 						}
 					}
-					break;
+				} else {
+					printf(error_message);
+					result=0;
 				}
-				case 'i': {
-					/* -i blocks min. */
-					if (*optval) {
-						opt->BlocksMin=strtoulkmg(optval,&p2,0);
-					}
-					break;
-				}
-				case 'a': {
-					/* -a blocks max. */
-					if (*optval) {
-						opt->BlocksMax=strtoulkmg(optval,&p2,0);
-					}
-					break;
-				}
-				case 'o': {
-					/* -o origin block. (start block). */
-					if (*optval) {
-						opt->BlockStart=strtoulkmg(optval,&p2,0);
-					}
-					break;
-				}
-				case 'e': {
-					/* -e end block. */
-					if (*optval) {
-						opt->BlockEnd=strtoulkmg(optval,&p2,0);
-						opt_e=1;
-					}
-					break;
-				}
-				case 'n': {
-					/* -n repeat counts. */
-					if (*optval) {
-						opt->Repeats=strtol(optval,&p2,0);
-					}
-					break;
-				}
-				case 's': {
-					/* -s random seed number. */
-					if (*optval) {
-						opt->Seed=strtol(optval,&p2,0);
-					}
-					break;
-				}
-				case 'h': {
-					/* -h show help. */
-					return(0);
-				}
-				default: {
-					printf("%s: Invalid option -%c\n",*argv0,opt_kind);
-					return(0 /* false */);
-				}
+				break;
 			}
-			argc-=optval_next;
-			argv+=optval_next;
-		} else {
-			/* Path name. */
-			opt->PathName=p;
+			case 'i': { /* -i blocks min. */
+				const char error_message[]="-i: Need random read/write blocks min by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					opt->BlocksMin=strtoulkmg(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'a': { /* -a blocks max. */
+				const char error_message[]="-a: Need random read/write blocks max by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					opt->BlocksMax=strtoulkmg(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'o': { /* -o origin block. (start block). */
+				const char error_message[]="-o: Need origin block by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					opt->BlockStart=strtoulkmg(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'e': { /* -e end block. */
+				const char error_message[]="-e: Need end block by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					opt->BlockEnd=strtoulkmg(p,&p2,0);
+					opt_e=1;
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'n': { /* -n repeat counts. */
+				const char error_message[]="-n: Need repeat counts by number\n";
+				p=optarg;
+				if (p) {
+					opt->Repeats=strtol(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 's': { /* -s random seed number. */
+				const char error_message[]="-s: Need random seed by number.\n";
+				p=optarg;
+				if (p) {
+					opt->Seed=strtol(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'h': { /* -h show help. */
+				printf("%s: Show help.\n",*argv0);
+				result=0;
+				break;
+			}
+			default: { /* unknown. */
+				if (optind>0) {
+					printf("%s: Invalid option, show help.\n",argv0[optind-1]);
+				} else {
+					printf("%s: May command line parse error, show help.\n",*argv0);
+				}
+				result=0;
+				break;
+			}
 		}
-		argc--;
-		argv++;
 	}
+	if (optind>=argc) {
+		printf("%s: Need path name to read/write test.\n",*argv0);
+		result=0;
+	} else {
+		opt->PathName=argv0[optind];
+	}
+
 	if (opt->BlocksMin>opt->BlocksMax) {
 		/* Blocks Min-Max upside down. */
 		off64_t		tmp;
@@ -628,28 +736,29 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 	}
 	if (opt->PathName==NULL) {
 		printf("command line: need working file path.\n");
-		return(0);
+		result=0;
 	}
 	if (*(opt->PathName)==0) {
 		printf("command line: need working file path.\n");
-		return(0);
+		result=0;
 	}
 	if (opt->BlockSize<(sizeof(off64_t)*2)) {
 		printf("-b %" PRId64 ": Should be more than %lu.\n",(int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)*2));
-		return(0);
+		result=0;
 	}
 	if ((opt->BlockSize%(sizeof(off64_t)))!=0) {
 		printf("-b %" PRId64 ": Should be a multiple %lu.\n",(int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)));
-		return(0);
+		result=0;
 	}
 	opt->FileSize=RoundUpBy(opt->FileSize,opt->BlockSize);
-	return(1 /* true */);
+	return(result /* true */);
 }
 
 char	*do_only_options[]={"b","r","w"};
+char	*do_read_file_options[]={"n","y","s"};
 
 /*! Show command line arguments.
-    @arg p points TCommandLineOption structure to show.
+    @param p points TCommandLineOption structure to show.
     @return void nothing.
 */
 void TCommandLineOptionShow(TCommandLineOption *opt)
@@ -657,8 +766,9 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		("PathName: %s\n"
 		 "FileSize(-f): %" PRId64 "\n"
 		 "FillFile(-p): %c\n"
-		 "DoOnly(-x): %s\n"
-		 "DoDirect(-d): %c\n"
+		 "DoReadFile(-r): %s\n"
+		 "DoRandomAccess(-x): %s\n"
+		 "DoDirect(-d): %c%c\n"
 		 "DoMark(-m): %c\n"
 		 "BlockSize(-b): %" PRId64 "\n"
 		 "BlocksMin(-i): %" PRId64 "\n"
@@ -670,8 +780,10 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,opt->PathName
 		 ,(int64_t)(opt->FileSize)
 		 ,(opt->FillFile ? 'y' : 'n')
-		 ,do_only_options[opt->DoOnly]
+		 ,do_read_file_options[opt->DoReadFile]
+		 ,do_only_options[opt->DoRandomAccess]
 		 ,(opt->DoDirect ? 'y' : 'n')
+		 ,(opt->DoDirectRandomRW ? 'Y' : 'N')
 		 ,(opt->DoMark ? 'y' : 'n')
 		 ,(int64_t)(opt->BlockSize)
 		 ,(int64_t)(opt->BlocksMin)
@@ -684,8 +796,8 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 }
 
 /*! Touch memory to make sure read data from device.
-    @arg b points buffer.
-    @arg len buffer length pointed by b.
+    @param b points buffer.
+    @param len buffer length pointed by b.
     @return unsigned long summing up value.
 */
 uint64_t TouchMemory(const char *b, long len)
@@ -703,7 +815,7 @@ uint64_t TouchMemory(const char *b, long len)
 }
 
 /*! Get file size using lseek64.
-    @arg fd file descriptor to get file size.
+    @param fd file descriptor to get file size.
     @return off64_t file size.
 */
 off64_t GetFileSizeFd(int fd)
@@ -724,8 +836,8 @@ off64_t GetFileSizeFd(int fd)
 }
 
 /*! Make file image memory.
-    @arg b    points file image buffer to write.
-    @arg len  buffer length pointed by b.
+    @param b    points file image buffer to write.
+    @param len  buffer length pointed by b.
 */
 void MakeFileImage(char *b, long len)
 {	while (len>0) {
@@ -736,9 +848,9 @@ void MakeFileImage(char *b, long len)
 }
 
 /*! Pre mark block address on file image memory.
-    @arg b0 points file image buffer to write.
-    @arg len0 buffer length pointed by b0.
-    @arg blocksize block size.
+    @param b0 points file image buffer to write.
+    @param len0 buffer length pointed by b0.
+    @param blocksize block size.
     
 */
 void PreMarkFileImage(char *b0, long len0, long blocksize)
@@ -784,16 +896,16 @@ void PreMarkFileImage(char *b0, long len0, long blocksize)
 
 #define CHECK_STRICTRY_ERROR_DUMP_RANGE	(32)
 
-/*! Strictry check file image on memory.
-    @arg b0 points file image buffer to check.
-    @arg len0 buffer length pointed by b0.
-    @arg block_number image block number pointed by b0.
-    @arg block_size block size.
-    @arg result check result holder.
+/*! Strictly check file image on memory.
+    @param b0 points file image buffer to check.
+    @param len0 buffer length pointed by b0.
+    @param block_number image block number pointed by b0.
+    @param block_size block size.
+    @param result check result holder.
     @return int !=LastBlockNumber: check sum error, *result==0. \
                 ==LastBlockNumber: check sum ok, *result==1.
 */
-off64_t CheckStrictryFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
+off64_t CheckStrictlyFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
 {
 	long			count;
 	long			i;
@@ -849,13 +961,13 @@ off64_t CheckStrictryFileImage(char *b, long len, off64_t block_number, long blo
 }
 
 /*! Light check file image on memory.
-    @arg b0 points file image buffer to check.
-    @arg len0 buffer length pointed by b0.
-    @arg block_number image block number pointed by b0.
-    @arg block_size block size.
-    @arg result check result holder.
-    @return int !=LastBlockNumber: check sum error, *result==0. \
-                ==LastBlockNumber: check sum ok, *result==1.
+    @param b0 points file image buffer to check.
+    @param len0 buffer length pointed by b0.
+    @param block_number image block number pointed by b0.
+    @param block_size block size.
+    @param result check result holder.
+    @return off64_t !=LastBlockNumber: check sum error, *result==0. \
+                    ==LastBlockNumber: check sum ok, *result==1.
 */
 off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
 {
@@ -878,6 +990,7 @@ off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_
 			*result=0;
 			return(block_number);
 		}
+		/* Step next block. */
 		b+=block_size;
 		len-=block_size;
 		block_number++;
@@ -888,10 +1001,10 @@ off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_
 
 
 /*! Mark block address on file image.
-    @arg b points image buffer to write.
-    @arg len length to write.
-    @arg block_number block number to mark.
-    @arg block_size block size.
+    @param b points image buffer to write.
+    @param len length to write.
+    @param block_number block number to mark.
+    @param block_size block size.
 */
 void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
 {	off64_t		a;
@@ -911,27 +1024,31 @@ void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
 }
 
 
-/*! Fill working file up to FileSize.
-    @arg fd file descriptor.
-    @arg img point file image memory.
-    @arg imgsize buffer byte length pointed by img.
-    @arg opt Command Line option.
+/*! Fill(Write) working file up to FileSize.
+    @param fd file descriptor.
+    @param img point file image memory.
+    @param imgsize buffer byte length pointed by img.
+    @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
 int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 {	off64_t		blockno;
 	long		chunk;
 	long		chunk_max;
-	off64_t		startpos;
-	off64_t		printpos;
-	off64_t		curpos;
-	off64_t		endnextpos;
+	off64_t		start_pos;
+	off64_t		print_pos;
+	off64_t		cur_pos;
+	off64_t		end_next_pos;
 	long		i;
 
-	struct timespec	tswrite_0;
-	struct timespec	tsprint;
-	struct timespec	tswrite_s;
-	struct timespec	tswrite_e;
+	struct timespec	ts_write_0;
+	struct timespec	ts_print;
+	struct timespec	ts_write_s;
+	struct timespec	ts_write_e;
+	struct timespec	ts_write_e_tmp;
+	struct timespec	ts_write_ap;
+	struct timespec	ts_write_aa;
+	struct timespec	ts_mem_a;
 
 	if (!img) {
 		/* img is NULL. */
@@ -940,12 +1057,12 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		);
 		return(0 /* false */);
 	}
-	startpos=opt->BlockSize*opt->BlockStart;
+	start_pos=opt->BlockSize*opt->BlockStart;
 	/* Seek to start position. */
-	curpos=lseek64(fd,startpos,SEEK_SET);
-	if (curpos<0) {
+	cur_pos=lseek64(fd,start_pos,SEEK_SET);
+	if (cur_pos<0) {
 		/* seek error. */
-		printf("%s: lseek64(0) failed(1). %s\n",opt->PathName, strerror(errno));
+		printf("%s: lseek64(0) failed(1). %s(%d)\n",opt->PathName, strerror(errno),errno);
 		return(0 /* false */);
 	}
 
@@ -958,29 +1075,37 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	memset(&tswrite_0,0,sizeof(tswrite_0));
-	memset(&tsprint,0,sizeof(tswrite_0));
+	memset(&ts_write_ap,0,sizeof(ts_write_ap));
+	memset(&ts_write_aa,0,sizeof(ts_write_aa));
+	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
 	i=0;
 	blockno=opt->BlockStart;
-	curpos=startpos;
-	printpos=curpos;
-	endnextpos=opt->BlockSize*(opt->BlockEnd+1);
+	cur_pos=start_pos;
+	print_pos=cur_pos;
+	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 
 	printf("%s: Fill working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
-		startpos, endnextpos-(opt->BlockSize)
+		start_pos, end_next_pos-(opt->BlockSize)
 	);
-	/*      0123456789  0123456789  done, progress, secs */
-	printf("   cur b/s,    all b/s, done, progs, secs\n");
+	/*      0123456789  0123456789  0123456789  0123456789  cur_pos progress, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total */
+	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total\n");
 
-	while (curpos<endnextpos) {
+	if (clock_gettime(CLOCK_REALTIME,&ts_write_0)!=0) {
+		printf("%s(): clock_gettime failed. %s(%d)\n",__func__,strerror(errno),errno);
+		return 0; /* failed */
+	}
+	ts_write_e=ts_write_0;
+	ts_print=  ts_write_0;
+
+	while (cur_pos<end_next_pos) {
 		/* loop makes working file from BlockBegin to BlockEnd. */
 		off64_t		tmp;
 		ssize_t		wresult;
 		int		done;
 
 		chunk=chunk_max;
-		tmp=endnextpos-curpos;
+		tmp=end_next_pos-cur_pos;
 		if (((off64_t)chunk)>tmp) {
 			/* last chunk. */
 			chunk=(long)(tmp);
@@ -988,50 +1113,71 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		if (opt->DoMark!=0) {
 			MarkFileImage(img,chunk,blockno,opt->BlockSize);
 		}
-		clock_gettime(CLOCK_REALTIME,&tswrite_s);
-		if (i==0) {
-			/* Capture time at start. */
-			tswrite_0=tswrite_s;
-			tsprint=tswrite_s;
-		}
 		done=0;
+		clock_gettime(CLOCK_REALTIME,&ts_write_s);
 		wresult=TryWrite(fd,img,chunk,&done);
+		clock_gettime(CLOCK_REALTIME,&ts_write_e_tmp);
 		if ((!done) || (wresult!=chunk)) {
 			/* Can't write requested. */
-			printf("%s: write failed. wresult=0x%lx,  chunk=0x%lx. %s\n"
-				,opt->PathName, (long)wresult, chunk, strerror(errno)
+			printf("%s: write failed. wresult=0x%lx,  chunk=0x%lx. %s(%d)\n"
+				,opt->PathName, (long)wresult, chunk, strerror(errno), errno
 			);
 			return(0 /* false */);
 		}
-		clock_gettime(CLOCK_REALTIME,&tswrite_e);
-		blockno+=opt->BlocksMax;
-		curpos+=chunk;
-		{
-			double	dt;
-			double	dt_all;
-			struct timespec	tsdelta;
 
-			if (  (timespecToDouble(timespecSub(&tsdelta,&tswrite_e, &tsprint))>=1.0)
-			    ||(curpos>=endnextpos)
+		timespecAdd(&ts_mem_a,&ts_mem_a,&ts_write_s);
+		timespecSub(&ts_mem_a,&ts_mem_a,&ts_write_e);
+		timespecAdd(&ts_write_aa,&ts_write_aa,&ts_write_e_tmp);
+		timespecSub(&ts_write_aa,&ts_write_aa,&ts_write_s);
+		ts_write_e=ts_write_e_tmp;
+
+		blockno+=opt->BlocksMax;
+		cur_pos+=chunk;
+		{
+			double		dt_write_elp;
+			double		dt_write;
+			double		dt_all;
+			double		dt_mem;
+			double		dt_elp;
+			double		print_pos_delta;
+			double		pos_delta;
+
+			struct timespec	ts_delta;
+
+			dt_write_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_print));
+			if (dt_write_elp>=1.0)
+			    ||(cur_pos>=end_next_pos)
 			   ) {	/* Finish filling or elapsed 1 sec from last show. */
-				dt_all=timespecToDouble(timespecSub(&tsdelta,&tswrite_e, &tswrite_0));
-				dt=    timespecToDouble(timespecSub(&tsdelta,&tswrite_e, &tsprint));
-				printf("%10.4e, %10.4e, %" PRId64 ", %3.2f%%, %.3f\n"
-					, ((double)(curpos-printpos))/dt
-					, ((double)(curpos))/dt_all
-					, curpos
-					, 100*(((double)(curpos-startpos))/((double)(endnextpos-startpos)))
+				dt_write=timespecToDouble(timespecSub(&ts_delta,&ts_write_aa, &ts_write_ap));
+				dt_all=timespecToDouble(&ts_write_aa);
+				dt_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_write_0));
+				dt_mem=timespecToDouble(&ts_mem_a);
+				print_pos_delta=cur_pos-print_pos;
+				pos_delta=cur_pos-start_pos;
+				printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
+					, print_pos_delta/dt_write
+					, pos_delta/dt_all
+					, print_pos_delta/dt_write_elp
+					, pos_delta/dt_elp
+					, cur_pos
+					, 100*pos_delta/((double)(end_next_pos-start_pos)))
+					, dt_write
 					, dt_all
+					, dt_write_elp
+					, dt_elp
+					, dt_mem
 				);
-				tsprint=tswrite_e;
-				printpos=curpos;
+				ts_print=ts_write_e_tmp;
+				ts_write_ap=ts_write_aa;
+				print_pos=cur_pos;
 			}
 		}
+
 		i++;
 	}
 	/* Seek to start position. */
-	curpos=lseek64(fd,startpos,SEEK_SET);
-	if (curpos<0) {
+	cur_pos=lseek64(fd,start_pos,SEEK_SET);
+	if (cur_pos<0) {
 		/* seek error. */
 		printf("%s: lseek64(0) failed(2). %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
@@ -1040,29 +1186,31 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 }
 
 /*! Read working file up to FileSize.
-    @arg fd file descriptor.
-    @arg img point file image memory.
-    @arg imgsize buffer byte length pointed by img.
-    @arg opt Command Line option.
+    @param path 
+    @param fd file descriptor.
+    @param img point file image memory.
+    @param imgsize buffer byte length pointed by img.
+    @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
 int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 {	off64_t		blockno;
 	long		chunk;
 	long		chunk_max;
-	off64_t		startpos;
-	off64_t		printpos;
-	off64_t		curpos;
-	off64_t		endnextpos;
+	off64_t		start_pos;
+	off64_t		print_pos;
+	off64_t		cur_pos;
+	off64_t		end_next_pos;
 	long		i;
 
-	struct timespec	tsread_0;
-	struct timespec	tsprint;
-	struct timespec	tsread_s;
-	struct timespec	tsread_e;
-	struct timespec	tstouch_s;
-	struct timespec	tstouch_e;
-	struct timespec	tstouch_a;
+	struct timespec	ts_read_0;
+	struct timespec	ts_print;
+	struct timespec	ts_read_s;
+	struct timespec	ts_read_e;
+	struct timespec	ts_read_e_tmp;
+	struct timespec	ts_read_ap;
+	struct timespec	ts_read_aa;
+	struct timespec	ts_mem_a;
 
 	if (!img) {
 		/* img is NULL. */
@@ -1071,10 +1219,10 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		);
 		return(0 /* false */);
 	}
-	startpos=opt->BlockSize*opt->BlockStart;
+	start_pos=opt->BlockSize*opt->BlockStart;
 	/* Seek to start position. */
-	curpos=lseek64(fd,startpos,SEEK_SET);
-	if (curpos<0) {
+	cur_pos=lseek64(fd,start_pos,SEEK_SET);
+	if (cur_pos<0) {
 		/* seek error. */
 		printf("%s: lseek64(0) failed(1). %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
@@ -1089,42 +1237,42 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	memset(&tsread_0,0,sizeof(tsread_0));
-	memset(&tsprint,0,sizeof(tsprint));
-	memset(&tstouch_a,0,sizeof(tstouch_a));
+	memset(&ts_read_ap,0,sizeof(ts_read_ap));
+	memset(&ts_read_aa,0,sizeof(ts_read_aa));
+	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
 	i=0;
 	blockno=opt->BlockStart;
-	curpos=startpos;
-	printpos=curpos;
-	endnextpos=opt->BlockSize*(opt->BlockEnd+1);
+	cur_pos=start_pos;
+	print_pos=cur_pos;
+	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 
 	printf("%s: Read working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
-		startpos, endnextpos-(opt->BlockSize)
+		start_pos, end_next_pos-(opt->BlockSize)
 	);
-	/*      0123456789  0123456789  done, progress, secs */
-	printf("   cur b/s,    all b/s, done, progs, secs\n");
+	/*      0123456789  0123456789  0123456789  0123456789 cur_pos progress, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, */
+	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, \n");
 
-	while (curpos<endnextpos) {
+	clock_gettime(CLOCK_REALTIME,&ts_read_0);
+	ts_read_e=ts_read_0;
+	ts_print= ts_read_0;
+	while (cur_pos<end_next_pos) {
 		/* loop makes working file from BlockBegin to BlockEnd. */
 		off64_t		tmp;
 		ssize_t		rresult;
 		int		done;
 
 		chunk=chunk_max;
-		tmp=endnextpos-curpos;
+		tmp=end_next_pos-cur_pos;
 		if (((off64_t)chunk)>tmp) {
 			/* last chunk. */
 			chunk=(long)(tmp);
 		}
-		clock_gettime(CLOCK_REALTIME,&tsread_s);
-		if (i==0) {
-			/* Capture time at start. */
-			tsread_0=tsread_s;
-			tsprint=tsread_s;
-		}
+
 		done=0;
+		clock_gettime(CLOCK_REALTIME,&ts_read_s);
 		rresult=TryRead(fd,img,chunk,&done);
+		clock_gettime(CLOCK_REALTIME,&tsread_e_tmp);
 		if ((!done) || (rresult!=chunk)) {
 			/* Can't write requested. */
 			printf("%s: Read failed. rresult=0x%lx,  chunk=0x%lx. %s\n"
@@ -1132,35 +1280,89 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 			);
 			return(0 /* false */);
 		}
-		clock_gettime(CLOCK_REALTIME,&tsread_e);
-		blockno+=opt->BlocksMax;
-		curpos+=chunk;
-		{
-			double	dt;
-			double	dt_all;
-			struct timespec	tsdelta;
+		timespecAdd(&ts_mem_a,&ts_mem_a,&ts_read_s);
+		timespecSub(&ts_mem_a,&ts_mem_a,&ts_read_e);
+		timespecAdd(&ts_read_aa,&ts_read_aa,&ts_read_e_tmp);
+		timespecSub(&ts_read_aa,&ts_read_aa,&ts_read_s);
+		ts_read_e=ts_read_e_tmp;
 
-			if (  (timespecToDouble(timespecSub(&tsdelta,&tsread_e, &tsprint))>=1.0)
-			    ||(curpos>=endnextpos)
-			   ) {	/* Finish filling or elapsed 1 sec from last show. */
-				dt_all=timespecToDouble(timespecSub(&tsdelta,&tswrite_e, &tsread_0));
-				dt=    timespecToDouble(timespecSub(&tsdelta,&tswrite_e, &tsprint));
-				printf("%10.4e, %10.4e, %" PRId64 ", %3.2f%%, %.3f\n"
-					, ((double)(curpos-printpos))/dt
-					, ((double)(curpos))/dt_all
-					, curpos
-					, 100*(((double)(curpos-startpos))/((double)(endnextpos-startpos)))
-					, dt_all
+		if (opt->DoMark!=0) {
+			/* Marked block. */
+			int		r;
+			off64_t		block_check;
+			r=0;
+			switch (opt->DoReadFile) {
+				case DO_READ_FILE_LIGHT:
+					block_check=CheckLightFileImage(img, chunk, blockno, opt->BlockSize, &r);
+					break;
+				case DO_READ_FILE_STRICT:
+					block_check=CheckStrictlyFileImage(img, chunk, blockno, opt->BlockSize, &r);
+					break;
+				default:
+					printf("%s: Internal error: Unexpected DoReadFile. DoRead=%d\n"
+						,__func__
+						,op->DoReadFile
+					);
+					return 0;
+			}
+			if (r==0) {
+				printf("%s: Check sum error. block=%" PRId64 ".\n"
+					,opt->PathName
+					,(int64_t)block_check
 				);
-				tsprint=tsread_e;
-				printpos=curpos;
+				return 0;
+			}
+		} else {
+			TouchSums+=TouchMemory(img,chunk);
+		}
+
+		blockno+=opt->BlocksMax;
+		cur_pos+=chunk;
+		{
+			double		dt_read_elp;
+			double		dt_read;
+			double		dt_all;
+			double		dt_mem;
+			double		dt_elp;
+
+			double		print_pos_delta;
+			double		pos_delta;
+
+			struct timespec	ts_delta;
+
+			dt_read_elp=timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_print));
+			if (  (dt_read_elp>=1.0)
+			    ||(cur_pos>=end_next_pos)
+			   ) {	/* Finish filling or elapsed 1 sec from last show. */
+				dt_read=timespecToDouble(timespecSub(&ts_delta,&ts_read_aa,    &ts_read_ap));
+				dt_all= timespecToDouble(&ts_read_aa);
+				dt_elp= timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_read_0));
+				dt_mem= timespecToDouble(&ts_mem_a);
+				print_pos_delta=cur_pos-print_pos;
+				pos_delta=cur_pos-start_pos;
+				printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
+					, print_pos_delta/dt_read
+					, pos_delta/dt_all
+					, print_pos_delta/dt_read_elp
+					, pos_delta/dt_elp
+					, cur_pos
+					, 100*pos_delta/((double)(end_next_pos-start_pos)))
+					, dt_read
+					, dt_all
+					, dt_read_elp
+					, dt_elp
+					, dt_mem
+				);
+				ts_print=ts_read_e_tmp;
+				ts_read_ap=ts_read_aa;
+				print_pos=cur_pos;
 			}
 		}
 		i++;
 	}
 	/* Seek to start position. */
-	curpos=lseek64(fd,startpos,SEEK_SET);
-	if (curpos<0) {
+	cur_pos=lseek64(fd,start_pos,SEEK_SET);
+	if (cur_pos<0) {
 		/* seek error. */
 		printf("%s: lseek64(0) failed(2). %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
@@ -1168,12 +1370,199 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 	return(1 /* true */);
 }
 
+/*! Random read/write working file.
+    @param fd file descriptor.
+    @param img point file image memory.
+    @param imgsize buffer byte length pointed by img.
+    @param opt Command Line option.
+    @return int ==0 failed, !=0 success.
+
+*/
+int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TCommandLineOption *opt)
+{	off64_t		seek_size;
+	off64_t		end_next_pos;
+	off64_t		area_blocks;
+	off64_t		seekto_prev;
+	long		repeats;
+	long		i;
+	int		result;
+
+	struct timespec	ts_0;
+	struct timespec	ts_mem_delta;
+	struct timespec	ts_rw_delta;
+	struct timespec	ts_op_done;
+
+	result=1;
+	seek_size=GetFileSizeFd(fd);
+	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
+	area_blocks=opt->BlockEnd-opt->BlockStart+1;
+	seekto_prev=-1;
+	/* Record time at tests begin. */
+	if (clock_gettime(CLOCK_REALTIME,&ts_0)!=0) {
+		printf("%s(): clock_gettime failed. %s\n",__func__,strerror(errno));
+		return 0; /* failed */
+	}
+	printf("i, elp, rw, pos, len, rtime, bps, touchtime\n");
+	repeats=opt->Repeats;
+	i=0;
+	while ((i<repeats) && (result!=0)) {
+		off64_t		seekto_block;
+		off64_t		seekto;
+		off64_t		seekto_delta;
+		off64_t		seekresult;
+		size_t		length;
+		int		ioresult;
+
+		struct timespec	ts_mem;
+		struct timespec	ts_rw_start;
+		struct timespec	ts_rw_done;
+		struct timespec	ts_p1;
+
+		char		read_write;
+		unsigned char	rw_act;
+
+		/* Calc random seek position and size. */
+		seekto_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
+		seekto=(opt->BlockSize)*seekto_block;
+		length=(opt->BlockSize)*((long)(drand48()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
+		if ((length+seekto)>end_next_pos) {
+			/* over runs at block end. */
+			length=end_next_pos-seekto;
+		}
+		if ((length+seekto)>seek_size) {
+			/* over runs at end of file. */
+			length=seek_size-seekto;
+		}
+		/* Seek random. */
+		seekresult=lseek64(fd,seekto,SEEK_SET);
+		if (seekresult<0) {
+			printf("%s: seek failed. seekto=0x%.16" PRIx64 ", seekresult=0x%.16" PRIx64 ". %s\n"
+				,opt->PathName,(int64_t)seekto,(int64_t)seekresult,strerror(errno)
+			);
+			return 0; /* failed */
+		}
+		rw_act=((lrand48()>>16UL)&0x01UL);
+		switch (opt->DoRandomAccess) {
+			case DO_RANDOM_ACCESS_BOTH: {
+				/* Both read and write. */
+				break;
+			}
+			case DO_RANDOM_ACCESS_READ: {
+				/* Do Only Read. */
+				/* Force read. */
+				rw_act=0;
+				break;
+			}
+			case DO_RANDOM_ACCESS_WRITE: {
+				/* Do Only Write. */
+				/* Force write. */
+				rw_act=1;
+				break;
+			}
+		}
+		if (rw_act==0) {
+			/* Read blocks. */
+			int	sum_result;
+			off64_t	block_check;
+			int	done;
+			
+			done=0;
+			/* Record time at read. */
+			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
+			ioresult=TryRead(fd,mem,length,&done);
+			/* Record time at done read. */
+			clock_gettime(CLOCK_REALTIME,&ts_rw_done);
+			if ((!done) || (ioresult!=length)) {
+				printf("%s: read failed. %s length=0x%lx, ioresult=0x%lx.\n"
+				,opt->PathName,strerror(errno),(long)length,(long)(ioresult));
+				return 0; /* failed */
+			}
+			if (opt->DoMark!=0) {
+				sum_result=0;
+				block_check=CheckStrictlyFileImage(
+					mem,length
+					,seekto_block,opt->BlockSize
+					,&sum_result
+				);
+				if (sum_result==0) {
+					/* Check sum error. */
+					printf
+						("%s: Check sum error. block=%" PRId64 ".\n"
+						,opt->PathName
+						,(int64_t)block_check
+						);
+					result=0;
+					/* do remainig process. */
+				}
+			}  else {/* Only do touch. */
+				TouchSums+=TouchMemory(mem,length);
+			}
+			clock_gettime(CLOCK_REALTIME,&ts_mem);
+			timespecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
+			timespecSub(&ts_mem_delta,&ts_mem,&ts_rw_done);
+			memcpy(&ts_op_done,&ts_mem,sizeof(ts_op_done));
+			read_write='r';
+		} else {/* write blocks. */
+			char	*imgwork;
+			int	done;
+
+			clock_gettime(CLOCK_REALTIME,&ts_mem);
+			/* Choose image to write by random. */
+			imgwork=img+((opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax))));
+			if (opt->DoMark) {
+				MarkFileImage(imgwork,length,seekto_block,opt->BlockSize);
+			}
+			done=0;
+			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
+			ioresult=TryWrite(fd,imgwork,length,&done);
+			/* Record time at touch. */
+			clock_gettime(CLOCK_REALTIME,&ts_rw_done);
+			if ((!done) || (ioresult!=length)) {
+				printf("%s: write failed. %s length=0x%lx, ioresult=0x%lx.\n"
+				,opt->PathName,strerror(errno),(long)length,(long)ioresult);
+				return 0;
+			}
+			timespecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
+			timespecSub(&ts_mem_delta,&ts_rw_start,&ts_mem);
+			memcpy(&ts_op_done,&ts_rw_done,sizeof(ts_op_done));
+			read_write='w';
+		}
+		if (seekto_prev>=0) {
+			seekto_delta=seekto-seekto_prev;
+		} else {
+			seekto_delta=0;
+		}
+
+		{	double		rw_time;
+			double		mem_time;
+			struct timespec	ts_elapsed;
+
+			rw_time=timespecToDouble(&ts_rw_delta);
+			mem_time=timespecToDouble(&ts_mem_delta);
+			/*       i, elp, rw, pos, len, rtime, bps, touchtime */
+			printf("%8ld, %10.4e, %c, 0x%.16llx, 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
+				,i
+				,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
+				,read_write
+				,seekto,(long)length
+				,rtime
+				,((double)length)/rw_time
+				,mem_time
+			);
+		}
+		seekto_prev=seekto;
+		i++;
+	}
+	return result;
+}
 
 #define	LARGE_FILE_SIZE	(1024L*1024L*2)
 
 int MainTest(TCommandLineOption *opt)
 {	int		result;
 	int		fd;
+	int		fd_flags;
+	int		flags_add;
 
 	char		*mem;
 	long		memsize;
@@ -1181,39 +1570,28 @@ int MainTest(TCommandLineOption *opt)
 	char		*img;
 	long		imgsize;
 
-	off64_t		end_next_pos;
-	long long	area_blocks;
-	long		repeats;
-
-	long		i;
-	struct timespec	ts0;
 	struct stat64	st64;
-	off64_t		seekto_prev;
 	off64_t		seek_size;
-
-	struct timespec	tstouchdone;
 
 	result=1 /* true */;
 	/* Initialize random seed. */
 	srand48(opt->Seed);
-	memset(&tstouchdone,0,sizeof(tstouchdone));
 
-	{/* sub block. */
-		int	flags_add;
-
-		flags_add=0;
-		if (opt->FileSize>=LARGE_FILE_SIZE) {
-			flags_add|=O_LARGEFILE;
-		}
-		if (opt->DoDirect!=0) {
-			flags_add|=O_DIRECT;
-		}
-		/* O_NOATIME issue error EPERM. */
-		fd=open(opt->PathName
-			,O_RDWR|O_CREAT /* |O_NOATIME */ |flags_add
-			,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
-		);
+	flags_add=0;
+	if (opt->FileSize>=LARGE_FILE_SIZE) {
+		flags_add|=O_LARGEFILE;
 	}
+	if (opt->DoDirect!=0) {
+		flags_add|=O_DIRECT;
+	}
+
+	/* O_NOATIME issue error EPERM. */
+	fd_flags=O_RDWR|O_CREAT /* |O_NOATIME */ | flags_add;
+
+	fd=open(opt->PathName
+		,fd_flags
+		,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+	);
 	if (fd<0) {
 		/* Can't open. */
 		printf("%s: open failed. %s\n",opt->PathName,strerror(errno));
@@ -1275,8 +1653,10 @@ int MainTest(TCommandLineOption *opt)
 		}
 		blocks_file=opt->FileSize/opt->BlockSize;
 		if (opt->BlockEnd>=blocks_file) {
+			/* command line option specifies more blocks than FileSize. */
 			opt->BlockEnd=blocks_file-1;
 			if (opt->BlockEnd<0) {
+				/* note: It may happen "FileSize is zero" and "BlockEnd is zero". */
 				opt->BlockEnd=0;
 			}
 		}
@@ -1304,7 +1684,7 @@ int MainTest(TCommandLineOption *opt)
 					/* Not block device. */
 					if (ftruncate64(fd,opt->FileSize)!=0) {
 						/* fail to truncate. */
-						printf("%s: ftruncate64 failed. %s\n",opt->PathName,strerror(errno));
+						printf("%s: ftruncate64 failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 						result=0 /* false */;
 						goto EXIT_UNMAP_IMG;
 					}
@@ -1332,180 +1712,33 @@ int MainTest(TCommandLineOption *opt)
 				goto EXIT_UNMAP_IMG;
 			}
 		}
-		seek_size=opt->FileSize;
 	}
-	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
-	area_blocks=opt->BlockEnd-opt->BlockStart+1;
-	seekto_prev=-1;
-	/* Record time at tests begin. */
-	if (clock_gettime(CLOCK_REALTIME,&ts0)!=0) {
-		printf("%s(): clock_gettime failed. %s\n",__func__,strerror(errno));
-		result=0 /* false */;
+
+	if (SetFdODirect(fd,opt->DoDirectRandomRW)==0) {
+		printf("%s: F_GETFD/F_SETFD failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+		result=0;
 		goto EXIT_UNMAP_IMG;
 	}
-	printf("i, elp, rw, pos, len, rtime, bps, touchtime\n");
-	repeats=opt->Repeats;
-	i=0;
-	while ((i<repeats) && (result!=0)) {
-		off64_t		seekto_block;
-		off64_t		seekto;
-		off64_t		seekto_delta;
-		off64_t		seekresult;
-		size_t		length;
-		int		ioresult;
 
-		struct timespec	tsrw;
-		struct timespec	tsrwdone;
+	if (!RandomRWFile(fd,img,imgsize,mem,memsize,opt)) {
+		/* Random read/write failed. */
+		printf("%s: random read/write failed. %s\n",opt->PathName,strerror(errno));
+		resunt=0;
+	}
 
-		char		read_write;
-		unsigned char	rw_act;
-
-		/* Calc random seek position and size. */
-		seekto_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
-		seekto=(opt->BlockSize)*seekto_block;
-		length=(opt->BlockSize)*((long)(drand48()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
-		if ((length+seekto)>end_next_pos) {
-			/* over runs at block end. */
-			length=end_next_pos-seekto;
-		}
-		if ((length+seekto)>seek_size) {
-			/* over runs at end of file. */
-			length=seek_size-seekto;
-		}
-		/* Seek random. */
-		seekresult=lseek64(fd,seekto,SEEK_SET);
-		if (seekresult<0) {
-			printf("%s: seek failed. seekto=0x%.16" PRIx64 ", seekresult=0x%.16" PRIx64 ". %s\n"
-				,opt->PathName,(int64_t)seekto,(int64_t)seekresult,strerror(errno)
-			);
-			result=0 /* false */;
+	if (opt->DoReadFile!=DO_READ_FILE_NO) {
+		/* Do sequential read. */
+		if (SetFdODirect(fd,opt->DoDirect)==0) {
+			printf("%s: F_GETFD/F_SETFD failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+			result=0;
 			goto EXIT_UNMAP_IMG;
 		}
-		rw_act=((lrand48()>>16UL)&0x01UL);
-		switch (opt->DoOnly) {
-			case DO_ONLY_NO: {
-				/* Both read and write. */
-				break;
-			}
-			case DO_ONLY_READ: {
-				/* Do Only Read. */
-				/* Force read. */
-				rw_act=0;
-				break;
-			}
-			case DO_ONLY_WRITE: {
-				/* Do Only Write. */
-				/* Force write. */
-				rw_act=1;
-				break;
-			}
+		if (!ReadFile(fd,img,imgsize,opt)) {
+			printf("%s: Sequential read failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+			resunt=0;
 		}
-		/* Record time at read/write. */
-		clock_gettime(CLOCK_REALTIME,&tsrw);
-		if (rw_act==0) {
-			/* Read blocks. */
-			int	sum_result;
-			off64_t	block_check;
-			int	done;
-			
-			done=0;
-			ioresult=TryRead(fd,mem,length,&done);
-			if ((!done) || (ioresult!=length)) {
-				printf("%s: read failed. %s length=0x%lx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno),(long)length,(long)(ioresult));
-				result=0 /* false */;
-				goto EXIT_UNMAP_IMG;
-			}
-			/* Record time at touch. */
-			clock_gettime(CLOCK_REALTIME,&tsrwdone);
-			if (opt->DoMark!=0) {
-				sum_result=0;
-				block_check=CheckStrictryFileImage(
-					mem,length
-					,seekto_block,opt->BlockSize
-					,&sum_result
-				);
-				if (sum_result==0) {
-					/* Check sum error. */
-					printf
-						("%s: Check sum error. block=%" PRId64 ".\n"
-						,opt->PathName
-						,(int64_t)block_check
-						);
-					result=0;
-				}
-			}  else {/* Only do touch. */
-				TouchSums+=TouchMemory(mem,length);
-			}
-			clock_gettime(CLOCK_REALTIME,&tstouchdone);
-			read_write='r';
-		} else {/* write blocks. */
-			char	*imgwork;
-			int	done;
-			/* Choose image to write by random. */
-			imgwork=img+((opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax))));
-			if (opt->DoMark) {
-				MarkFileImage(imgwork,length,seekto_block,opt->BlockSize);
-			}
-			done=0;
-			clock_gettime(CLOCK_REALTIME,&tstouchdone);
-			ioresult=TryWrite(fd,imgwork,length,&done);
-			if ((!done) || (ioresult!=length)) {
-				printf("%s: write failed. %s length=0x%lx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno),(long)length,(long)ioresult);
-				result=0 /* false */;
-				goto EXIT_UNMAP_IMG;
-			}
-			/* Record time at touch. */
-			clock_gettime(CLOCK_REALTIME,&tsrwdone);
-			read_write='w';
-		}
-		if (seekto_prev>=0) {
-			seekto_delta=seekto-seekto_prev;
-		} else {
-			seekto_delta=0;
-		}
-		
-		{	double		rtime;
-			double		touch_time;
-			struct timespec	tsdelta_e;
-			struct timespec	tsdelta_r;
-			struct timespec	tsdelta_t;
-
-			rtime=timespecToDouble(timespecSub(&tsdelta_r,&tsrwdone,&tsrw));
-#if (defined(MEASURE_DELAYED_READ))
-			if (opt->DoMark) {
-#endif /* (defined(MEASURE_DELAYED_READ)) */
-				/* Check marking. */
-				/*       i, elp, rw, pos, len, rtime, bps */
-				printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e\n"
-					,i
-					,timespecToDouble(timespecSub(&tsdelta_e,&tsrw,&ts0))
-					,read_write
-					,(int64_t)seekto,(long)length
-					,rtime
-					,((double)length)/rtime
-				);
-#if (defined(MEASURE_DELAYED_READ))
-			} else {
-				/* Only touch memory. */
-				touch_time=timespecToDouble(timespecSub(&tsdelta_t,&tstouchdone,&tsrwdone));
-				/*       i, elp, rw, pos, len, rtime, bps, touchtime */
-				printf("%8ld, %10.4e, %c, 0x%.16llx, 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
-					,i
-					,timespecToDouble(timespecSub(&tsdelta_e,&tsrw,&ts0))
-					,read_write
-					,seekto,(long)length
-					,rtime
-					,((double)length)/rtime
-					,touch_time
-				);
-			}
-#endif /* (defined(MEASURE_DELAYED_READ)) */
-		}
-		seekto_prev=seekto;
-		i++;
 	}
+
 EXIT_UNMAP_IMG:;
 	if (munmap(img,imgsize)!=0) {
 		printf("%s(): munmap failed(img). %s\n",__func__,strerror(errno));
@@ -1532,8 +1765,9 @@ void show_help(void)
 	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-d{y|n}] [-m{y|n}] [-b n] [-i n] [-a n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
 	"-p{y|n} Pre fill file with initial image(y: fill, n: truncate)(%c).\n"
-	"-x{b|r|w} b: Do both read and write, r: Do read only, w: Do write only(%s).\n"
-	"-d{y|n} Add O_DIRECT to open flags(%c).\n"
+	"-r{y|n} Read file start block to end block (s: read strict check, y: read light check, n: do nothing)(%s).\n"
+	"-x{b|r|w} Random r/w method (b: Do both read and write, r: Do read only, w: Do write only)(%s).\n"
+	"-d{y|n|Y|N}.. Add O_DIRECT flag at sequential r/w (y: add, n: not add), at random r/w(Y: add, N: not add)(%c%c).\n"
 	"-m{y|n} Do block number Marking and check.(%c).\n"
 	"-b n block size(%d).\n"
 	"-i n Minimum blocks to read/write(%d).\n"
@@ -1543,10 +1777,11 @@ void show_help(void)
 	"-n n number of repeats(%d).\n"
 	"-s n random seed number(%d). \n"
 	"path_name: Device or file path name to test.\n"
-	"NOTE: Always do random read/write test with O_DIRECT."
 	,(DEF_FillFile ? 'y' : 'n')
-	,do_only_options[DEF_DoOnly]
+	,do_read_file_options[DEF_DoReadFile]
+	,do_only_options[DEF_DoRandomAccess]
 	,(DEF_DoDirect ? 'y' : 'n')
+	,(DEF_DoDirectRandomRW ? 'Y' : 'N')
 	,(DEF_DoMark ? 'y' : 'n')
 	,DEF_BlockSize
 	,DEF_BlocksMin,DEF_BlocksMax
