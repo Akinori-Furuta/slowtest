@@ -440,9 +440,10 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 	char	*p2;
 	int	c;
 	int	result;
-	
+	int	opt_e;
+
 	result=1;
-	while ((c=getopt(argc,argv0,"b:f:p:r:x:d:m:i:a:o:e:n:s:h")!=-1) {
+	while ((c=getopt(argc,argv0,"b:f:p:r:x:d:m:i:a:o:e:n:s:h"))!=-1) {
 		switch (c) {
 			case 'b': { /* -b block_size */
 				const char error_message[]="-b: Need block size by number[k|m|g|t|]\n";
@@ -531,23 +532,24 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				p=optarg;
 				if (p) {
 					switch (*p) {
-					case 'b':
-						/* Both read and write. */
-						opt->DoRandomAccess=DO_RANDOM_ACCESS_BOTH;
-						break;
-					case 'r':
-						/* Read only. */
-						opt->DoRandomAccess=DO_RANDOM_ACCESS_READ;
-						break;
-					case 'w':
-						/* Write only. */
-						opt->DoRandomAccess=DO_RANDOM_ACCESS_WRITE;
-						break;
-					default:
-						/* invalid. */
-						printf(error_message);
-						result=0;
-						break;
+						case 'b':
+							/* Both read and write. */
+							opt->DoRandomAccess=DO_RANDOM_ACCESS_BOTH;
+							break;
+						case 'r':
+							/* Read only. */
+							opt->DoRandomAccess=DO_RANDOM_ACCESS_READ;
+							break;
+						case 'w':
+							/* Write only. */
+							opt->DoRandomAccess=DO_RANDOM_ACCESS_WRITE;
+							break;
+						default:
+							/* invalid. */
+							printf(error_message);
+							result=0;
+							break;
+					}
 				} else {
 					printf(error_message);
 					result=0;
@@ -970,10 +972,7 @@ off64_t CheckStrictlyFileImage(char *b, long len, off64_t block_number, long blo
                     ==LastBlockNumber: check sum ok, *result==1.
 */
 off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
-{
-	long			i;
-	off64_t			a;
-	off64_t			a0;
+{	off64_t			a0;
 
 	while (len>0) {
 		a0= *(((off64_t*)b)+0)
@@ -1145,7 +1144,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 			struct timespec	ts_delta;
 
 			dt_write_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_print));
-			if (dt_write_elp>=1.0)
+			if (  (dt_write_elp>=1.0)
 			    ||(cur_pos>=end_next_pos)
 			   ) {	/* Finish filling or elapsed 1 sec from last show. */
 				dt_write=timespecToDouble(timespecSub(&ts_delta,&ts_write_aa, &ts_write_ap));
@@ -1160,7 +1159,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 					, print_pos_delta/dt_write_elp
 					, pos_delta/dt_elp
 					, cur_pos
-					, 100*pos_delta/((double)(end_next_pos-start_pos)))
+					, 100*pos_delta/((double)(end_next_pos-start_pos))
 					, dt_write
 					, dt_all
 					, dt_write_elp
@@ -1272,7 +1271,7 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		done=0;
 		clock_gettime(CLOCK_REALTIME,&ts_read_s);
 		rresult=TryRead(fd,img,chunk,&done);
-		clock_gettime(CLOCK_REALTIME,&tsread_e_tmp);
+		clock_gettime(CLOCK_REALTIME,&ts_read_e_tmp);
 		if ((!done) || (rresult!=chunk)) {
 			/* Can't write requested. */
 			printf("%s: Read failed. rresult=0x%lx,  chunk=0x%lx. %s\n"
@@ -1301,7 +1300,7 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 				default:
 					printf("%s: Internal error: Unexpected DoReadFile. DoRead=%d\n"
 						,__func__
-						,op->DoReadFile
+						,opt->DoReadFile
 					);
 					return 0;
 			}
@@ -1346,7 +1345,7 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 					, print_pos_delta/dt_read_elp
 					, pos_delta/dt_elp
 					, cur_pos
-					, 100*pos_delta/((double)(end_next_pos-start_pos)))
+					, 100*pos_delta/((double)(end_next_pos-start_pos))
 					, dt_read
 					, dt_all
 					, dt_read_elp
@@ -1416,7 +1415,6 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 		struct timespec	ts_mem;
 		struct timespec	ts_rw_start;
 		struct timespec	ts_rw_done;
-		struct timespec	ts_p1;
 
 		char		read_write;
 		unsigned char	rw_act;
@@ -1539,13 +1537,14 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 
 			rw_time=timespecToDouble(&ts_rw_delta);
 			mem_time=timespecToDouble(&ts_mem_delta);
-			/*       i, elp, rw, pos, len, rtime, bps, touchtime */
-			printf("%8ld, %10.4e, %c, 0x%.16llx, 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
+			/*       i, elp, rw, pos, len, rw_time, bps, touchtime */
+			printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
 				,i
 				,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
 				,read_write
-				,seekto,(long)length
-				,rtime
+				,seekto
+				,(long)length
+				,rw_time
 				,((double)length)/rw_time
 				,mem_time
 			);
@@ -1723,7 +1722,7 @@ int MainTest(TCommandLineOption *opt)
 	if (!RandomRWFile(fd,img,imgsize,mem,memsize,opt)) {
 		/* Random read/write failed. */
 		printf("%s: random read/write failed. %s\n",opt->PathName,strerror(errno));
-		resunt=0;
+		result=0;
 	}
 
 	if (opt->DoReadFile!=DO_READ_FILE_NO) {
@@ -1735,7 +1734,7 @@ int MainTest(TCommandLineOption *opt)
 		}
 		if (!ReadFile(fd,img,imgsize,opt)) {
 			printf("%s: Sequential read failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
-			resunt=0;
+			result=0;
 		}
 	}
 
