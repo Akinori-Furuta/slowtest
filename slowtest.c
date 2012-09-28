@@ -1833,9 +1833,9 @@ void show_help(void)
 
 	,do_only_options[DEF_DoRandomAccess]
 	,do_read_file_options[DEF_DoReadFile]
-	,(DEF_DoDirectRandomRW ? 'Y' : 'N')
 
 	,(DEF_DoDirect ? 'y' : 'n')
+	,(DEF_DoDirectRandomRW ? 'Y' : 'N')
 	,(DEF_DoMark ? 'y' : 'n')
 
 	,DEF_BlockSize
