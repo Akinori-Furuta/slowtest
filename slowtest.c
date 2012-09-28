@@ -771,8 +771,8 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		("PathName: %s\n"
 		 "FileSize(-f): %" PRId64 "\n"
 		 "FillFile(-p): %c\n"
-		 "DoReadFile(-r): %s\n"
 		 "DoRandomAccess(-x): %s\n"
+		 "DoReadFile(-r): %s\n"
 		 "DoDirect(-d): %c%c\n"
 		 "DoMark(-m): %c\n"
 		 "BlockSize(-b): %" PRId64 "\n"
@@ -785,8 +785,8 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,opt->PathName
 		 ,(int64_t)(opt->FileSize)
 		 ,(opt->FillFile ? 'y' : 'n')
-		 ,do_read_file_options[opt->DoReadFile]
 		 ,do_only_options[opt->DoRandomAccess]
+		 ,do_read_file_options[opt->DoReadFile]
 		 ,(opt->DoDirect ? 'y' : 'n')
 		 ,(opt->DoDirectRandomRW ? 'Y' : 'N')
 		 ,(opt->DoMark ? 'y' : 'n')
@@ -1253,7 +1253,7 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		start_pos, end_next_pos-(opt->BlockSize)
 	);
 	/*      0123456789  0123456789  0123456789  0123456789 cur_pos progress, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, */
-	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, \n");
+	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n");
 
 	clock_gettime(CLOCK_REALTIME,&ts_read_0);
 	ts_read_e=ts_read_0;
@@ -1810,13 +1810,16 @@ EXIT_CLOSE:;
 
 void show_help(void)
 {	printf(
-	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-d{y|n}] [-m{y|n}] [-b n] [-i n] [-a n] [-n n] [-s n] path_name\n"
+	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-r{y|n}] [-d{y|n}{Y|N}] [-m{y|n}] [-b n] [-i n] [-a n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
+
 	"-p{y|n} Pre fill file with initial image(y: fill, n: truncate)(%c).\n"
-	"-r{y|n} Read file start block to end block (s: read strict check, y: read light check, n: do nothing)(%s).\n"
 	"-x{b|r|w} Random r/w method (b: Do both read and write, r: Do read only, w: Do write only)(%s).\n"
-	"-d{y|n|Y|N}.. Add O_DIRECT flag at sequential r/w (y: add, n: not add), at random r/w(Y: add, N: not add)(%c%c).\n"
+	"-r{y|n} Read file start block to end block (s: read strict check, y: read light check, n: do nothing)(%s).\n"
+
+	"-d{y|n}{Y|N}.. Add O_DIRECT flag at sequential r/w (y: add, n: not add), at random r/w(Y: add, N: not add)(%c%c).\n"
 	"-m{y|n} Do block number Marking and check.(%c).\n"
+
 	"-b n block size(%d).\n"
 	"-i n Minimum blocks to read/write(%d).\n"
 	"-a n Maximum blocks to read/write(%d).\n"
@@ -1825,21 +1828,33 @@ void show_help(void)
 	"-n n number of repeats(%d).\n"
 	"-s n random seed number(%d). \n"
 	"path_name: Device or file path name to test.\n"
+
 	,(DEF_FillFile ? 'y' : 'n')
-	,do_read_file_options[DEF_DoReadFile]
+
 	,do_only_options[DEF_DoRandomAccess]
-	,(DEF_DoDirect ? 'y' : 'n')
+	,do_read_file_options[DEF_DoReadFile]
 	,(DEF_DoDirectRandomRW ? 'Y' : 'N')
+
+	,(DEF_DoDirect ? 'y' : 'n')
 	,(DEF_DoMark ? 'y' : 'n')
+
 	,DEF_BlockSize
 	,DEF_BlocksMin,DEF_BlocksMax
 	,0,0
 	,DEF_Repeats, DEF_Seed
 	);
 	printf(
-	"Output formats:\n"
-	"count, elapsed_time, rw, wait_time, seek_delta, seek_delta_ratio, seek_pos, read_length, "
-	"read_time, read_speed, touch_time\n"
+	"Output format: sequential write.\n"
+	"cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total\n"
+	);
+	printf(
+	"Output format: random access.\n"
+	"count, elapsed_time, rw, seek_position, length, "
+	"read_time, bps, memory_access_time\n"
+	);
+	printf(
+	"Output format: sequential read.\n"
+	" cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n"
 	);
 }
 
