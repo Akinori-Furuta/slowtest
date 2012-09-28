@@ -1854,7 +1854,7 @@ void show_help(void)
 	);
 	printf(
 	"Output format: sequential read.\n"
-	" cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n"
+	"cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n"
 	);
 }
 
