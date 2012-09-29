@@ -37,16 +37,17 @@ long	ScPageSize=4096;
 #define	DO_OPTION_NO	(0) /* should be 0 */
 #define	DO_OPTION_YES	(1)
 
-#define	DEF_FillFile	(0)
-#define	DEF_DoReadFile	(0)
-#define	DEF_FileSize	(0)
-#define	DEF_BlockSize	(4096)
-#define	DEF_BlocksMin	(256)
-#define	DEF_BlocksMax	(1024)
-#define	DEF_BlockStart	(0)
-#define	DEF_BlockEnd	(INT64_MAX)
-#define	DEF_Repeats	(1000)
-#define	DEF_Seed	(0)
+#define	DEF_FillFile		(0)
+#define	DEF_DoReadFile		(0)
+#define	DEF_FileSize		(0)
+#define	DEF_BlockSize		(4096)
+#define	DEF_SequentialRWBlocks	(0)
+#define	DEF_BlocksMin		(256)
+#define	DEF_BlocksMax		(1024)
+#define	DEF_BlockStart		(0)
+#define	DEF_BlockEnd		(INT64_MAX)
+#define	DEF_Repeats		(1000)
+#define	DEF_Seed		(0)
 #define	DEF_DoRandomAccess	(DO_RANDOM_ACCESS_BOTH)
 #define	DEF_DoDirect		(DO_OPTION_YES)
 #define	DEF_DoDirectRandomRW	(DO_OPTION_YES)
@@ -57,12 +58,14 @@ long	ScPageSize=4096;
 typedef struct {
 	off64_t			FileSize;	/*!< -f n file size. */
 	off64_t			BlockSize;	/*!< -b n block size. */
+	off64_t			SequentialRWBlocks; /*!< -u n Sequential Read/Write blocks per one IO. */
 	off64_t			BlocksMin;	/*!< -i n Minimum blocks to read. */
 	off64_t			BlocksMax;	/*!< -a n Maximum blocks to read. */
 	off64_t			BlockStart;	/*!< -o n Origin block number to test. */
 	off64_t			BlockEnd;	/*!< -e n End block number to test.  */
 	long			Repeats;	/*!< -n n number of repeats. */
 	long			Seed;		/*!< -s n random seed number. */
+	char			*Argv0;		/*!< This program name. */
 	char			*PathName;	/*!< Device or file path name to test. */
 	int			FillFile;	/*!< Sequential Fill work file. */
 	int			DoReadFile;	/*!< Sequential Read work file. */
@@ -74,9 +77,11 @@ typedef struct {
 
 
 TCommandLineOption	CommandLine={
+	.Argv0="",
 	.PathName="",
 	.FileSize=DEF_FileSize,
 	.BlockSize=DEF_BlockSize,
+	.SequentialRWBlocks=DEF_SequentialRWBlocks,
 	.BlocksMin=DEF_BlocksMin,
 	.BlocksMax=DEF_BlocksMax,
 	.BlockStart=DEF_BlockStart,
@@ -446,7 +451,9 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 	int	opt_e;
 
 	result=1;
-	while ((c=getopt(argc,argv0,"b:f:p:r:x:d:m:i:a:o:e:n:s:h"))!=-1) {
+	opt->Argv0=*argv0;
+
+	while ((c=getopt(argc,argv0,"b:u:f:p:r:x:d:m:i:a:o:e:n:s:h"))!=-1) {
 		switch (c) {
 			case 'b': { /* -b block_size */
 				const char error_message[]="-b: Error: Need block size by number[k|m|g|t|]\n";
@@ -458,6 +465,23 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 					if (opt->BlockSize<=0) {
 						/* Zero or negative BlockSize. */
 						opt->BlockSize=save;
+					}
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'u': {
+				const char error_message[]="-u: Error: Need Sequential read/write blocks per one IO by number[k|m|g|t|]\n";
+				p=optarg;
+				if (p) {
+					off64_t	save;
+					save=opt->SequentialRWBlocks;
+					opt->BlockSize=strtoulkmg(p,&p2,0);
+					if (opt->BlockSize<=0) {
+						/* Zero or negative BlockSize. */
+						opt->SequentialRWBlocks=save;
 					}
 				} else {
 					printf(error_message);
@@ -755,6 +779,9 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 		printf("-b %" PRId64 ": Error: Should be a multiple %lu.\n",(int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)));
 		result=0;
 	}
+	if (opt->SequentialRWBlocks<=0) {
+		opt->SequentialRWBlocks=opt->BlocksMax*2;
+	}
 	opt->FileSize=RoundUpBy(opt->FileSize,opt->BlockSize);
 	return(result /* true */);
 }
@@ -767,7 +794,10 @@ char	*do_read_file_options[]={"n","y","s"};
     @return void nothing.
 */
 void TCommandLineOptionShow(TCommandLineOption *opt)
-{	printf
+{	printf	("BuildDate: %s\n"
+		,__DATE__
+	);
+	printf
 		("PathName: %s\n"
 		 "FileSize(-f): %" PRId64 "\n"
 		 "FillFile(-p): %c\n"
@@ -776,6 +806,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 "DoDirect(-d): %c%c\n"
 		 "DoMark(-m): %c\n"
 		 "BlockSize(-b): %" PRId64 "\n"
+		 "SequentialRWBlocks(-u): %" PRId64 "\n"
 		 "BlocksMin(-i): %" PRId64 "\n"
 		 "BlocksMax(-a): %" PRId64 "\n"
 		 "BlockStart(-o): %" PRId64 "\n"
@@ -791,6 +822,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,(opt->DoDirectRandomRW ? 'Y' : 'N')
 		 ,(opt->DoMark ? 'y' : 'n')
 		 ,(int64_t)(opt->BlockSize)
+		 ,(int64_t)(opt->SequentialRWBlocks)
 		 ,(int64_t)(opt->BlocksMin)
 		 ,(int64_t)(opt->BlocksMax)
 		 ,(int64_t)(opt->BlockStart)
@@ -1068,7 +1100,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	chunk_max=opt->BlockSize*opt->BlocksMax;
+	chunk_max=opt->BlockSize*opt->SequentialRWBlocks;
 	if (chunk_max>imgsize) {
 		/* allocated buffer is small. */
 		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, imgsize=%ld.\n"
@@ -1191,11 +1223,11 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
     @param path 
     @param fd file descriptor.
     @param img point file image memory.
-    @param imgsize buffer byte length pointed by img.
+    @param img_size buffer byte length pointed by img.
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
-int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
+int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 {	off64_t		blockno;
 	long		chunk;
 	long		chunk_max;
@@ -1230,11 +1262,11 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	chunk_max=opt->BlockSize*opt->BlocksMax;
-	if (chunk_max>imgsize) {
+	chunk_max=opt->BlockSize*opt->SequentialRWBlocks;
+	if (chunk_max>img_size) {
 		/* allocated buffer is small. */
-		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, imgsize=%ld.\n"
-			, __func__, chunk_max, imgsize
+		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, img_size=%ld.\n"
+			, __func__, chunk_max, img_size
 		);
 		return(0 /* false */);
 	}
@@ -1374,17 +1406,19 @@ int ReadFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 
 /*! Random read/write working file.
     @param fd file descriptor.
-    @param img point file image memory.
-    @param imgsize buffer byte length pointed by img.
+    @param img point file image memory to write.
+    @param img_size buffer byte length pointed by img.
+    @param mem point file image memory to read.
+    @param mem_size buffer byte length pointed by mem.
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 
 */
-int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TCommandLineOption *opt)
+int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCommandLineOption *opt)
 {	off64_t		seek_size;
 	off64_t		end_next_pos;
 	off64_t		area_blocks;
-	off64_t		seekto_prev;
+	off64_t		seek_to_prev;
 	long		repeats;
 	long		i;
 	int		result;
@@ -1398,7 +1432,7 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 	seek_size=GetFileSizeFd(fd);
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 	area_blocks=opt->BlockEnd-opt->BlockStart+1;
-	seekto_prev=-1;
+	seek_to_prev=-1;
 	/* Record time at tests begin. */
 	if (clock_gettime(CLOCK_REALTIME,&ts_0)!=0) {
 		printf("%s(): Error: clock_gettime failed. %s\n",__func__,strerror(errno));
@@ -1408,10 +1442,10 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 	repeats=opt->Repeats;
 	i=0;
 	while ((i<repeats) && (result!=0)) {
-		off64_t		seekto_block;
-		off64_t		seekto;
-		off64_t		seekto_delta;
-		off64_t		seekresult;
+		off64_t		seek_to_block;
+		off64_t		seek_to;
+		off64_t		seek_to_delta;
+		off64_t		seek_result;
 		size_t		length;
 		int		ioresult;
 
@@ -1423,22 +1457,22 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 		unsigned char	rw_act;
 
 		/* Calc random seek position and size. */
-		seekto_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
-		seekto=(opt->BlockSize)*seekto_block;
+		seek_to_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
+		seek_to=(opt->BlockSize)*seek_to_block;
 		length=(opt->BlockSize)*((long)(drand48()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
-		if ((length+seekto)>end_next_pos) {
+		if ((length+seek_to)>end_next_pos) {
 			/* over runs at block end. */
-			length=end_next_pos-seekto;
+			length=end_next_pos-seek_to;
 		}
-		if ((length+seekto)>seek_size) {
+		if ((length+seek_to)>seek_size) {
 			/* over runs at end of file. */
-			length=seek_size-seekto;
+			length=seek_size-seek_to;
 		}
 		/* Seek random. */
-		seekresult=lseek64(fd,seekto,SEEK_SET);
-		if (seekresult<0) {
-			printf("%s: Error: seek failed. seekto=0x%.16" PRIx64 ", seekresult=0x%.16" PRIx64 ". %s\n"
-				,opt->PathName,(int64_t)seekto,(int64_t)seekresult,strerror(errno)
+		seek_result=lseek64(fd,seek_to,SEEK_SET);
+		if (seek_result<0) {
+			printf("%s: Error: seek failed. seek_to=0x%.16" PRIx64 ", seek_result=0x%.16" PRIx64 ". %s\n"
+				,opt->PathName,(int64_t)seek_to,(int64_t)seek_result,strerror(errno)
 			);
 			return 0; /* failed */
 		}
@@ -1466,7 +1500,13 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 			int	sum_result;
 			off64_t	block_check;
 			int	done;
-			
+
+			if (length>mem_size) {
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, mem_size=%lx\n"
+					, opt->Argv0, length, mem_size
+				);
+				return 0; /* failed */
+			}
 			done=0;
 			/* Record time at read. */
 			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
@@ -1482,7 +1522,7 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 				sum_result=0;
 				block_check=CheckStrictlyFileImage(
 					mem,length
-					,seekto_block,opt->BlockSize
+					,seek_to_block,opt->BlockSize
 					,&sum_result
 				);
 				if (sum_result==0) {
@@ -1504,18 +1544,27 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 			memcpy(&ts_op_done,&ts_mem,sizeof(ts_op_done));
 			read_write='r';
 		} else {/* write blocks. */
-			char	*imgwork;
-			int	done;
+			char		*img_work;
+			int		done;
+			off64_t		img_offset;
 
 			clock_gettime(CLOCK_REALTIME,&ts_mem);
 			/* Choose image to write by random. */
-			imgwork=img+((opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax))));
+			img_offset=(opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax)));
+			img_work=img+img_offset;
 			if (opt->DoMark) {
-				MarkFileImage(imgwork,length,seekto_block,opt->BlockSize);
+				/* Do block number marking. */
+				MarkFileImage(img_work,length,seek_to_block,opt->BlockSize);
+			}
+			if ((img_offset+length)>img_size) {
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, img_size=%lx\n"
+					, opt->Argv0, length, img_size
+				);
+				return 0; /* failed */
 			}
 			done=0;
 			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
-			ioresult=TryWrite(fd,imgwork,length,&done);
+			ioresult=TryWrite(fd,img_work,length,&done);
 			/* Record time at touch. */
 			clock_gettime(CLOCK_REALTIME,&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
@@ -1528,10 +1577,10 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 			memcpy(&ts_op_done,&ts_rw_done,sizeof(ts_op_done));
 			read_write='w';
 		}
-		if (seekto_prev>=0) {
-			seekto_delta=seekto-seekto_prev;
+		if (seek_to_prev>=0) {
+			seek_to_delta=seek_to-seek_to_prev;
 		} else {
-			seekto_delta=0;
+			seek_to_delta=0;
 		}
 
 		{	double		rw_time;
@@ -1545,14 +1594,14 @@ int RandomRWFile(int fd, char *img, long imgsize, char *mem, long memsize, TComm
 				,i
 				,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
 				,read_write
-				,seekto
+				,seek_to
 				,(long)length
 				,rw_time
 				,((double)length)/rw_time
 				,mem_time
 			);
 		}
-		seekto_prev=seekto;
+		seek_to_prev=seek_to;
 		i++;
 	}
 	return result;
@@ -1568,10 +1617,11 @@ int MainTest(TCommandLineOption *opt)
 	int		fd_flags_add;
 
 	char		*mem;
-	long		memsize;
+	long		mem_size;
 
 	char		*img;
-	long		imgsize;
+	long		img_size;
+	off64_t		img_blocks;
 
 	struct stat64	st64;
 	off64_t		seek_size;
@@ -1598,46 +1648,51 @@ int MainTest(TCommandLineOption *opt)
 	);
 	if (fd<0) {
 		/* Can't open. */
-		printf("%s: Error: open failed. %s\n",opt->PathName,strerror(errno));
+		printf("%s: Error: open failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		return(0 /* false */);
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x\n",opt->PathName, fd, flags);
 	if (fstat64(fd,&st64)!=0) {
 		/* Can't stat. */
-		printf("%s: Error: fstat failed. %s\n",opt->PathName,strerror(errno));
+		printf("%s: Error: fstat failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		result=0 /* false */;
 		goto EXIT_CLOSE;
 	}
-	/* allocate read buffer mem. */
-	memsize=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
-	mem=mmap(NULL,memsize
+	/* allocate random read buffer mem. */
+	mem_size=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
+	mem=mmap(NULL,mem_size
 		,PROT_READ|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE
 		,-1,0);
 
 	if (mem==MAP_FAILED) {
-		printf("%s(): Error: mmap failed(mem). %s\n",__func__,strerror(errno));
+		printf("%s(): Error: mmap failed(mem). %s(%d). mem_size=0x%lx\n",__func__,strerror(errno), errno, mem_size);
 		result=0 /* false */;
 		goto EXIT_CLOSE;
 	}
 
-	/* allocate write buffer img. */
-	imgsize=RoundUpBy((opt->BlockSize*opt->BlocksMax)*2,ScPageSize);
-	img=mmap(NULL,imgsize
+	/* allocate random write buffer img. */
+	img_blocks=opt->BlocksMax*2;
+	if (img_blocks<opt->SequentialRWBlocks) {
+		/* random write buffer is less than sequential read/write buffer. */
+		img_blocks=opt->SequentialRWBlocks;
+	}
+	img_size=RoundUpBy(opt->BlockSize*img_blocks, ScPageSize);
+	img=mmap(NULL,img_size
 		,PROT_READ|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE
 		,-1,0);
 
 	if (img==MAP_FAILED) {
-		printf("%s(): Error: mmap failed(img). %s\n",__func__,strerror(errno));
+		printf("%s(): Error: mmap failed(img). %s(%d). img_size=0x%lx\n",__func__,strerror(errno), errno, img_size);
 		result=0 /* false */;
 		goto EXIT_UNMAP_MEM;
 	}
-	MakeFileImage(img,imgsize);
+	MakeFileImage(img,img_size);
 	if (opt->DoMark!=0) {
-		PreMarkFileImage(img,imgsize,opt->BlockSize);
+		PreMarkFileImage(img,img_size,opt->BlockSize);
 	}
 	seek_size=GetFileSizeFd(fd);
 	if (seek_size<0) {
-		printf("%s(): Error: lseek64 to get file size failed. %s\n",__func__,strerror(errno));
+		printf("%s(): Error: lseek64 to get file size failed. %s(%d)\n",__func__,strerror(errno), errno);
 		result=0 /* false */;
 		goto EXIT_UNMAP_IMG;
 	}
@@ -1668,7 +1723,7 @@ int MainTest(TCommandLineOption *opt)
 		TCommandLineOptionShow(opt);
 		if (opt->FillFile) {
 			/* Fill file. */
-			if (!PreCreateFile(fd,img,imgsize,opt)) {
+			if (!PreCreateFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
 				goto EXIT_UNMAP_IMG;
@@ -1711,7 +1766,7 @@ int MainTest(TCommandLineOption *opt)
 		TCommandLineOptionShow(opt);
 		if (opt->FillFile) {
 			/* Fill file. */
-			if (!PreCreateFile(fd,img,imgsize,opt)) {
+			if (!PreCreateFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
 				goto EXIT_UNMAP_IMG;
@@ -1744,7 +1799,7 @@ int MainTest(TCommandLineOption *opt)
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x\n",opt->PathName, fd, flags);
 
-	if (!RandomRWFile(fd,img,imgsize,mem,memsize,opt)) {
+	if (!RandomRWFile(fd,img,img_size,mem,mem_size,opt)) {
 		/* Random read/write failed. */
 		printf("%s: Error: random read/write failed. %s\n",opt->PathName,strerror(errno));
 		result=0;
@@ -1777,20 +1832,20 @@ int MainTest(TCommandLineOption *opt)
 
 	if (opt->DoReadFile!=DO_READ_FILE_NO) {
 		/* Do sequential read. */
-		if (!ReadFile(fd,img,imgsize,opt)) {
+		if (!ReadFile(fd,img,img_size,opt)) {
 			printf("%s: Error: Sequential read failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 			result=0;
 		}
 	}
 
 EXIT_UNMAP_IMG:;
-	if (munmap(img,imgsize)!=0) {
-		printf("%s(): Error: munmap failed(img). %s\n",__func__,strerror(errno));
+	if (munmap(img,img_size)!=0) {
+		printf("%s(): Error: munmap failed(img). %s(%d)\n",__func__,strerror(errno), errno);
 		return(0);
 	}
 EXIT_UNMAP_MEM:;
-	if (munmap(mem,memsize)!=0) {
-		printf("%s(): Error: munmap failed(mem). %s\n",__func__,strerror(errno));
+	if (munmap(mem,mem_size)!=0) {
+		printf("%s(): Error: munmap failed(mem). %s(%d)\n",__func__,strerror(errno),errno);
 		return(0);
 	}
 EXIT_CLOSE:;
@@ -1810,7 +1865,7 @@ EXIT_CLOSE:;
 
 void show_help(void)
 {	printf(
-	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-r{y|n}] [-d{y|n}{Y|N}] [-m{y|n}] [-b n] [-i n] [-a n] [-n n] [-s n] path_name\n"
+	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-r{y|n}] [-d{y|n}{Y|N}] [-m{y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
 
 	"-p{y|n} Pre fill file with initial image(y: fill, n: truncate)(%c).\n"
@@ -1821,6 +1876,7 @@ void show_help(void)
 	"-m{y|n} Do block number Marking and check.(%c).\n"
 
 	"-b n block size(%d).\n"
+	"-u n Sequential read/write blocks per one IO (if zero or not set, same as \"-a n\" * 2)(%d).\n"
 	"-i n Minimum blocks to read/write(%d).\n"
 	"-a n Maximum blocks to read/write(%d).\n"
 	"-o n Start block number to read/write(%d).\n"
@@ -1839,9 +1895,14 @@ void show_help(void)
 	,(DEF_DoMark ? 'y' : 'n')
 
 	,DEF_BlockSize
-	,DEF_BlocksMin,DEF_BlocksMax
-	,0,0
-	,DEF_Repeats, DEF_Seed
+	,DEF_SequentialRWBlocks
+	,DEF_BlocksMin
+	,DEF_BlocksMax
+	,0
+	,0
+	,DEF_Repeats
+
+	,DEF_Seed
 	);
 	printf(
 	"Output format: sequential write.\n"
