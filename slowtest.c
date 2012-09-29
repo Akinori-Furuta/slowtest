@@ -1061,12 +1061,12 @@ void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
 /*! Fill(Write) working file up to FileSize.
     @param fd file descriptor.
     @param img point file image memory.
-    @param imgsize buffer byte length pointed by img.
+    @param img_size buffer byte length pointed by img.
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
-int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
-{	off64_t		blockno;
+int PreCreateFile(int fd, char *img, long img_size, TCommandLineOption *opt)
+{	off64_t		block_no;
 	long		chunk;
 	long		chunk_max;
 	off64_t		start_pos;
@@ -1101,10 +1101,10 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 	}
 
 	chunk_max=opt->BlockSize*opt->SequentialRWBlocks;
-	if (chunk_max>imgsize) {
+	if (chunk_max>img_size) {
 		/* allocated buffer is small. */
-		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, imgsize=%ld.\n"
-			, __func__, chunk_max, imgsize
+		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, img_size=%ld.\n"
+			, __func__, chunk_max, img_size
 		);
 		return(0 /* false */);
 	}
@@ -1114,7 +1114,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
 	i=0;
-	blockno=opt->BlockStart;
+	block_no=opt->BlockStart;
 	cur_pos=start_pos;
 	print_pos=cur_pos;
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
@@ -1145,7 +1145,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 			chunk=(long)(tmp);
 		}
 		if (opt->DoMark!=0) {
-			MarkFileImage(img,chunk,blockno,opt->BlockSize);
+			MarkFileImage(img,chunk,block_no,opt->BlockSize);
 		}
 		done=0;
 		clock_gettime(CLOCK_REALTIME,&ts_write_s);
@@ -1165,7 +1165,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
 		timespecSub(&ts_write_aa,&ts_write_aa,&ts_write_s);
 		ts_write_e=ts_write_e_tmp;
 
-		blockno+=opt->BlocksMax;
+		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
 		{
 			double		dt_write_elp;
@@ -1228,7 +1228,7 @@ int PreCreateFile(int fd, char *img, long imgsize, TCommandLineOption *opt)
     @return int ==0 failed, !=0 success.
 */
 int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
-{	off64_t		blockno;
+{	off64_t		block_no;
 	long		chunk;
 	long		chunk_max;
 	off64_t		start_pos;
@@ -1276,7 +1276,7 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
 	i=0;
-	blockno=opt->BlockStart;
+	block_no=opt->BlockStart;
 	cur_pos=start_pos;
 	print_pos=cur_pos;
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
@@ -1327,10 +1327,10 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 			r=0;
 			switch (opt->DoReadFile) {
 				case DO_READ_FILE_LIGHT:
-					block_check=CheckLightFileImage(img, chunk, blockno, opt->BlockSize, &r);
+					block_check=CheckLightFileImage(img, chunk, block_no, opt->BlockSize, &r);
 					break;
 				case DO_READ_FILE_STRICT:
-					block_check=CheckStrictlyFileImage(img, chunk, blockno, opt->BlockSize, &r);
+					block_check=CheckStrictlyFileImage(img, chunk, block_no, opt->BlockSize, &r);
 					break;
 				default:
 					printf("%s: Error: Internal, unexpected DoReadFile. DoRead=%d\n"
@@ -1350,7 +1350,7 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 			TouchSums+=TouchMemory(img,chunk);
 		}
 
-		blockno+=opt->BlocksMax;
+		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
 		{
 			double		dt_read_elp;
