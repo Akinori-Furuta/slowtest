@@ -33,9 +33,9 @@ set timefmt y2 "%d/%m/%y,%H:%M"
 set timefmt cb "%d/%m/%y,%H:%M"
 set boxwidth
 set style fill  empty border
-set style rectangle back fc  lt -3 fillstyle   solid 1.00 border lt -1
+set style rectangle back fc lt -3 fillstyle   solid 1.00 border lt -1
 set dummy x,y
-set format x "% g"
+set format x "%.1e"
 set format y "%.1e"
 set format x2 "% g"
 set format y2 "% g"
@@ -56,6 +56,8 @@ unset style line
 unset style arrow
 set style histogram clustered gap 2 title  offset character 0, 0, 0
 unset logscale
+set logscale x 10
+set logscale y 10
 set offsets 0, 0, 0, 0
 set pointsize 1
 set encoding default
@@ -101,7 +103,7 @@ set nox2tics
 set noy2tics
 set cbtics border in scale 1,0.5 mirror norotate  offset character 0, 0, 0
 set cbtics autofreq  norangelimit
-set title "Intel SSD 520 120GB - 100GiByte sequential read performance\n64MiBytes per one read()" 
+set title "access time vs transfer ratio" 
 set title  offset character 0, 0, 0 font "" norotate
 set timestamp bottom 
 set timestamp "" 
@@ -110,18 +112,18 @@ set rrange [ * : * ] noreverse nowriteback  # (currently [8.98847e+307:-8.98847e
 set trange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set urange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set vrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
-set xlabel "progress (%)" 
+set xlabel "access time (sec)" 
 set xlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
-set xrange [ * : * ] noreverse nowriteback  # (currently [0.00000:100.000] )
-set x2range [ * : * ] noreverse nowriteback  # (currently [0.380000:100.000] )
+set xrange [ 1.00000e-05 : 10.0000 ] noreverse nowriteback
+set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
 set ylabel "transfer ratio (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 0.00000 : 6.00000e+08 ] noreverse nowriteback
-set y2range [ * : * ] noreverse nowriteback  # (currently [0.00000:6.00000e+08] )
+set yrange [ 100000. : 1.00000e+10 ] noreverse nowriteback
+set y2range [ * : * ] noreverse nowriteback  # (currently [5.00000:10.0000] )
 set zlabel "" 
 set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set zrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
@@ -144,5 +146,5 @@ set colorbox vertical origin screen 0.9, 0.2, 0 size screen 0.05, 0.6, 0 front b
 set loadpath 
 set fontpath 
 set fit noerrorvariables
-plot log_file using 6:3 title "current" with points pointtype 13 pointsize 0.5 linecolor rgb "#00c000", "" using 6:4 title "average" with lines linewidth 1 linecolor rgb "#0000ff"
+plot log_file using 6:7 with points pointtype 13 pointsize 0.5 linecolor rgb "#ff0000" notitle
 #    EOF

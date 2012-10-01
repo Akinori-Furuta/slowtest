@@ -701,7 +701,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-n: Error: Need repeat counts by number\n";
 				p=optarg;
 				if (p) {
-					opt->Repeats=strtol(p,&p2,0);
+					opt->Repeats=strtoulkmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -712,7 +712,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-s: Error: Need random seed by number.\n";
 				p=optarg;
 				if (p) {
-					opt->Seed=strtol(p,&p2,0);
+					opt->Seed=strtoulkmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -1433,6 +1433,9 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 	area_blocks=opt->BlockEnd-opt->BlockStart+1;
 	seek_to_prev=-1;
+	printf("%s: Info: Random access working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
+		opt->BlockStart*opt->BlockSize, end_next_pos-(opt->BlockSize)
+	);
 	/* Record time at tests begin. */
 	if (clock_gettime(CLOCK_REALTIME,&ts_0)!=0) {
 		printf("%s(): Error: clock_gettime failed. %s\n",__func__,strerror(errno));

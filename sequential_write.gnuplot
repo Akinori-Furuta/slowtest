@@ -144,6 +144,5 @@ set colorbox vertical origin screen 0.9, 0.2, 0 size screen 0.05, 0.6, 0 front b
 set loadpath 
 set fontpath 
 set fit noerrorvariables
-GNUTERM = "wxt"
 plot log_file using 6:3 title "current" with points pointtype 13 pointsize 0.5 linecolor rgb "#ff0000", "" using 6:4 title "average" with lines linewidth 1 linecolor rgb "#0000ff"
 #    EOF
