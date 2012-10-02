@@ -15,9 +15,9 @@
 #    	plot window:      hit 'h'
 set terminal png size 800,600
 # set output
-unset clip points
+set clip points
 set clip one
-unset clip two
+set clip two
 set bar 1.000000 front
 set border 31 front linetype -1 linewidth 1.000
 set xdata
@@ -103,7 +103,7 @@ set nox2tics
 set noy2tics
 set cbtics border in scale 1,0.5 mirror norotate  offset character 0, 0, 0
 set cbtics autofreq  norangelimit
-set title "access time vs transfer ratio" 
+# set title "access time vs transfer ratio" 
 set title  offset character 0, 0, 0 font "" norotate
 set timestamp bottom 
 set timestamp "" 
