@@ -52,7 +52,7 @@ long	ScPageSize=4096;
 #define	DEF_DoDirect		(DO_OPTION_YES)
 #define	DEF_DoDirectRandomRW	(DO_OPTION_YES)
 #define	DEF_DoMark		(DO_OPTION_YES)
-
+#define	DEF_TestToTestSleeps	(10)
 
 /*! Command line argument holder. */
 typedef struct {
@@ -73,6 +73,8 @@ typedef struct {
 	int			DoDirect;	/*!< Do O_DIRECT io */
 	int			DoDirectRandomRW; /*!< Do O_DIRECT io at random read/write. */
 	int			DoMark;		  /*!< Do Block Marking. */
+	/* Internal state members. */
+	unsigned int		TestToTestSleeps;	/*!< Sleep seconds between test to test. */
 } TCommandLineOption;
 
 
@@ -93,7 +95,9 @@ TCommandLineOption	CommandLine={
 	.DoRandomAccess=DEF_DoRandomAccess,
 	.DoDirect=DEF_DoDirect,
 	.DoDirectRandomRW=DEF_DoDirectRandomRW,
-	.DoMark=DEF_DoMark
+	.DoMark=DEF_DoMark,
+	/* Internal state members. */
+	.TestToTestSleeps=DEF_TestToTestSleeps
 };
 
 /*! Accumulate numbers from touched memory. */
@@ -1422,6 +1426,8 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 	long		repeats;
 	long		i;
 	int		result;
+	double		rw_time_max;
+	unsigned int	sleeps_prefer;
 
 	struct timespec	ts_0;
 	struct timespec	ts_mem_delta;
@@ -1436,6 +1442,7 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 	printf("%s: Info: Random access working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
 		opt->BlockStart*opt->BlockSize, end_next_pos-(opt->BlockSize)
 	);
+	rw_time_max=0;
 	/* Record time at tests begin. */
 	if (clock_gettime(CLOCK_REALTIME,&ts_0)!=0) {
 		printf("%s(): Error: clock_gettime failed. %s\n",__func__,strerror(errno));
@@ -1603,9 +1610,19 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 				,((double)length)/rw_time
 				,mem_time
 			);
+			if (rw_time_max<rw_time) {
+				/* Update max random access time. */
+				rw_time_max=rw_time;
+			}
 		}
 		seek_to_prev=seek_to;
 		i++;
+	}
+	/* Estimate sleep time before start next test. */
+	sleeps_prefer=(unsigned int)(rw_time_max*2.0);
+	if (sleeps_prefer>opt->TestToTestSleeps) {
+		/* More sleeps needed before start next test. */
+		opt->TestToTestSleeps=sleeps_prefer;
 	}
 	return result;
 }
@@ -1654,7 +1671,7 @@ int MainTest(TCommandLineOption *opt)
 		printf("%s: Error: open failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		return(0 /* false */);
 	}
-	printf("%s: Info: open. fd=%d, flags=0x%x\n",opt->PathName, fd, flags);
+	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)time(0));
 	if (fstat64(fd,&st64)!=0) {
 		/* Can't stat. */
 		printf("%s: Error: fstat failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
@@ -1776,15 +1793,20 @@ int MainTest(TCommandLineOption *opt)
 			}
 		}
 	}
-
+	if (fsync(fd)!=0) {
+		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
+	}
 	if (close(fd)!=0) {
 		printf("%s: Error: close failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 		fd=INVALID_FD;
 		result=0;
 		goto EXIT_UNMAP_IMG;
 	}
-	printf("%s: Info: close. fd=%d\n",opt->PathName, fd);
-
+	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)(time(0)));
+	printf("%s: Sync.\n", opt->Argv0);
+	sync();
+	printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+	sleep(opt->TestToTestSleeps);
 	fd_flags_add=0;
 	if (opt->DoDirectRandomRW!=0) {
 		fd_flags_add|=O_DIRECT;
@@ -1798,9 +1820,10 @@ int MainTest(TCommandLineOption *opt)
 	if (fd<0) {
 		/* Can't open. */
 		printf("%s: Error: open failed. %s\n",opt->PathName,strerror(errno));
+		fd=INVALID_FD;
 		goto EXIT_UNMAP_IMG;
 	}
-	printf("%s: Info: open. fd=%d, flags=0x%x\n",opt->PathName, fd, flags);
+	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)(time(0)));
 
 	if (!RandomRWFile(fd,img,img_size,mem,mem_size,opt)) {
 		/* Random read/write failed. */
@@ -1808,12 +1831,20 @@ int MainTest(TCommandLineOption *opt)
 		result=0;
 	}
 
+	if (fsync(fd)!=0) {
+		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
+	}
 	if (close(fd)!=0) {
 		printf("%s: Error: close failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 		result=0;
 		goto EXIT_UNMAP_IMG;
 	}
-	printf("%s: Info: close. fd=%d\n",opt->PathName, fd);
+	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
+
+	printf("%s: Sync.\n", opt->Argv0);
+	sync();
+	printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+	sleep(opt->TestToTestSleeps);
 
 	fd_flags_add=0;
 	if (opt->DoDirect!=0) {
@@ -1829,9 +1860,10 @@ int MainTest(TCommandLineOption *opt)
 	if (fd<0) {
 		/* Can't open. */
 		printf("%s: Error: open failed. %s\n",opt->PathName,strerror(errno));
+		fd=INVALID_FD;
 		goto EXIT_UNMAP_IMG;
 	}
-	printf("%s: Info: open. fd=%d, flags=0x%x\n",opt->PathName, fd, flags);
+	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)time(0));
 
 	if (opt->DoReadFile!=DO_READ_FILE_NO) {
 		/* Do sequential read. */
@@ -1853,11 +1885,18 @@ EXIT_UNMAP_MEM:;
 	}
 EXIT_CLOSE:;
 	if (fd!=INVALID_FD) {
+		if (fsync(fd)!=0) {
+			printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
+		}
 		if (close(fd)!=0) {
-			printf("%s: Error: close failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+			printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 			result=0;
 		}
-		printf("%s: Info: close. fd=%d\n",opt->PathName, fd);
+		printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
+		printf("%s: Sync.\n", opt->Argv0);
+		sync();
+		printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+		sleep(opt->TestToTestSleeps);
 	}
 	if (opt->DoMark==0) {
 		/* Skip check, only touch memory. */
