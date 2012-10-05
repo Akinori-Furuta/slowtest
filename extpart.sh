@@ -73,7 +73,7 @@ do
 	GnuplotVarFile=${TempPath}/${uuid}-`basename ${f%.*}-gp.txt`
 
 	cat << EOF > ${GnuplotVarFile}
-	set title "${Model} ${CapacityGB}G bytes, sequential write\\n${RWBytesMi}Mi bytes per one write() call, up to ${FileSizeGi} Gi bytes, ${DoDirectSequential}\\ntransfer ratio - progress"
+	set title "${Model} ${CapacityGB}G bytes, sequential write\\n${RWBytesMi}Mi bytes per one write() call, up to ${FileSizeGi} Gi bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 EOF
 	sw_file=${f%.*}-sw.txt
 	sw_png=${f%.*}-sw.png
@@ -84,7 +84,7 @@ EOF
 	sed -n '/^i,[[:space:]]/,/Tread/ {p}' ${f} | grep '^[[:space:]]*[0-9]' > ${ra_file}
 
 	cat << EOF > ${GnuplotVarFile}
-	set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, ${DoDirectRandom}\\ntransfer ratio - access time"
+	set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, ${DoDirectRandom}\\ntransfer speed - access time"
 EOF
 	ra_r_file=${f%.*}-rr.txt
 	ra_r_png=${f%.*}-rr.png
@@ -92,17 +92,31 @@ EOF
 	gnuplot -e "log_file=\"${ra_r_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read.gnuplot\"; quit" > ${ra_r_png}
 
 	cat << EOF > ${GnuplotVarFile}
-	set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, ${DoDirectRandom}\\ntransfer ratio - access time"
+	set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, ${DoDirectRandom}\\ntransfer length - access time"
+EOF
+	ra_r_at_tl_png=${f%.*}-rr-at_tl.png
+	gnuplot -e "log_file=\"${ra_r_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read_at-tl.gnuplot\"; quit" > ${ra_r_at_tl_png}
+
+
+	cat << EOF > ${GnuplotVarFile}
+	set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, ${DoDirectRandom}\\ntransfer speed - access time"
 EOF
 	ra_w_file=${f%.*}-rw.txt
 	ra_w_png=${f%.*}-rw.png
 	grep 'w' "${ra_file}" | sed -n 's/,//gp'  > ${ra_w_file}
 	gnuplot -e "log_file=\"${ra_w_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write.gnuplot\"; quit" > ${ra_w_png}
 
+	cat << EOF > ${GnuplotVarFile}
+	set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, ${DoDirectRandom}\\ntransfer length - access time"
+EOF
+	ra_w_file=${f%.*}-rw.txt
+	ra_w_at_tl_png=${f%.*}-rw-at_tl.png
+	gnuplot -e "log_file=\"${ra_w_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write_at-tl.gnuplot\"; quit" > ${ra_w_at_tl_png}
+
 	rm "${ra_file}"
 
 	cat << EOF > ${GnuplotVarFile}
-	set title "${Model} ${CapacityGB}G bytes, sequential read\\n${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeGi} Gi bytes, ${DoDirectSequential}\\ntransfer ratio - progress"
+	set title "${Model} ${CapacityGB}G bytes, sequential read\\n${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeGi} Gi bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 EOF
 	sr_file=${f%.*}-sr.txt
 	sr_png=${f%.*}-sr.png

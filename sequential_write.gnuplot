@@ -15,9 +15,9 @@
 #    	plot window:      hit 'h'
 set terminal png size 800,600
 # set output
+set noclip points
 set clip one
 set clip two
-set clip points
 set bar 1.000000 front
 set border 31 front linetype -1 linewidth 1.000
 set xdata
@@ -43,9 +43,9 @@ set format z "% g"
 set format cb "% g"
 set angles radians
 set grid nopolar
-set grid xtics nomxtics ytics nomytics noztics nomztics \
+set grid xtics mxtics ytics mytics noztics nomztics \
  nox2tics nomx2tics noy2tics nomy2tics nocbtics nomcbtics
-set grid layerdefault   linetype 0 linewidth 1.000,  linetype 0 linewidth 1.000
+set grid layerdefault linetype -1 linewidth 0.5,  linetype 28 linewidth 0.5
 set key title ""
 set key inside right top vertical Right noreverse enhanced autotitles nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
@@ -116,7 +116,7 @@ set x2label ""
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse nowriteback  # (currently [0.00000:100.000] )
 set x2range [ * : * ] noreverse nowriteback  # (currently [1.00000:100.000] )
-set ylabel "transfer ratio (bytes/sec)" 
+set ylabel "transfer speed (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
@@ -144,5 +144,5 @@ set colorbox vertical origin screen 0.9, 0.2, 0 size screen 0.05, 0.6, 0 front b
 set loadpath 
 set fontpath 
 set fit noerrorvariables
-plot log_file using 6:3 title "current" with points pointtype 13 pointsize 0.5 linecolor rgb "#ff0000", "" using 6:4 title "average" with lines linewidth 1 linecolor rgb "#0000ff"
+plot log_file using 6:3 title "current" with points pointtype 13 pointsize 0.4 linecolor rgb "#ff0000", "" using 6:4 title "average" with lines linewidth 1 linecolor rgb "#0000ff"
 #    EOF

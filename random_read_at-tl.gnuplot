@@ -14,8 +14,8 @@
 #    	immediate help:   type "help"
 #    	plot window:      hit 'h'
 set terminal png size 800,600
-# set output
-set clip points
+
+set noclip points
 set clip one
 set clip two
 set bar 1.000000 front
@@ -45,7 +45,7 @@ set angles radians
 set grid nopolar
 set grid xtics mxtics ytics mytics noztics nomztics \
  nox2tics nomx2tics noy2tics nomy2tics nocbtics nomcbtics
-set grid layerdefault linetype -1 linewidth 0.5, linetype 0 linewidth 0.5
+set grid layerdefault linetype -1 linewidth 0.5,  linetype 0 linewidth 0.5
 set key title ""
 set key inside right top vertical Right noreverse enhanced autotitles nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
@@ -103,7 +103,6 @@ set nox2tics
 set noy2tics
 set cbtics border in scale 1,0.5 mirror norotate  offset character 0, 0, 0
 set cbtics autofreq  norangelimit
-# set title "access time vs transfer speed" 
 set title  offset character 0, 0, 0 font "" norotate
 set timestamp bottom 
 set timestamp "" 
@@ -118,12 +117,12 @@ set x2label ""
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set xrange [ 1.00000e-05 : 10.0000 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
-set ylabel "transfer speed (bytes/sec)" 
+set ylabel "transfer length (bytes)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 100000. : 1.00000e+10 ] noreverse nowriteback
-set y2range [ * : * ] noreverse nowriteback  # (currently [5.00000:10.0000] )
+set yrange [ 100.000 : 1.00000e+08 ] noreverse nowriteback
+set y2range [ * : * ] noreverse nowriteback  # (currently [2.00000:8.00000] )
 set zlabel "" 
 set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set zrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
@@ -146,5 +145,5 @@ set colorbox vertical origin screen 0.9, 0.2, 0 size screen 0.05, 0.6, 0 front b
 set loadpath 
 set fontpath 
 set fit noerrorvariables
-plot log_file using 6:7 with points pointtype 13 pointsize 0.4 linecolor rgb "#00c000" notitle
+plot log_file using 6:5 with points pointtype 13 pointsize 0.4 linecolor rgb "#00c000" notitle
 #    EOF
