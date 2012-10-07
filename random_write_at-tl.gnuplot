@@ -121,7 +121,7 @@ set ylabel "transfer length (bytes)"
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 100.000 : 1.00000e+08 ] noreverse nowriteback
+set yrange [ 100.000 : 1.00000e+09 ] noreverse nowriteback
 set y2range [ * : * ] noreverse nowriteback  # (currently [2.00000:8.00000] )
 set zlabel "" 
 set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate

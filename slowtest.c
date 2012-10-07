@@ -482,7 +482,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				if (p) {
 					off64_t	save;
 					save=opt->SequentialRWBlocks;
-					opt->BlockSize=strtoulkmg(p,&p2,0);
+					opt->SequentialRWBlocks=strtoulkmg(p,&p2,0);
 					if (opt->BlockSize<=0) {
 						/* Zero or negative BlockSize. */
 						opt->SequentialRWBlocks=save;
