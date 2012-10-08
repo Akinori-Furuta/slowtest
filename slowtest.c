@@ -1069,7 +1069,7 @@ void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
-int PreCreateFile(int fd, char *img, long img_size, TCommandLineOption *opt)
+int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 {	off64_t		block_no;
 	long		chunk;
 	long		chunk_max;
@@ -1743,7 +1743,7 @@ int MainTest(TCommandLineOption *opt)
 		TCommandLineOptionShow(opt);
 		if (opt->FillFile) {
 			/* Fill file. */
-			if (!PreCreateFile(fd,img,img_size,opt)) {
+			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
 				goto EXIT_UNMAP_IMG;
@@ -1786,7 +1786,7 @@ int MainTest(TCommandLineOption *opt)
 		TCommandLineOptionShow(opt);
 		if (opt->FillFile) {
 			/* Fill file. */
-			if (!PreCreateFile(fd,img,img_size,opt)) {
+			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
 				goto EXIT_UNMAP_IMG;
