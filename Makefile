@@ -1,7 +1,7 @@
 CFLAGS=-O2 -Wall -Wunused
 CLIBS=-lrt
 
-TARGET=slowtest
+TARGET=ssdstress
 
 $(TARGET): $(TARGET).c
 	$(CC) $(CFLAGS) -o $@ $(CLIBS) $<
