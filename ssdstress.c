@@ -1,3 +1,5 @@
+/*! ssdstress: SSD stress test tool.
+*/
 #define _LARGEFILE64_SOURCE
 #define _GNU_SOURCE
 #include <features.h>
@@ -6,10 +8,11 @@
 #include <sys/mman.h>
 #include <sys/time.h>
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <inttypes.h>
+
+#include <fcntl.h>
+#include <unistd.h>
 #include <errno.h>
 
 #include <stdlib.h>
@@ -37,16 +40,16 @@ long	ScPageSize=4096;
 #define	DO_OPTION_NO	(0) /* should be 0 */
 #define	DO_OPTION_YES	(1)
 
-#define	DEF_FillFile		(0)
-#define	DEF_DoReadFile		(0)
+#define	DEF_FillFile		(DO_OPTION_NO)
+#define	DEF_DoReadFile		(DO_READ_FILE_NO)
 #define	DEF_FileSize		(0)
-#define	DEF_BlockSize		(4096)
+#define	DEF_BlockSize		(512)
 #define	DEF_SequentialRWBlocks	(0)
-#define	DEF_BlocksMin		(256)
-#define	DEF_BlocksMax		(1024)
+#define	DEF_BlocksMin		(1)
+#define	DEF_BlocksMax		(8192)
 #define	DEF_BlockStart		(0)
 #define	DEF_BlockEnd		(INT64_MAX)
-#define	DEF_Repeats		(1000)
+#define	DEF_Repeats		(4096)
 #define	DEF_Seed		(0)
 #define	DEF_DoRandomAccess	(DO_RANDOM_ACCESS_BOTH)
 #define	DEF_DoDirect		(DO_OPTION_YES)
@@ -106,10 +109,15 @@ uint64_t	TouchSums=0;
 /*! Store milli second to timespec.
     @param ts point timespec to store.
     @param msec time in milli second.
+    @note test purpose only.
 */
 void timespecLoadMilliSec(struct timespec *ts, long msec)
 {	ldiv_t		sec_milli;
 
+	if (!ts) {
+		/* Invalid argument. */
+		return;
+	}
 	sec_milli=ldiv(msec,1000);
 	sec_milli.rem*=1000L*1000L;	/* milli to micro to nano. */
 	ts->tv_sec= sec_milli.quot;
@@ -121,7 +129,10 @@ void timespecLoadMilliSec(struct timespec *ts, long msec)
     @return double second.
 */
 double timespecToDouble(const struct timespec *ts)
-{	return((double)(ts->tv_sec)+(ts->tv_nsec)/(1000.0*1000.0*1000.0));
+{	if (!ts) {
+		return 0.0;
+	}
+	return((double)(ts->tv_sec)+(ts->tv_nsec)/(1000.0*1000.0*1000.0));
 }
 
 /*! Sub timespecs. *y=*a-*b.
@@ -171,16 +182,19 @@ struct timespec *timespecAdd(struct timespec *y, const struct timespec *a, const
 }
 
 /*! Round up.
-    @param a  value to round up.
-    @param by round step value.
+    @param a  value to round up, should be a>0
+    @param by round step value, should be b>0
     @return long long rounded value.
 */
 long long RoundUpBy(long long a, long long by)
-{	if (by==0) {
+{	long long	t;
+
+	if (by==0) {
 		/* avoid zero divide. */
 		return(a);
 	}
-	return(((a+by-1)/by)*by);
+	t=a+by-1;
+	return(t-(t%by));
 }
 
 /*! string to long with suffix.
@@ -202,7 +216,7 @@ unsigned long long strtoulkmg(char *p, char **p2, int radix)
 		*p2=p;
 		return(0);
 	}
-	ptmp="";
+	ptmp=NULL;
 	a=strtoul(p,&ptmp,radix);
 	if (p==ptmp) {
 		*p2=p;
@@ -217,7 +231,7 @@ unsigned long long strtoulkmg(char *p, char **p2, int radix)
 			a*=1024ULL;
 			break;
 		}
-		
+
 		case 'm': 
 		case 'M': {
 			/* Mega */
@@ -264,33 +278,6 @@ char *LLToHexStr(char *buf, long long a)
 	return(buf);
 }
 
-/*! Set O_DIRECT file descriptor flag.
-    @param fd file descriptor to set O_DIRECT flag.
-    @param o_direct 0: Clear O_DIRECT(Kernel buffered), 1: Set O_DIRECT(Kernel unbuffered).
-    @return int 0: Failed, 1: Success.
-*/
-int SetFdODirect(int fd, int o_direct)
-{	long	flags;
-
-	flags=fcntl(fd,F_GETFD);
-	if (flags<0) {
-		printf("fd(%d): Error: F_GETFD failed. %s(%d)\n",fd,strerror(errno),errno);
-		return 0 /* Failed. */;
-	}
-	if (o_direct) {
-		/* Set O_DIRECT. */
-		flags|=O_DIRECT;
-	} else {
-		/* Clear O_DIRECT. */
-		flags&=~O_DIRECT;
-	}
-	if (fcntl(fd,F_SETFD,flags)!=0) {
-		printf("fd(%d): Error: F_SETFD failed. %s(%d)\n",fd,strerror(errno),errno);
-		return 0 /* Failed. */;
-	}
-	return 1 /* Success. */;
-}
-
 #define TRY_WRITE_MAX	(1000)
 
 /*! Try write.
@@ -301,7 +288,7 @@ int SetFdODirect(int fd, int o_direct)
     @param done points int variable to store success(!=0) or failed(==0).
     @return ssize_t written bytes.
 */
-ssize_t TryWrite(int fd, const char *b, size_t len, int *done)
+ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 {	ssize_t		wresult;
 	ssize_t		remain;
 	int		trycount;
@@ -333,6 +320,10 @@ ssize_t TryWrite(int fd, const char *b, size_t len, int *done)
 		b+=wresult;
 		trycount++;
 	}
+	if (remain>0) {
+		/* Too many retries, but remain un written bytes. */
+		*done=0;
+	}
 	return(((ssize_t)len)-remain);
 }
 
@@ -346,7 +337,7 @@ ssize_t TryWrite(int fd, const char *b, size_t len, int *done)
     @param done points int variable to store success(!=0) or failed(==0).
     @return ssize_t read bytes.
 */
-ssize_t TryRead(int fd, char *b, size_t len, int *done)
+ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 {	ssize_t		rresult;
 	ssize_t		remain;
 	int		trycount;
@@ -382,11 +373,15 @@ ssize_t TryRead(int fd, char *b, size_t len, int *done)
 		b+=rresult;
 		trycount++;
 	}
+	if (remain>0) {
+		/* Too many retries, but remain un read bytes. */
+		*done=0;
+	}
 	return(((ssize_t)len)-remain);
 }
 
 /*! Dump bytes per line. Should be power of 2. */
-#define DUMP_BYTES_LINE	(0x10)
+#define DUMP_BYTES_PER_LINE	(0x10)
 
 /*! Dump memory image.
     @param buf    point memory to HEX dump.
@@ -394,26 +389,26 @@ ssize_t TryRead(int fd, char *b, size_t len, int *done)
     @param offset meaning offset address pointed by buf.
     @return unsigned char* argument buf + n.
 */
-char *DumpMemory(char *buf, long long n, long long offset)
-{	int	cntr;
+unsigned char *DumpMemory(unsigned char *buf, long long n, long long offset)
+{	long long	cntr;
 
-	printf("%.16llx ",offset&((~0LL)-(DUMP_BYTES_LINE-1)));
-	cntr=((int)offset)&(DUMP_BYTES_LINE-1);
+	printf("%.16llx ",offset&((~0LL)-(DUMP_BYTES_PER_LINE-1)));
+	cntr=offset&(DUMP_BYTES_PER_LINE-1);
 	while (cntr>0) {
 		/* Fill upto offset to start dump. */
 		printf("-- ");
 		cntr--;
 	}
 
-	cntr=((int)offset)&(DUMP_BYTES_LINE-1);
+	cntr=offset&(DUMP_BYTES_PER_LINE-1);
 	while (n>0) {
-		printf("%.2x",*((unsigned char*)buf));
+		printf("%.2x",*buf);
 		/* Loop until all bytes are dumped. */
 		cntr++;
 		n--;
 		/* Step next offset. */
 		offset++;
-		if (cntr>=DUMP_BYTES_LINE) {
+		if (cntr>=DUMP_BYTES_PER_LINE) {
 			/* End of colums. */
 			if (n>0) {
 				/* More dump lines. */
@@ -477,6 +472,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				break;
 			}
 			case 'u': {
+				/* -u Sequential read/write blocks per one call. */
 				const char error_message[]="-u: Error: Need Sequential read/write blocks per one IO by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
@@ -768,19 +764,15 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 		opt->BlockEnd=tmp;
 	}
 	if (opt->PathName==NULL) {
-		printf("command line: Error: need working file path.\n");
+		printf("%s: Error: need working file path. PathName=NULL\n", *argv0);
 		result=0;
 	}
-	if (*(opt->PathName)==0) {
-		printf("command line: Error: need working file path.\n");
-		result=0;
-	}
-	if (opt->BlockSize<(sizeof(off64_t)*2)) {
-		printf("-b %" PRId64 ": Error: Should be more than %lu.\n",(int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)*2));
+	if (opt->BlockSize<(sizeof(off64_t)*3)) {
+		printf("%s: -b %" PRId64 ": Error: Should be more than %lu.\n",*argv0, (int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)*2));
 		result=0;
 	}
 	if ((opt->BlockSize%(sizeof(off64_t)))!=0) {
-		printf("-b %" PRId64 ": Error: Should be a multiple %lu.\n",(int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)));
+		printf("%s: -b %" PRId64 ": Error: Should be divided by %lu.\n",*argv0, (int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)));
 		result=0;
 	}
 	if (opt->SequentialRWBlocks<=0) {
@@ -841,14 +833,13 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
     @param len buffer length pointed by b.
     @return unsigned long summing up value.
 */
-uint64_t TouchMemory(const char *b, long len)
-{
-	uint64_t	a;
+uint64_t TouchMemory(const unsigned char *b, long len)
+{	uint64_t	a;
 
 	a=0;
 	while (len>0) {
 		/* Read some bytes in buffer. Stepping by ScPageSize.*/
-		a+=*b;
+		a+=*(uint64_t*)b;
 		b+=ScPageSize;
 		len-=ScPageSize;
 	}
@@ -857,7 +848,7 @@ uint64_t TouchMemory(const char *b, long len)
 
 /*! Get file size using lseek64.
     @param fd file descriptor to get file size.
-    @return off64_t file size.
+    @return off64_t file size, <0: failed.
 */
 off64_t GetFileSizeFd(int fd)
 {	off64_t	cur;
@@ -870,17 +861,19 @@ off64_t GetFileSizeFd(int fd)
 	}
 	size=lseek64(fd,0,SEEK_END);
 	if (size>=0) {
-		lseek64(fd,cur,SEEK_SET);
-		/* ignore error. */
+		if (lseek64(fd,cur,SEEK_SET)<0) {
+			/* ignore error. */
+			printf("%d: Notice: Can not rewind file position. %s(%d).\n", fd, strerror(errno), errno);
+		}
 	}
 	return(size);
 }
 
 /*! Make file image memory.
-    @param b    points file image buffer to write.
-    @param len  buffer length pointed by b.
+    @param b    points file image buffer to make image, will be marked and written to file.
+    @param len  buffer length in bytes pointed by b.
 */
-void MakeFileImage(char *b, long len)
+void MakeFileImage(unsigned char *b, long len)
 {	while (len>0) {
 		*b=lrand48()>>16;
 		b++;
@@ -889,14 +882,13 @@ void MakeFileImage(char *b, long len)
 }
 
 /*! Pre mark block address on file image memory.
-    @param b0 points file image buffer to write.
-    @param len0 buffer length pointed by b0.
+    @param b0 points file image buffer to mark, will be written to file.
+    @param len0 buffer length in bytes pointed by b0.
     @param blocksize block size.
-    
 */
-void PreMarkFileImage(char *b0, long len0, long blocksize)
+void PreMarkFileImage(unsigned char *b0, long len0, long blocksize)
 {
-	char			*b;
+	unsigned char		*b;
 	long			count;
 	long			i;
 	long			len;
@@ -904,11 +896,12 @@ void PreMarkFileImage(char *b0, long len0, long blocksize)
 
 	len=len0;
 	b=b0;
+	a=0;
 	while (len>0) {
 		/* Zero block number and check sum area. */
-		*(((off64_t *)b)+0)=0;
-		*(((off64_t *)b)+1)=0;
-		*((off64_t *)(b+blocksize-sizeof(a)))=0;
+		*(((off64_t *)b)+0)=a;
+		*(((off64_t *)b)+1)=a;
+		*((off64_t *)(b+blocksize-sizeof(a)))=a;
 		b+=blocksize;
 		len-=blocksize;
 	}
@@ -935,8 +928,6 @@ void PreMarkFileImage(char *b0, long len0, long blocksize)
 	}
 }
 
-#define CHECK_STRICTRY_ERROR_DUMP_RANGE	(32)
-
 /*! Strictly check file image on memory.
     @param b0 points file image buffer to check.
     @param len0 buffer length pointed by b0.
@@ -946,7 +937,7 @@ void PreMarkFileImage(char *b0, long len0, long blocksize)
     @return int !=LastBlockNumber: check sum error, *result==0. \
                 ==LastBlockNumber: check sum ok, *result==1.
 */
-off64_t CheckStrictlyFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
+off64_t CheckStrictlyFileImage(unsigned char *b, long len, off64_t block_number, long block_size, int *result)
 {
 	long			count;
 	long			i;
@@ -1010,7 +1001,7 @@ off64_t CheckStrictlyFileImage(char *b, long len, off64_t block_number, long blo
     @return off64_t !=LastBlockNumber: check sum error, *result==0. \
                     ==LastBlockNumber: check sum ok, *result==1.
 */
-off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_size, int *result)
+off64_t CheckLightFileImage(unsigned char *b, long len, off64_t block_number, long block_size, int *result)
 {	off64_t			a0;
 
 	while (len>0) {
@@ -1044,16 +1035,23 @@ off64_t CheckLightFileImage(char *b, long len, off64_t block_number, long block_
     @param block_number block number to mark.
     @param block_size block size.
 */
-void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
+void MarkFileImage(unsigned char *b, long len, off64_t block_number, off64_t block_size)
 {	off64_t		a;
+	uint64_t	r;
+	off64_t		m;
 
+	m=0xffff;
 	while (len>0) {
-		a=*(((off64_t*)b)+0)+*(((off64_t*)b)+1);
-		*(((uint16_t*)b)+4+0)=(uint16_t)(lrand48()>>8);
-		*(((uint16_t*)b)+4+1)=(uint16_t)(lrand48()>>8);
-		*(((uint16_t*)b)+4+2)=(uint16_t)(lrand48()>>8);
-		*(((uint16_t*)b)+4+3)=(uint16_t)(lrand48()>>8);
-		*((off64_t*)(b))=block_number-*(((off64_t*)b)+1);
+		r =((((uint64_t)lrand48())>>8)&m)<<(uint64_t) 0;
+		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)16;
+		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)32;
+		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)48;
+
+		a= *(((off64_t*)b)+0)
+		  +*(((off64_t*)b)+1);
+
+		*(((off64_t*)b)+1)=r;
+		*(((off64_t*)b)+0)=block_number-r;
 		*((off64_t*)(b-sizeof(a)+block_size))-=block_number-a;
 		block_number++;
 		b+=block_size;
@@ -1069,7 +1067,7 @@ void MarkFileImage(char *b, long len, off64_t block_number, off64_t block_size)
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
-int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
+int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 {	off64_t		block_no;
 	long		chunk;
 	long		chunk_max;
@@ -1077,7 +1075,6 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	off64_t		print_pos;
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
-	long		i;
 
 	struct timespec	ts_write_0;
 	struct timespec	ts_print;
@@ -1100,7 +1097,7 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	cur_pos=lseek64(fd,start_pos,SEEK_SET);
 	if (cur_pos<0) {
 		/* seek error. */
-		printf("%s: Error: lseek64(0) failed(1). %s(%d)\n",opt->PathName, strerror(errno),errno);
+		printf("%s: Error: lseek64(0) failed at init. %s(%d)\n",opt->PathName, strerror(errno),errno);
 		return(0 /* false */);
 	}
 
@@ -1117,7 +1114,6 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	memset(&ts_write_aa,0,sizeof(ts_write_aa));
 	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
-	i=0;
 	block_no=opt->BlockStart;
 	cur_pos=start_pos;
 	print_pos=cur_pos;
@@ -1141,6 +1137,9 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 		off64_t		tmp;
 		ssize_t		wresult;
 		int		done;
+		double		dt_write_elp;
+
+		struct timespec	ts_delta;
 
 		chunk=chunk_max;
 		tmp=end_next_pos-cur_pos;
@@ -1149,6 +1148,7 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 			chunk=(long)(tmp);
 		}
 		if (opt->DoMark!=0) {
+			/* Do mark block number. */
 			MarkFileImage(img,chunk,block_no,opt->BlockSize);
 		}
 		done=0;
@@ -1171,8 +1171,11 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 
 		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
-		{
-			double		dt_write_elp;
+		
+		dt_write_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_print));
+		if (  (dt_write_elp>=1.0)
+		    ||(cur_pos>=end_next_pos)
+		   ) {	/* Finish filling or elapsed 1 sec from last show. */
 			double		dt_write;
 			double		dt_all;
 			double		dt_mem;
@@ -1180,44 +1183,36 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 			double		print_pos_delta;
 			double		pos_delta;
 
-			struct timespec	ts_delta;
-
-			dt_write_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_print));
-			if (  (dt_write_elp>=1.0)
-			    ||(cur_pos>=end_next_pos)
-			   ) {	/* Finish filling or elapsed 1 sec from last show. */
-				dt_write=timespecToDouble(timespecSub(&ts_delta,&ts_write_aa, &ts_write_ap));
-				dt_all=timespecToDouble(&ts_write_aa);
-				dt_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_write_0));
-				dt_mem=timespecToDouble(&ts_mem_a);
-				print_pos_delta=cur_pos-print_pos;
-				pos_delta=cur_pos-start_pos;
-				printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
-					, print_pos_delta/dt_write
-					, pos_delta/dt_all
-					, print_pos_delta/dt_write_elp
-					, pos_delta/dt_elp
-					, cur_pos
-					, 100*pos_delta/((double)(end_next_pos-start_pos))
-					, dt_write
-					, dt_all
-					, dt_write_elp
-					, dt_elp
-					, dt_mem
-				);
-				ts_print=ts_write_e_tmp;
-				ts_write_ap=ts_write_aa;
-				print_pos=cur_pos;
-			}
+			dt_write=timespecToDouble(timespecSub(&ts_delta,&ts_write_aa, &ts_write_ap));
+			dt_all=timespecToDouble(&ts_write_aa);
+			dt_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_write_0));
+			dt_mem=timespecToDouble(&ts_mem_a);
+			print_pos_delta=cur_pos-print_pos;
+			pos_delta=cur_pos-start_pos;
+			printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
+				, print_pos_delta/dt_write
+				, pos_delta/dt_all
+				, print_pos_delta/dt_write_elp
+				, pos_delta/dt_elp
+				, cur_pos
+				, 100*pos_delta/((double)(end_next_pos-start_pos))
+				, dt_write
+				, dt_all
+				, dt_write_elp
+				, dt_elp
+				, dt_mem
+			);
+			ts_print=ts_write_e_tmp;
+			ts_write_ap=ts_write_aa;
+			print_pos=cur_pos;
 		}
 
-		i++;
 	}
 	/* Seek to start position. */
 	cur_pos=lseek64(fd,start_pos,SEEK_SET);
 	if (cur_pos<0) {
 		/* seek error. */
-		printf("%s: Error: lseek64(0) failed(2). %s\n",opt->PathName, strerror(errno));
+		printf("%s: Error: lseek64(0) failed at done. %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
 	}
 	return(1 /* true */);
@@ -1231,7 +1226,7 @@ int FillWriteFile(int fd, char *img, long img_size, TCommandLineOption *opt)
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 */
-int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
+int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 {	off64_t		block_no;
 	long		chunk;
 	long		chunk_max;
@@ -1239,7 +1234,6 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	off64_t		print_pos;
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
-	long		i;
 
 	struct timespec	ts_read_0;
 	struct timespec	ts_print;
@@ -1262,7 +1256,7 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	cur_pos=lseek64(fd,start_pos,SEEK_SET);
 	if (cur_pos<0) {
 		/* seek error. */
-		printf("%s: Error: lseek64(0) failed(1). %s\n",opt->PathName, strerror(errno));
+		printf("%s: Error: lseek64(0) failed at init. %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
 	}
 
@@ -1279,7 +1273,6 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 	memset(&ts_read_aa,0,sizeof(ts_read_aa));
 	memset(&ts_mem_a,0,sizeof(ts_mem_a));
 
-	i=0;
 	block_no=opt->BlockStart;
 	cur_pos=start_pos;
 	print_pos=cur_pos;
@@ -1299,6 +1292,9 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 		off64_t		tmp;
 		ssize_t		rresult;
 		int		done;
+		double		dt_read_elp;
+
+		struct timespec	ts_delta;
 
 		chunk=chunk_max;
 		tmp=end_next_pos-cur_pos;
@@ -1356,8 +1352,10 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 
 		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
-		{
-			double		dt_read_elp;
+		dt_read_elp=timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_print));
+		if (  (dt_read_elp>=1.0)
+		    ||(cur_pos>=end_next_pos)
+		   ) {	/* Finish filling or elapsed 1 sec from last show. */
 			double		dt_read;
 			double		dt_all;
 			double		dt_mem;
@@ -1366,43 +1364,35 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
 			double		print_pos_delta;
 			double		pos_delta;
 
-			struct timespec	ts_delta;
-
-			dt_read_elp=timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_print));
-			if (  (dt_read_elp>=1.0)
-			    ||(cur_pos>=end_next_pos)
-			   ) {	/* Finish filling or elapsed 1 sec from last show. */
-				dt_read=timespecToDouble(timespecSub(&ts_delta,&ts_read_aa,    &ts_read_ap));
-				dt_all= timespecToDouble(&ts_read_aa);
-				dt_elp= timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_read_0));
-				dt_mem= timespecToDouble(&ts_mem_a);
-				print_pos_delta=cur_pos-print_pos;
-				pos_delta=cur_pos-start_pos;
-				printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
-					, print_pos_delta/dt_read
-					, pos_delta/dt_all
-					, print_pos_delta/dt_read_elp
-					, pos_delta/dt_elp
-					, cur_pos
-					, 100*pos_delta/((double)(end_next_pos-start_pos))
-					, dt_read
-					, dt_all
-					, dt_read_elp
-					, dt_elp
-					, dt_mem
-				);
-				ts_print=ts_read_e_tmp;
-				ts_read_ap=ts_read_aa;
-				print_pos=cur_pos;
-			}
+			dt_read=timespecToDouble(timespecSub(&ts_delta,&ts_read_aa,    &ts_read_ap));
+			dt_all= timespecToDouble(&ts_read_aa);
+			dt_elp= timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_read_0));
+			dt_mem= timespecToDouble(&ts_mem_a);
+			print_pos_delta=cur_pos-print_pos;
+			pos_delta=cur_pos-start_pos;
+			printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
+				, print_pos_delta/dt_read
+				, pos_delta/dt_all
+				, print_pos_delta/dt_read_elp
+				, pos_delta/dt_elp
+				, cur_pos
+				, 100*pos_delta/((double)(end_next_pos-start_pos))
+				, dt_read
+				, dt_all
+				, dt_read_elp
+				, dt_elp
+				, dt_mem
+			);
+			ts_print=ts_read_e_tmp;
+			ts_read_ap=ts_read_aa;
+			print_pos=cur_pos;
 		}
-		i++;
 	}
 	/* Seek to start position. */
 	cur_pos=lseek64(fd,start_pos,SEEK_SET);
 	if (cur_pos<0) {
 		/* seek error. */
-		printf("%s: Error: lseek64(0) failed(2). %s\n",opt->PathName, strerror(errno));
+		printf("%s: Error: lseek64(0) failed at done. %s\n",opt->PathName, strerror(errno));
 		return(0 /* false */);
 	}
 	return(1 /* true */);
@@ -1418,7 +1408,7 @@ int ReadFile(int fd, char *img, long img_size, TCommandLineOption *opt)
     @return int ==0 failed, !=0 success.
 
 */
-int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCommandLineOption *opt)
+int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, long mem_size, TCommandLineOption *opt)
 {	off64_t		seek_size;
 	off64_t		end_next_pos;
 	off64_t		area_blocks;
@@ -1466,6 +1456,10 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 		char		read_write;
 		unsigned char	rw_act;
 
+		double		rw_time;
+		double		mem_time;
+		struct timespec	ts_elapsed;
+
 		/* Calc random seek position and size. */
 		seek_to_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
 		seek_to=(opt->BlockSize)*seek_to_block;
@@ -1503,6 +1497,14 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 				/* Force write. */
 				rw_act=1;
 				break;
+			}
+			default: {
+				/* Unexpected value. */
+				printf("%s: Error: Internal, unexpected DoRandomAccess value. DoRandomAccess=%d\n"
+					,__func__
+					,opt->DoRandomAccess
+				);
+				return 0;
 			}
 		}
 		if (rw_act==0) {
@@ -1554,7 +1556,7 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 			memcpy(&ts_op_done,&ts_mem,sizeof(ts_op_done));
 			read_write='r';
 		} else {/* write blocks. */
-			char		*img_work;
+			unsigned char	*img_work;
 			int		done;
 			off64_t		img_offset;
 
@@ -1593,27 +1595,22 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 			seek_to_delta=0;
 		}
 
-		{	double		rw_time;
-			double		mem_time;
-			struct timespec	ts_elapsed;
-
-			rw_time=timespecToDouble(&ts_rw_delta);
-			mem_time=timespecToDouble(&ts_mem_delta);
-			/*       i, elp, rw, pos, len, rw_time, bps, touchtime */
-			printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
-				,i
-				,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
-				,read_write
-				,seek_to
-				,(long)length
-				,rw_time
-				,((double)length)/rw_time
-				,mem_time
-			);
-			if (rw_time_max<rw_time) {
-				/* Update max random access time. */
-				rw_time_max=rw_time;
-			}
+		rw_time=timespecToDouble(&ts_rw_delta);
+		mem_time=timespecToDouble(&ts_mem_delta);
+		/*       i, elp, rw, pos, len, rw_time, bps, touchtime */
+		printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
+			,i
+			,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
+			,read_write
+			,seek_to
+			,(long)length
+			,rw_time
+			,((double)length)/rw_time
+			,mem_time
+		);
+		if (rw_time_max<rw_time) {
+			/* Update max random access time. */
+			rw_time_max=rw_time;
 		}
 		seek_to_prev=seek_to;
 		i++;
@@ -1629,92 +1626,63 @@ int RandomRWFile(int fd, char *img, long img_size, char *mem, long mem_size, TCo
 
 #define	LARGE_FILE_SIZE	(1024L*1024L*2)
 
-int MainTest(TCommandLineOption *opt)
+/*! Test main read/write part.
+    @param mem      points read buffer.
+    @param mem_size byte size of buffer pointed by mem.
+    @param img      points read buffer.
+    @param img_size byte size of buffer pointed by img.
+    @param opt      command line option.
+    @return int     !=0: Success, ==0: Failed.
+*/
+int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_size, TCommandLineOption *opt)
 {	int		result;
 	int		fd;
 	int		flags;
 	int		fd_flags_base;
-	int		fd_flags_add;
-
-	char		*mem;
-	long		mem_size;
-
-	char		*img;
-	long		img_size;
-	off64_t		img_blocks;
+	int		fd_flags_add_seq;
+	int		fd_flags_add_random;
 
 	struct stat64	st64;
 	off64_t		seek_size;
 
 	result=1 /* true */;
-	/* Initialize random seed. */
-	srand48(opt->Seed);
 
+	/* Sequential write part. */
 	/* O_NOATIME issue error EPERM. */
-	fd_flags_base=O_RDWR|O_CREAT /* | O_NOATIME */;
+	fd_flags_base=O_RDWR | O_CREAT /* | O_NOATIME */;
 
 	if (opt->FileSize>=LARGE_FILE_SIZE) {
 		fd_flags_base|=O_LARGEFILE;
 	}
 
-	fd_flags_add=0;
+	fd_flags_add_seq=0;
 	if (opt->DoDirect!=0) {
-		fd_flags_add|=O_DIRECT;
+		fd_flags_add_seq|=O_DIRECT;
 	}
-	flags=fd_flags_base | fd_flags_add;
+	flags=fd_flags_base | fd_flags_add_seq;
+
 	fd=open(opt->PathName
 		,flags
-		,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+		,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 	);
 	if (fd<0) {
 		/* Can't open. */
-		printf("%s: Error: open failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
+		printf("%s: Error: open() failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		return(0 /* false */);
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)time(0));
 	if (fstat64(fd,&st64)!=0) {
 		/* Can't stat. */
-		printf("%s: Error: fstat failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
-		result=0 /* false */;
-		goto EXIT_CLOSE;
-	}
-	/* allocate random read buffer mem. */
-	mem_size=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
-	mem=mmap(NULL,mem_size
-		,PROT_READ|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE
-		,-1,0);
-
-	if (mem==MAP_FAILED) {
-		printf("%s(): Error: mmap failed(mem). %s(%d). mem_size=0x%lx\n",__func__,strerror(errno), errno, mem_size);
+		printf("%s: Error: fstat64() failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		result=0 /* false */;
 		goto EXIT_CLOSE;
 	}
 
-	/* allocate random write buffer img. */
-	img_blocks=opt->BlocksMax*2;
-	if (img_blocks<opt->SequentialRWBlocks) {
-		/* random write buffer is less than sequential read/write buffer. */
-		img_blocks=opt->SequentialRWBlocks;
-	}
-	img_size=RoundUpBy(opt->BlockSize*img_blocks, ScPageSize);
-	img=mmap(NULL,img_size
-		,PROT_READ|PROT_WRITE,MAP_ANONYMOUS|MAP_PRIVATE
-		,-1,0);
-
-	if (img==MAP_FAILED) {
-		printf("%s(): Error: mmap failed(img). %s(%d). img_size=0x%lx\n",__func__,strerror(errno), errno, img_size);
-		result=0 /* false */;
-		goto EXIT_UNMAP_MEM;
-	}
-	MakeFileImage(img,img_size);
-	if (opt->DoMark!=0) {
-		PreMarkFileImage(img,img_size,opt->BlockSize);
-	}
 	seek_size=GetFileSizeFd(fd);
 	if (seek_size<0) {
-		printf("%s(): Error: lseek64 to get file size failed. %s(%d)\n",__func__,strerror(errno), errno);
+		printf("%s(): Error: lseek64() to get file size failed. %s(%d)\n",__func__,strerror(errno), errno);
 		result=0 /* false */;
-		goto EXIT_UNMAP_IMG;
+		goto EXIT_CLOSE;
 	}
 	if (opt->BlockStart<0) {
 		/* Command line option -o Start block missing. */
@@ -1729,7 +1697,7 @@ int MainTest(TCommandLineOption *opt)
 		if (seek_size<=0) {
 			printf("%s: Error: Use option -f to set file size.\n",opt->PathName);
 			result=0 /* false */;
-			goto EXIT_UNMAP_IMG;
+			goto EXIT_CLOSE;
 		}
 		blocks_file=opt->FileSize/opt->BlockSize;
 		if (opt->BlockEnd>=blocks_file) {
@@ -1746,13 +1714,13 @@ int MainTest(TCommandLineOption *opt)
 			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
-				goto EXIT_UNMAP_IMG;
+				goto EXIT_CLOSE;
 			}
 		} else {/* Truncate file. */
 			if (ftruncate64(fd,opt->FileSize)!=0) {
-				printf("%s: Error: ftruncate64 failed. %s\n",opt->PathName,strerror(errno));
+				printf("%s: Error: ftruncate64() failed. %s\n",opt->PathName,strerror(errno));
 				result=0 /* false */;
-				goto EXIT_UNMAP_IMG;
+				goto EXIT_CLOSE;
 			}
 		}
 	} else {/* open exist file. */
@@ -1764,9 +1732,9 @@ int MainTest(TCommandLineOption *opt)
 					/* Not block device. */
 					if (ftruncate64(fd,opt->FileSize)!=0) {
 						/* fail to truncate. */
-						printf("%s: Error: ftruncate64 failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+						printf("%s: Error: ftruncate64() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 						result=0 /* false */;
-						goto EXIT_UNMAP_IMG;
+						goto EXIT_CLOSE;
 					}
 				} else {
 					/* Maybe block device. */
@@ -1789,7 +1757,7 @@ int MainTest(TCommandLineOption *opt)
 			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
-				goto EXIT_UNMAP_IMG;
+				goto EXIT_CLOSE;
 			}
 		}
 	}
@@ -1797,31 +1765,30 @@ int MainTest(TCommandLineOption *opt)
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
 	if (close(fd)!=0) {
-		printf("%s: Error: close failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
-		fd=INVALID_FD;
-		result=0;
-		goto EXIT_UNMAP_IMG;
+		printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+		return 0;
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)(time(0)));
-	printf("%s: Sync.\n", opt->Argv0);
+	printf("%s: Info: Sync.\n", opt->Argv0);
 	sync();
-	printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
 	sleep(opt->TestToTestSleeps);
-	fd_flags_add=0;
+
+	/* random read/write part. */
+	fd_flags_add_random=0;
 	if (opt->DoDirectRandomRW!=0) {
-		fd_flags_add|=O_DIRECT;
+		fd_flags_add_random|=O_DIRECT;
 	}
 
-	flags=fd_flags_base | fd_flags_add;
+	flags=fd_flags_base | fd_flags_add_random;
 	fd=open(opt->PathName
 		,flags
-		,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+		,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 	);
 	if (fd<0) {
 		/* Can't open. */
-		printf("%s: Error: open failed. %s\n",opt->PathName,strerror(errno));
-		fd=INVALID_FD;
-		goto EXIT_UNMAP_IMG;
+		printf("%s: Error: open() failed. %s\n",opt->PathName,strerror(errno));
+		return 0;
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)(time(0)));
 
@@ -1829,103 +1796,154 @@ int MainTest(TCommandLineOption *opt)
 		/* Random read/write failed. */
 		printf("%s: Error: random read/write failed. %s\n",opt->PathName,strerror(errno));
 		result=0;
+		goto EXIT_CLOSE;
 	}
 
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
 	if (close(fd)!=0) {
-		printf("%s: Error: close failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
-		result=0;
-		goto EXIT_UNMAP_IMG;
+		printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+		return 0;
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
-
-	printf("%s: Sync.\n", opt->Argv0);
+	printf("%s: Info: Sync.\n", opt->Argv0);
 	sync();
-	printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
 	sleep(opt->TestToTestSleeps);
 
-	fd_flags_add=0;
-	if (opt->DoDirect!=0) {
-		fd_flags_add|=O_DIRECT;
-	}
-
-	flags=fd_flags_base | fd_flags_add;
+	/* Sequential read() part. */
+	flags=fd_flags_base | fd_flags_add_seq;
 	fd=open(opt->PathName
 		,flags
-		,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH
+		,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 	);
 
 	if (fd<0) {
 		/* Can't open. */
-		printf("%s: Error: open failed. %s\n",opt->PathName,strerror(errno));
-		fd=INVALID_FD;
-		goto EXIT_UNMAP_IMG;
+		printf("%s: Error: open() failed. %s\n",opt->PathName,strerror(errno));
+		return 0;
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)time(0));
 
-	if (opt->DoReadFile!=DO_READ_FILE_NO) {
-		/* Do sequential read. */
+	if (opt->DoReadFile!=0) 
+		{/* Do sequential read. */
 		if (!ReadFile(fd,img,img_size,opt)) {
 			printf("%s: Error: Sequential read failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 			result=0;
 		}
 	}
 
-EXIT_UNMAP_IMG:;
-	if (munmap(img,img_size)!=0) {
-		printf("%s(): Error: munmap failed(img). %s(%d)\n",__func__,strerror(errno), errno);
-		return(0);
+EXIT_CLOSE:;
+	if (fsync(fd)!=0) {
+		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
+	if (close(fd)!=0) {
+		printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+		result=0;
+	}
+	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
+	printf("%s: Info: Sync.\n", opt->Argv0);
+	sync();
+	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+	sleep(opt->TestToTestSleeps);
+	return(result);
+}
+
+/*! Test main.
+    @param opt command line option.
+    @return int !=0: Pass, ==0: Failed.
+*/
+int MainTest(TCommandLineOption *opt)
+{	int		result;
+
+	unsigned char	*mem;
+	long		mem_size;
+
+	unsigned char	*img;
+	long		img_size;
+	off64_t		img_blocks;
+
+	result=1 /* true */;
+	/* Initialize random seed. */
+	srand48(opt->Seed);
+
+	/* allocate random read buffer mem. */
+	mem_size=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
+	mem=mmap(NULL,mem_size
+		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
+		,-1,0);
+
+	if (mem==MAP_FAILED) {
+		printf("%s(): Error: mmap() failed(mem). %s(%d). mem_size=0x%lx\n",__func__,strerror(errno), errno, mem_size);
+		return 0 /* false */;
+	}
+
+	/* allocate random write buffer img. */
+	img_blocks=opt->BlocksMax*2;
+	if (img_blocks<opt->SequentialRWBlocks) {
+		/* random write buffer is less than sequential read/write buffer. */
+		img_blocks=opt->SequentialRWBlocks;
+	}
+	img_size=RoundUpBy(opt->BlockSize*img_blocks, ScPageSize);
+	img=mmap(NULL,img_size
+		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
+		,-1,0);
+
+	if (img==MAP_FAILED) {
+		printf("%s(): Error: mmap() failed(img). %s(%d). img_size=0x%lx\n",__func__,strerror(errno), errno, img_size);
+		result=0 /* false */;
+		goto EXIT_UNMAP_MEM;
+	}
+	MakeFileImage(img, img_size);
+	if (opt->DoMark!=0) {
+		PreMarkFileImage(img, img_size, opt->BlockSize);
+	}
+
+	/* Do read / write part. */
+	if (!MainTestRW(mem, mem_size, img, img_size, opt)) {
+		/* Read / write test failed. */
+		result=0;
+	}
+
+	if (munmap(img,img_size)!=0) {
+		printf("%s(): Error: munmap() failed(img). %s(%d)\n",__func__,strerror(errno), errno);
+		result=0;
+	}
+
 EXIT_UNMAP_MEM:;
 	if (munmap(mem,mem_size)!=0) {
-		printf("%s(): Error: munmap failed(mem). %s(%d)\n",__func__,strerror(errno),errno);
-		return(0);
-	}
-EXIT_CLOSE:;
-	if (fd!=INVALID_FD) {
-		if (fsync(fd)!=0) {
-			printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
-		}
-		if (close(fd)!=0) {
-			printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
-			result=0;
-		}
-		printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
-		printf("%s: Sync.\n", opt->Argv0);
-		sync();
-		printf("%s: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
-		sleep(opt->TestToTestSleeps);
+		printf("%s(): Error: munmap() failed(mem). %s(%d)\n",__func__,strerror(errno),errno);
+		result=0;
 	}
 	if (opt->DoMark==0) {
 		/* Skip check, only touch memory. */
 		printf("TouchSums: Info: 0x%" PRIx64 "\n",TouchSums);
 	}
-	return(result /* true. */);
+	return result;
 }
 
 void show_help(void)
 {	printf(
-	"Command line: [-f n] [-p{y|n}] [-x{b|r|w}] [-r{y|n}] [-d{y|n}{Y|N}] [-m{y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name\n"
+	"Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
 
-	"-p{y|n} Pre fill file with initial image(y: fill, n: truncate)(%c).\n"
-	"-x{b|r|w} Random r/w method (b: Do both read and write, r: Do read only, w: Do write only)(%s).\n"
-	"-r{y|n} Read file start block to end block (s: read strict check, y: read light check, n: do nothing)(%s).\n"
+	"-p{y|n} Fill file with initial image(y: fill, n: truncate)(%c).\n"
+	"-x{b|r|w} Random read/write method (b: Do both read and write, r: Do read only, w: Do write only)(%s).\n"
+	"-r{s|y|n} Read file from start block to end block (s: read strict check, y: read light check, n: do nothing)(%s).\n"
 
-	"-d{y|n}{Y|N}.. Add O_DIRECT flag at sequential r/w (y: add, n: not add), at random r/w(Y: add, N: not add)(%c%c).\n"
-	"-m{y|n} Do block number Marking and check.(%c).\n"
+	"-d{y|n}{Y|N} Add O_DIRECT flag at sequential r/w (y: add, n: not add), at random r/w(Y: add, N: not add)(%c%c).\n"
+	"-m{y|n} Do block number Marking and check (y: mark and check, n: do not marking)(%c).\n"
 
 	"-b n block size(%d).\n"
 	"-u n Sequential read/write blocks per one IO (if zero or not set, same as \"-a n\" * 2)(%d).\n"
-	"-i n Minimum blocks to read/write(%d).\n"
-	"-a n Maximum blocks to read/write(%d).\n"
+	"-i n Minimum blocks to random read/write(%d).\n"
+	"-a n Maximum blocks to random read/write(%d).\n"
 	"-o n Start block number to read/write(%d).\n"
 	"-e n End block number to read/write(%d).\n"
-	"-n n number of repeats(%d).\n"
+	"-n n number of random read/write access(%d).\n"
 	"-s n random seed number(%d). \n"
-	"path_name: Device or file path name to test.\n"
+	"path_name: File path name to test.\n"
 
 	,(DEF_FillFile ? 'y' : 'n')
 
@@ -1965,13 +1983,17 @@ int main(int argc, char **argv)
 {
 	/* Get Page Size. */
 	ScPageSize=sysconf(_SC_PAGESIZE);
+	if (ScPageSize<0) {
+		printf("%s: Error: Failed sysconf(). %s(%d)\n", argv[0], strerror(errno), errno);
+		return 1;
+	}
 	if (!TCommandLineOptionParseArgs(&CommandLine,argc,argv)) {
 		show_help();
-		return(1);
+		return 1;
 	}
 	if (!MainTest(&CommandLine)) {
 		printf("%s: Fail: Test FAIL.\n",CommandLine.PathName);
-		return(2);
+		return 2;
 	}
 	printf("%s: Pass: Test PASS.\n",CommandLine.PathName);
 	return(0);

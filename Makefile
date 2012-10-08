@@ -1,4 +1,4 @@
-CFLAGS=-O2 -Wall -Wunused
+CFLAGS=-O3 -Wall -Wunused -Wuninitialized
 CLIBS=-lrt
 
 TARGET=ssdstress
