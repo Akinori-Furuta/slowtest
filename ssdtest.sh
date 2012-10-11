@@ -43,7 +43,7 @@ fi
 
 if [[ -z ${MAX_SECTORS_RANDOM_MIDDLE} ]]
 then
-	MAX_SECTORS_RANDOM_SHORT=16384
+	MAX_SECTORS_RANDOM_MIDDLE=16384
 fi
 
 if [[ -z ${MAX_SECTORS_RANDOM_SHORT} ]]
@@ -340,7 +340,7 @@ do
 			-dn${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
 		else
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
-			-py -xb -rn -my -b ${BLOCK_SIZE} -i 1 -a ${MAX_SECTORS_RANDOM_MIDDLE} -n ${RANDOM_REPEATS} \
+			-pn -xb -rn -my -b ${BLOCK_SIZE} -i 1 -a ${MAX_SECTORS_RANDOM_MIDDLE} -n ${RANDOM_REPEATS} \
 			-dn${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
 		fi
 
