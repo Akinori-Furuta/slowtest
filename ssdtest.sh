@@ -22,7 +22,7 @@ fi
 if [[ -z ${LOOP_MAX} ]]
 then
 	# Test loops per "at with direct" and "at without direct".
-	LOOP_MAX=4
+	LOOP_MAX=2
 fi
 
 if [[ -z ${SEED} ]]
@@ -53,7 +53,7 @@ fi
 
 if [[ -z ${RANDOM_REPEATS} ]]
 then
-	RANDOM_REPEATS=2048
+	RANDOM_REPEATS=8192
 fi
 
 
