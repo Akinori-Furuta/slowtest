@@ -10,6 +10,12 @@ uuid=`cat /proc/sys/kernel/random/uuid`
 PlotXTimeMax=10
 PlotXTimeMin=10e-6
 
+if [[ -z ${GDFONTPATH} ]]
+then
+	# set font path suit for fedora and ubuntu.
+	export GDFONTPATH=/usr/share/fonts/dejavu:/usr/share/fonts/truetype/ttf-dejavu
+fi
+
 
 for f in $*
 do
@@ -117,15 +123,16 @@ do
 	if [[ "${FillFile}x" == "yx" ]]
 	then
 		cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, sequential write\\n${RWBytesMi}Mi bytes per one write() call, up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
+set title "${Model} ${CapacityGB}G bytes, sequential write\\n${RWBytesMi}Mi bytes per one write() call, \
+up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 EOF
 		sw_png=${f%.*}-sw.png
-		echo "${f}:${sw_png}: Plot sequential write."
+		echo "${f}: ${sw_png}: Plot sequential write."
 		sed -n '/Twrite/,/close/ {p}' ${f} | grep '^[0-9][.]' | sed -n 's/,//gp' | sed -n 's/%//gp' > ${part_data_file}
 		part_data_file_size=`stat --format=%s ${part_data_file}`
 		if (( ${part_data_file_size} > 0 ))
 		then
-			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\";load \"${my_dir}/sequential_write.gnuplot\"; quit" > ${sw_png}
+			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/sequential_write.gnuplot\"; quit" > ${sw_png}
 		else
 			echo "${f}: Empty sequential write log."
 		fi
@@ -140,35 +147,39 @@ EOF
 		if (( ${ra_file_size} > 0 ))
 		then
 			ra_r_tspeed_at_png=${f%.*}-rr-ts_at.png
-			echo "${f}:${ra_r_tspeed_at_png}: Plot random read transfer speed - access time."
+			echo "${f}: ${ra_r_tspeed_at_png}: Plot random read transfer speed - access time."
 			cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, ${DoDirectRandom}\\ntransfer speed - access time"
+set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, \
+${DoDirectRandom}\\ntransfer speed - access time"
 EOF
 			grep 'r' "${ra_file}"  > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read_tspeed_at.gnuplot\"; quit" > ${ra_r_tspeed_at_png}
 
 
 			ra_r_tlength_at_png=${f%.*}-rr-tl_at.png
-			echo "${f}:${ra_r_tlength_at_png}: Plot random read transfer length - access time."
+			echo "${f}: ${ra_r_tlength_at_png}: Plot random read transfer length - access time."
 			cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, ${DoDirectRandom}\\ntransfer length - access time"
+set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, \
+${DoDirectRandom}\\ntransfer length - access time"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read_tlength_at.gnuplot\"; quit" > ${ra_r_tlength_at_png}
 
 			rm ${part_data_file}
 
 			ra_w_tspeed_at_png=${f%.*}-rw-ts_at.png
-			echo "${f}:${ra_w_tspeed_at_png}: Plot random write transfer speed - access time."
+			echo "${f}: ${ra_w_tspeed_at_png}: Plot random write transfer speed - access time."
 			cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, ${DoDirectRandom}\\ntransfer speed - access time"
+set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, \
+${DoDirectRandom}\\ntransfer speed - access time"
 EOF
 			grep 'w' "${ra_file}" > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write_tspeed_at.gnuplot\"; quit" > ${ra_w_tspeed_at_png}
 
 			ra_w_tlength_at_png=${f%.*}-rw-tl_at.png
-			echo "${f}:${ra_w_tlength_at_png}: Plot random write transfer length - access time."
+			echo "${f}: ${ra_w_tlength_at_png}: Plot random write transfer length - access time."
 			cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, ${DoDirectRandom}\\ntransfer length - access time"
+set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, \
+${DoDirectRandom}\\ntransfer length - access time"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write_tlength_at.gnuplot\"; quit" > ${ra_w_tlength_at_png}
 
@@ -182,10 +193,11 @@ EOF
 	if [[ "${DoReadFile}x" != "nx" ]]
 	then
 		cat << EOF > ${GnuplotVarFile}
-set title "${Model} ${CapacityGB}G bytes, sequential read\\n${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
+set title "${Model} ${CapacityGB}G bytes, sequential read\\n${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, \
+${DoDirectSequential}\\ntransfer speed - progress"
 EOF
 		sr_png=${f%.*}-sr.png
-		echo "${f}:${sr_png}: Plot sequential read."
+		echo "${f}: ${sr_png}: Plot sequential read."
 		sed -n '/Tread/,/close/ {p}' ${f} | grep '^[0-9][.]' | sed -n 's/,//gp' | sed -n 's/%//gp' > ${part_data_file}
 		part_data_file_size=`stat --format=%s ${part_data_file}`
 		if (( ${part_data_file_size} > 0 ))
