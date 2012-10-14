@@ -43,23 +43,32 @@
    email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
 */
 
+/* Change log.
+   2012.10.14 introduce int types.
+              Akinori Furuta <afuruta@m7.dion.ne.jp>
+   2012.10.14 introduce doxygen style comment. 
+              Akinori Furuta <afuruta@m7.dion.ne.jp>
+*/
+
 #include <stdio.h>
 #include "mt19937ar.h"
 
-/* Period parameters */  
+/* Period parameters */
 #define N 624
 #define M 397
-#define MATRIX_A 0x9908b0dfUL   /* constant vector a */
-#define UPPER_MASK 0x80000000UL /* most significant w-r bits */
-#define LOWER_MASK 0x7fffffffUL /* least significant r bits */
+#define MATRIX_A (uint32_t)(0x9908b0dfUL)   /*!< constant vector a */
+#define UPPER_MASK (uint32_t)(0x80000000UL) /*!< most significant w-r bits */
+#define LOWER_MASK (uint32_t)(0x7fffffffUL) /*!< least significant r bits */
 
-static unsigned long mt[N]; /* the array for the state vector  */
+static uint32_t mt[N]; /*!< the array for the state vector  */
 static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
 
-/* initializes mt[N] with a seed */
-void init_genrand(unsigned long s)
+/*! initializes mt[N] with a seed
+    @param s random seed.
+*/
+void init_genrand(uint32_t s)
 {
-    mt[0]= s & 0xffffffffUL;
+    mt[0]= s;
     for (mti=1; mti<N; mti++) {
         mt[mti] = 
 	    (1812433253UL * (mt[mti-1] ^ (mt[mti-1] >> 30)) + mti); 
@@ -67,33 +76,37 @@ void init_genrand(unsigned long s)
         /* In the previous versions, MSBs of the seed affect   */
         /* only MSBs of the array mt[].                        */
         /* 2002/01/09 modified by Makoto Matsumoto             */
-        mt[mti] &= 0xffffffffUL;
-        /* for >32 bit machines */
     }
 }
 
-/* initialize by an array with array-length */
-/* init_key is the array for initializing keys */
-/* key_length is its length */
-/* slight change for C++, 2004/2/26 */
-void init_by_array(unsigned long init_key[], int key_length)
+/*! initialize by an array with array-length
+    @param init_key points the array for initializing keys.
+    @param  key_length the number of elements in array pointed by init_key
+    @note   slight change for C++, 2004/2/26
+*/
+void init_by_array(uint32_t init_key[], int key_length)
 {
     int i, j, k;
-    init_genrand(19650218UL);
+    init_genrand((uint32_t)(19650218UL));
+    if (key_length<0) {
+        printf("%s: Warning: key_length should be "
+               "grater than zero. key_length=%d\n"
+              , __func__, key_length
+        );
+        return;
+    }
     i=1; j=0;
     k = (N>key_length ? N : key_length);
     for (; k; k--) {
-        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1664525UL))
+        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * (uint32_t)(1664525UL)))
           + init_key[j] + j; /* non linear */
-        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
         i++; j++;
         if (i>=N) { mt[0] = mt[N-1]; i=1; }
         if (j>=key_length) j=0;
     }
     for (k=N-1; k; k--) {
-        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * 1566083941UL))
+        mt[i] = (mt[i] ^ ((mt[i-1] ^ (mt[i-1] >> 30)) * (uint32_t)(1566083941UL)))
           - i; /* non linear */
-        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
         i++;
         if (i>=N) { mt[0] = mt[N-1]; i=1; }
     }
@@ -101,18 +114,20 @@ void init_by_array(unsigned long init_key[], int key_length)
     mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */ 
 }
 
-/* generates a random number on [0,0xffffffff]-interval */
-unsigned long genrand_int32(void)
+/*! generates a random number on [0,0xffffffff]-interval
+    @return uint32_t generated random number.
+*/
+uint32_t genrand_uint32(void)
 {
-    unsigned long y;
-    static unsigned long mag01[2]={0x0UL, MATRIX_A};
+    uint32_t y;
+    static uint32_t mag01[2]={0x0UL, MATRIX_A};
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
     if (mti >= N) { /* generate N words at one time */
         int kk;
 
         if (mti == N+1)   /* if init_genrand() has not been called, */
-            init_genrand(5489UL); /* a default initial seed is used */
+            init_genrand((uint32_t)(5489UL)); /* a default initial seed is used */
 
         for (kk=0;kk<N-M;kk++) {
             y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
@@ -139,37 +154,51 @@ unsigned long genrand_int32(void)
     return y;
 }
 
-/* generates a random number on [0,0x7fffffff]-interval */
-long genrand_int31(void)
+/*! generates a random number on [0,0x7fffffff]-interval
+    @return int32_t generated random number.
+*/
+int32_t genrand_int31(void)
 {
-    return (long)(genrand_int32()>>1);
+    return (int32_t)(genrand_uint32()>>1);
 }
 
-/* generates a random number on [0,1]-real-interval */
+/*! generates a random number on [0,1]-real-interval 
+    @return double generated random number.
+    @note be careful not same probability
+          returns "1.0" or "All return value except 1.0".
+          use genrand_uint32(void) and use desirable
+          rounding function.
+*/
 double genrand_real1(void)
 {
-    return genrand_int32()*(1.0/4294967295.0); 
+    return genrand_uint32()*(1.0/4294967295.0); 
     /* divided by 2^32-1 */ 
 }
 
-/* generates a random number on [0,1)-real-interval */
+/*! generates a random number on [0,1)-real-interval 
+    @return double generated random number.
+*/
 double genrand_real2(void)
 {
-    return genrand_int32()*(1.0/4294967296.0); 
+    return genrand_uint32()*(1.0/4294967296.0); 
     /* divided by 2^32 */
 }
 
-/* generates a random number on (0,1)-real-interval */
+/*! generates a random number on (0,1)-real-interval
+    @return double generated random number.
+*/
 double genrand_real3(void)
 {
-    return (((double)genrand_int32()) + 0.5)*(1.0/4294967296.0); 
+    return (((double)genrand_uint32()) + 0.5)*(1.0/4294967296.0); 
     /* divided by 2^32 */
 }
 
-/* generates a random number on [0,1) with 53-bit resolution*/
+/*! generates a random number on [0,1) with 53-bit resolution
+    @return double generated random number.
+*/
 double genrand_res53(void) 
 { 
-    unsigned long a=genrand_int32()>>5, b=genrand_int32()>>6; 
+    uint32_t a=genrand_uint32()>>5, b=genrand_uint32()>>6; 
     return(a*67108864.0+b)*(1.0/9007199254740992.0); 
 } 
 /* These real versions are due to Isaku Wada, 2002/01/09 added */

@@ -3,8 +3,14 @@ CLIBS=-lrt
 
 TARGET=ssdstress
 
-$(TARGET): $(TARGET).c
+$(TARGET): $(TARGET).o mt19937ar.o
 	$(CC) $(CFLAGS) -o $@ $(CLIBS) $<
 
+$(TARGET).o: $(TARGET).c mt19937ar.h
+	$(CC) -c $(CFLAGS) -o $@ $(CLIBS) $<
+
+mt19937ar.o: mt19937ar.c mt19937ar.h
+	$(CC) -c $(CFLAGS) -o $@ $(CLIBS) $<
+
 clean:
-	rm $(TARGET)
+	rm $(TARGET) $(TARGET).o mt19937ar.o

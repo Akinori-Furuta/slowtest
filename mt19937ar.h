@@ -42,21 +42,30 @@
    http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
    email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
 */
+/* Change log.
+   2012.10.14 introduce int types.
+              Akinori Furuta <afuruta@m7.dion.ne.jp>
+   2012.10.14 introduce doxygen style comment. 
+              Akinori Furuta <afuruta@m7.dion.ne.jp>
+*/
+
+#include <stdint.h>
+#include <inttypes.h>
 
 /* initializes mt[N] with a seed */
-void init_genrand(unsigned long s);
+void init_genrand(uint32_t s);
 
 /* initialize by an array with array-length */
 /* init_key is the array for initializing keys */
 /* key_length is its length */
 /* slight change for C++, 2004/2/26 */
-void init_by_array(unsigned long init_key[], int key_length);
+void init_by_array(uint32_t init_key[], int key_length);
 
 /* generates a random number on [0,0xffffffff]-interval */
-unsigned long genrand_int32(void);
+uint32_t genrand_uint32(void);
 
 /* generates a random number on [0,0x7fffffff]-interval */
-long genrand_int31(void);
+int32_t genrand_int31(void);
 
 /* These real versions are due to Isaku Wada, 2002/01/09 added */
 /* generates a random number on [0,1]-real-interval */
