@@ -1,5 +1,33 @@
 /*! ssdstress: SSD stress test tool.
+
+   Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+   All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+   PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+   OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+   WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+   OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 */
+
 #define _LARGEFILE64_SOURCE
 #define _GNU_SOURCE
 #include <features.h>
@@ -20,6 +48,11 @@
 #include <stdio.h>
 
 #include <time.h>
+
+#include "mt19937ar.h"
+
+/*! ReDefile type TTimeSpec as struct timespec */
+typedef	struct timespec TTimeSpec;
 
 /*! Invalid file descriptor. */
 #define	INVALID_FD	(-1)
@@ -57,25 +90,27 @@ long	ScPageSize=4096;
 #define	DEF_DoMark		(DO_OPTION_YES)
 #define	DEF_TestToTestSleeps	(10)
 
+const char copyright_notice[]="ssdstress: SSD stress test tool. Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
+
 /*! Command line argument holder. */
 typedef struct {
 	off64_t			FileSize;	/*!< -f n file size. */
 	off64_t			BlockSize;	/*!< -b n block size. */
 	off64_t			SequentialRWBlocks; /*!< -u n Sequential Read/Write blocks per one IO. */
-	off64_t			BlocksMin;	/*!< -i n Minimum blocks to read. */
-	off64_t			BlocksMax;	/*!< -a n Maximum blocks to read. */
+	off64_t			BlocksMin;	/*!< -i n Minimum blocks to read/write. */
+	off64_t			BlocksMax;	/*!< -a n Maximum blocks to read/write. */
 	off64_t			BlockStart;	/*!< -o n Origin block number to test. */
 	off64_t			BlockEnd;	/*!< -e n End block number to test.  */
-	long			Repeats;	/*!< -n n number of repeats. */
+	long			Repeats;	/*!< -n n the number of repeat random access. */
 	long			Seed;		/*!< -s n random seed number. */
 	char			*Argv0;		/*!< This program name. */
 	char			*PathName;	/*!< Device or file path name to test. */
 	int			FillFile;	/*!< Sequential Fill work file. */
-	int			DoReadFile;	/*!< Sequential Read work file. */
-	int			DoRandomAccess;	/*!< Do Random access Both r/w, Read only, Write only. */
-	int			DoDirect;	/*!< Do O_DIRECT io */
-	int			DoDirectRandomRW; /*!< Do O_DIRECT io at random read/write. */
-	int			DoMark;		  /*!< Do Block Marking. */
+	int			DoReadFile;	/*!< -r {s|y|n} Sequential Read work file. */
+	int			DoRandomAccess;	/*!< -x {b|r|w} Do Random access Both r/w, Read only, Write only. */
+	int			DoDirect;	/*!< -d {y|n} Do O_DIRECT io */
+	int			DoDirectRandomRW; /*!< -d {Y|N} Do O_DIRECT io at random read/write. */
+	int			DoMark;		  /*!< -m {y|n} Do Block Marking. */
 	/* Internal state members. */
 	unsigned int		TestToTestSleeps;	/*!< Sleep seconds between test to test. */
 } TCommandLineOption;
@@ -103,53 +138,46 @@ TCommandLineOption	CommandLine={
 	.TestToTestSleeps=DEF_TestToTestSleeps
 };
 
-/*! Accumulate numbers from touched memory. */
-uint64_t	TouchSums=0;
+/*! Accumulated number from read memory. */
+uint64_t	ReadMemorySum=0;
 
-/*! Store milli second to timespec.
-    @param ts point timespec to store.
-    @param msec time in milli second.
-    @note test purpose only.
+/*! Get CLOCK_REALTIME.
+    @param p points TTimeSpec to store realtime.
+    @return int !=0: Success, 0: Failed.
 */
-void timespecLoadMilliSec(struct timespec *ts, long msec)
-{	ldiv_t		sec_milli;
-
-	if (!ts) {
-		/* Invalid argument. */
-		return;
+static int TTimeSpecGetRealTime(TTimeSpec *p)
+{	if (clock_gettime(CLOCK_REALTIME,p)==0) {
+		return 1 /* True, Success. */;
 	}
-	sec_milli=ldiv(msec,1000);
-	sec_milli.rem*=1000L*1000L;	/* milli to micro to nano. */
-	ts->tv_sec= sec_milli.quot;
-	ts->tv_nsec=sec_milli.rem;
+	return 0 /* False, Failed. */;
 }
 
-/*! Convert timespec to double.
-    @param ts points timespec structure.
+/*! Convert TTimeSpec to double.
+    @param ts points TTimeSpec structure.
     @return double second.
 */
-double timespecToDouble(const struct timespec *ts)
+double TTimeSpecToDouble(const TTimeSpec *ts)
 {	if (!ts) {
 		return 0.0;
 	}
 	return((double)(ts->tv_sec)+(ts->tv_nsec)/(1000.0*1000.0*1000.0));
 }
 
-/*! Sub timespecs. *y=*a-*b.
-    @param y point timespec structure to store *a-*b
-    @param a point timespec structure.
-    @param b point timespec structure.
-    @return struct timespec pointer equal to y.
+/*! Sub two TTimeSpec(s), *y=*a-*b.
+    @param y points TTimeSpec structure to store *a-*b
+    @param a points TTimeSpec structure.
+    @param b points TTimeSpec structure.
+    @return struct TTimeSpec pointer equal to y.
     @note *a means end time, *b means start time.
 */
-struct timespec *timespecSub(struct timespec *y, const struct timespec *a, const struct timespec *b)
+TTimeSpec *TTimeSpecSub(TTimeSpec *y, const TTimeSpec *a, const TTimeSpec *b)
 {	time_t	sec;
 	long	nsec;
 
 	sec= a->tv_sec- b->tv_sec;
 	nsec=a->tv_nsec-b->tv_nsec;
 	if (nsec<0) {
-		/* borrow */
+		/* Borrow */
 		sec--;
 		nsec+=1000L*1000L*1000L;
 	}
@@ -158,13 +186,45 @@ struct timespec *timespecSub(struct timespec *y, const struct timespec *a, const
 	return(y);
 }
 
-/*! Add timespecs. *y=*a+*b.
-    @param y point timespec structure to store *a+*b
-    @param a point timespec structure.
-    @param b point timespec structure.
-    @return struct timespec pointer equal to y.
+/*! Sub two TTimeSpec(s), ((double)result)=*a-*b.
+    @param a points TTimeSpec structure.
+    @param b points TTimeSpec structure.
+    @return double delta time of *a-*b in double.
+    @note *a means end time, *b means start time.
 */
-struct timespec *timespecAdd(struct timespec *y, const struct timespec *a, const struct timespec *b)
+double TTimeSpecSubDouble(const TTimeSpec *a, const TTimeSpec *b)
+{	time_t	sec;
+	long	nsec;
+
+	sec= a->tv_sec- b->tv_sec;
+	nsec=a->tv_nsec-b->tv_nsec;
+	if (nsec<0) {
+		/* Borrow */
+		sec--;
+		nsec+=1000L*1000L*1000L;
+	}
+	return ((double)(sec))+((nsec)/(1000.0*1000.0*1000.0));
+}
+
+
+/*! Zero TTimeSpec.
+    @param y points TTimeSpec structure.
+*/
+void TTimeSpecZero(TTimeSpec *y)
+{	if (!y) {
+		return;
+	}
+	y->tv_sec=0;
+	y->tv_nsec=0;
+}
+
+/*! Add two TTimeSpec(s), *y=*a+*b.
+    @param y points TTimeSpec structure to store *a+*b
+    @param a points TTimeSpec structure.
+    @param b points TTimeSpec structure.
+    @return struct TTimeSpec pointer equal to y.
+*/
+TTimeSpec *TTimeSpecAdd(TTimeSpec *y, const TTimeSpec *a, const TTimeSpec *b)
 {	time_t	sec;
 	long	nsec;
 
@@ -182,8 +242,8 @@ struct timespec *timespecAdd(struct timespec *y, const struct timespec *a, const
 }
 
 /*! Round up.
-    @param a  value to round up, should be a>0
-    @param by round step value, should be b>0
+    @param a  value to round up, should be a>0.
+    @param by round step value, should be b>0.
     @return long long rounded value.
 */
 long long RoundUpBy(long long a, long long by)
@@ -197,13 +257,13 @@ long long RoundUpBy(long long a, long long by)
 	return(t-(t%by));
 }
 
-/*! string to long with suffix.
-    @param p  point char array to parse unsigned long number.
-    @param p2 point char* to store pointer at stopping parse.
+/*! string to unsigned long long with suffix.
+    @param p  points char array to parse human readable unsigned long long number.
+    @param p2 points char* to store pointer at stopping parse.
     @param radix default radix to parse.
-    @return unsigned long parsed number.
+    @return unsigned long long parsed number.
 */
-unsigned long long strtoulkmg(char *p, char **p2, int radix)
+unsigned long long StrToULLKmg(char *p, char **p2, int radix)
 {	unsigned long long	a;
 	char			*ptmp;
 	char			*dummy;
@@ -260,25 +320,7 @@ unsigned long long strtoulkmg(char *p, char **p2, int radix)
 	return(a);
 }
 
-/*! long long to signed hex string
-    @param buf point char buffer to store hex string.
-    @param a long long value to convert signed hex.
-    @return char* equal to buf.
-    @note format is +0x0123456789abcdef
-*/
-char *LLToHexStr(char *buf, long long a)
-{	char	sgn;
-	if (a>=0) {
-		sgn='+';
-	} else {
-		sgn='-';
-		a=-a;
-	}
-	sprintf(buf,"%c0x%.16llx",sgn,a);
-	return(buf);
-}
-
-#define TRY_WRITE_MAX	(1000)
+#define TRY_WRITE_MAX	(10)
 
 /*! Try write.
     Continue write, until all requested bytes are written.
@@ -291,7 +333,7 @@ char *LLToHexStr(char *buf, long long a)
 ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 {	ssize_t		wresult;
 	ssize_t		remain;
-	int		trycount;
+	int		try_count;
 	int		done_dummy;
 	
 	if (!done) {
@@ -299,9 +341,9 @@ ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 		done=&done_dummy;
 	}
 	*done=1; /* True: means all bytes are written. */
-	trycount=0;
+	try_count=0;
 	remain=len;
-	while ((remain>0) && (trycount<TRY_WRITE_MAX)) {
+	while ((remain>0) && (try_count<TRY_WRITE_MAX)) {
 		wresult=write(fd,b,len);
 		if (wresult<0) {
 			/* Error. */
@@ -312,13 +354,16 @@ ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 		if ((remain>0) && (wresult<=ScPageSize)) {
 			/* Too small progress. */
 			struct timespec ts_req;
+			printf("fd=%d: Too small write progress. remain=%lld, wresult=%lld, try_count=%d\n",
+				fd, (long long)remain, (long long)wresult, try_count
+			);
 			/* yeld other thread. */
 			ts_req.tv_sec=0;
-			ts_req.tv_nsec=1;
+			ts_req.tv_nsec=1000L*1000L;
 			nanosleep(&ts_req, NULL);
 		}
 		b+=wresult;
-		trycount++;
+		try_count++;
 	}
 	if (remain>0) {
 		/* Too many retries, but remain un written bytes. */
@@ -327,7 +372,7 @@ ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 	return(((ssize_t)len)-remain);
 }
 
-#define TRY_READ_MAX	(1000)
+#define TRY_READ_MAX	(10)
 
 /*! Try read.
     Continue read, until all requested bytes are read or EOF.
@@ -340,7 +385,7 @@ ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 {	ssize_t		rresult;
 	ssize_t		remain;
-	int		trycount;
+	int		try_count;
 	int		done_dummy;
 
 	if (!done) {
@@ -348,9 +393,9 @@ ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 		done=&done_dummy;
 	}
 	*done=1; /* True: means all bytes are written. */
-	trycount=0;
+	try_count=0;
 	remain=len;
-	while ((remain>0) && (trycount<TRY_WRITE_MAX)) {
+	while ((remain>0) && (try_count<TRY_WRITE_MAX)) {
 		rresult=read(fd,b,len);
 		if (rresult<0) {
 			/* Error. */
@@ -365,13 +410,16 @@ ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 		if ((remain>0) && (rresult<=ScPageSize)) {
 			/* Too small progress. */
 			struct timespec ts_req;
+			printf("fd=%d: Too small read progress. remain=%lld, rresult=%lld, try_count=%d\n",
+				fd, (long long)remain, (long long)rresult, try_count
+			);
 			/* yeld other thread. */
 			ts_req.tv_sec=0;
-			ts_req.tv_nsec=1;
+			ts_req.tv_nsec=1000L*1000L;
 			nanosleep(&ts_req, NULL);
 		}
 		b+=rresult;
-		trycount++;
+		try_count++;
 	}
 	if (remain>0) {
 		/* Too many retries, but remain un read bytes. */
@@ -384,12 +432,12 @@ ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 #define DUMP_BYTES_PER_LINE	(0x10)
 
 /*! Dump memory image.
-    @param buf    point memory to HEX dump.
+    @param buf    points memory to HEX dump.
     @param n      number of bytes to dump.
     @param offset meaning offset address pointed by buf.
-    @return unsigned char* argument buf + n.
+    @return const unsigned char* argument buf + n.
 */
-unsigned char *DumpMemory(unsigned char *buf, long long n, long long offset)
+const unsigned char *DumpMemory(const unsigned char *buf, long long n, long long offset)
 {	long long	cntr;
 
 	printf("%.16llx ",offset&((~0LL)-(DUMP_BYTES_PER_LINE-1)));
@@ -402,7 +450,6 @@ unsigned char *DumpMemory(unsigned char *buf, long long n, long long offset)
 
 	cntr=offset&(DUMP_BYTES_PER_LINE-1);
 	while (n>0) {
-		printf("%.2x",*buf);
 		/* Loop until all bytes are dumped. */
 		cntr++;
 		n--;
@@ -412,22 +459,21 @@ unsigned char *DumpMemory(unsigned char *buf, long long n, long long offset)
 			/* End of colums. */
 			if (n>0) {
 				/* More dump lines. */
-				printf("\n%.16llx ",offset);
+				printf("%.2x\n%.16llx ",*buf,offset);
 			} else {
 				/* No more dump lines. */
-				printf("\n");
+				printf("%.2x\n",*buf);
 			}
 			cntr=0;
 		} else {
 			/* Continue colums. */
 			if (n>0) {
 				/* Will be continue. */
-				printf(" ");
+				printf("%.2x ",*buf);
 			} else {
 				/* End of dump. */
-				printf("\n");
+				printf("%.2x\n",*buf);
 			}
-			
 		}
 		/* Step next byte. */
 		buf++;
@@ -442,7 +488,7 @@ unsigned char *DumpMemory(unsigned char *buf, long long n, long long offset)
     @param argv0 the argv value same as main() function's argv.
     @return int 1: Success, 0: Failed (found invalid argument).
 */
-int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0)
+int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 {	char	*p;
 	char	*p2;
 	int	c;
@@ -460,7 +506,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				if (p) {
 					off64_t	save;
 					save=opt->BlockSize;
-					opt->BlockSize=strtoulkmg(p,&p2,0);
+					opt->BlockSize=StrToULLKmg(p,&p2,0);
 					if (opt->BlockSize<=0) {
 						/* Zero or negative BlockSize. */
 						opt->BlockSize=save;
@@ -478,7 +524,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				if (p) {
 					off64_t	save;
 					save=opt->SequentialRWBlocks;
-					opt->SequentialRWBlocks=strtoulkmg(p,&p2,0);
+					opt->SequentialRWBlocks=StrToULLKmg(p,&p2,0);
 					if (opt->BlockSize<=0) {
 						/* Zero or negative BlockSize. */
 						opt->SequentialRWBlocks=save;
@@ -493,7 +539,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-f: Error: Need file size by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
-					opt->FileSize=strtoulkmg(p,&p2,0);
+					opt->FileSize=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -656,7 +702,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-i: Error: Need random read/write blocks min by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
-					opt->BlocksMin=strtoulkmg(p,&p2,0);
+					opt->BlocksMin=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -667,7 +713,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-a: Error: Need random read/write blocks max by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
-					opt->BlocksMax=strtoulkmg(p,&p2,0);
+					opt->BlocksMax=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -678,7 +724,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-o: Error: Need origin block by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
-					opt->BlockStart=strtoulkmg(p,&p2,0);
+					opt->BlockStart=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -689,7 +735,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-e: Error: Need end block by number[k|m|g|t|]\n";
 				p=optarg;
 				if (p) {
-					opt->BlockEnd=strtoulkmg(p,&p2,0);
+					opt->BlockEnd=StrToULLKmg(p,&p2,0);
 					opt_e=1;
 				} else {
 					printf(error_message);
@@ -701,7 +747,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-n: Error: Need repeat counts by number\n";
 				p=optarg;
 				if (p) {
-					opt->Repeats=strtoulkmg(p,&p2,0);
+					opt->Repeats=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -712,7 +758,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 				const char error_message[]="-s: Error: Need random seed by number.\n";
 				p=optarg;
 				if (p) {
-					opt->Seed=strtoulkmg(p,&p2,0);
+					opt->Seed=StrToULLKmg(p,&p2,0);
 				} else {
 					printf(error_message);
 					result=0;
@@ -768,7 +814,7 @@ int TCommandLineOptionParseArgs(TCommandLineOption *opt, char argc, char **argv0
 		result=0;
 	}
 	if (opt->BlockSize<(sizeof(off64_t)*3)) {
-		printf("%s: -b %" PRId64 ": Error: Should be more than %lu.\n",*argv0, (int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)*2));
+		printf("%s: -b %" PRId64 ": Error: Should be more than %lu.\n",*argv0, (int64_t)(opt->BlockSize), (unsigned long)(sizeof(off64_t)*3));
 		result=0;
 	}
 	if ((opt->BlockSize%(sizeof(off64_t)))!=0) {
@@ -828,12 +874,12 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		);
 }
 
-/*! Touch memory to make sure read data from device.
+/*! Read memory stepping by page size, to make sure read data from device.
     @param b points buffer.
     @param len buffer length pointed by b.
     @return unsigned long summing up value.
 */
-uint64_t TouchMemory(const unsigned char *b, long len)
+uint64_t ReadMemoryStepByPage(const unsigned char *b, long len)
 {	uint64_t	a;
 
 	a=0;
@@ -863,17 +909,17 @@ off64_t GetFileSizeFd(int fd)
 	if (size>=0) {
 		if (lseek64(fd,cur,SEEK_SET)<0) {
 			/* ignore error. */
-			printf("%d: Notice: Can not rewind file position. %s(%d).\n", fd, strerror(errno), errno);
+			printf("fd=%d: Notice: Can not rewind file position. %s(%d).\n", fd, strerror(errno), errno);
 		}
 	}
 	return(size);
 }
 
-/*! Make file image memory.
-    @param b    points file image buffer to make image, will be marked and written to file.
+/*! Fill random to file image memory.
+    @param b    points file image buffer to fill random, will be marked and written to file.
     @param len  buffer length in bytes pointed by b.
 */
-void MakeFileImage(unsigned char *b, long len)
+void FillRandomFileImage(unsigned char *b, long len)
 {	while (len>0) {
 		*b=lrand48()>>16;
 		b++;
@@ -890,7 +936,6 @@ void PreMarkFileImage(unsigned char *b0, long len0, long blocksize)
 {
 	unsigned char		*b;
 	long			count;
-	long			i;
 	long			len;
 	off64_t			a;
 
@@ -915,12 +960,11 @@ void PreMarkFileImage(unsigned char *b0, long len0, long blocksize)
 			count=len;
 		}
 		a=0;
-		i=0;
-		while (i<count) {
+		while (count>0) {
 			/* Summimg up image by u64. */
 			a+=*((off64_t*)b);
 			b+=sizeof(a);
-			i+=sizeof(a);
+			count-=sizeof(a);
 		}
 		/* Mark last u64 with complement. */
 		*((off64_t*)(b-sizeof(a)))=-a;
@@ -940,7 +984,6 @@ void PreMarkFileImage(unsigned char *b0, long len0, long blocksize)
 off64_t CheckStrictlyFileImage(unsigned char *b, long len, off64_t block_number, long block_size, int *result)
 {
 	long			count;
-	long			i;
 	off64_t			a;
 	off64_t			a0;
 
@@ -966,12 +1009,11 @@ off64_t CheckStrictlyFileImage(unsigned char *b, long len, off64_t block_number,
 			return(block_number);
 		}
 		a=0;
-		i=0;
-		while (i<count) {
+		while (count>0) {
 			/* Summimg up image by u64. */
 			a+=*((off64_t*)b);
 			b+=sizeof(a);
-			i+=sizeof(a);
+			count-=sizeof(a);
 		}
 		if (a!=0) {
 			/* Not zero checksum. */
@@ -1076,14 +1118,14 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
 
-	struct timespec	ts_write_0;
-	struct timespec	ts_print;
-	struct timespec	ts_write_s;
-	struct timespec	ts_write_e;
-	struct timespec	ts_write_e_tmp;
-	struct timespec	ts_write_ap;
-	struct timespec	ts_write_aa;
-	struct timespec	ts_mem_a;
+	TTimeSpec	ts_write_0;
+	TTimeSpec	ts_print;
+	TTimeSpec	ts_write_s;
+	TTimeSpec	ts_write_e;
+	TTimeSpec	ts_write_e_tmp;
+	TTimeSpec	ts_write_ap;
+	TTimeSpec	ts_write_aa;
+	TTimeSpec	ts_mem_a;
 
 	if (!img) {
 		/* img is NULL. */
@@ -1110,9 +1152,9 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 		return(0 /* false */);
 	}
 
-	memset(&ts_write_ap,0,sizeof(ts_write_ap));
-	memset(&ts_write_aa,0,sizeof(ts_write_aa));
-	memset(&ts_mem_a,0,sizeof(ts_mem_a));
+	TTimeSpecZero(&ts_write_ap);
+	TTimeSpecZero(&ts_write_aa);
+	TTimeSpecZero(&ts_mem_a);
 
 	block_no=opt->BlockStart;
 	cur_pos=start_pos;
@@ -1125,7 +1167,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 	/*      0123456789  0123456789  0123456789  0123456789  cur_pos progress, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total */
 	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total\n");
 
-	if (clock_gettime(CLOCK_REALTIME,&ts_write_0)!=0) {
+	if (!TTimeSpecGetRealTime(&ts_write_0)) {
 		printf("%s(): Error: clock_gettime failed. %s(%d)\n",__func__,strerror(errno),errno);
 		return 0; /* failed */
 	}
@@ -1139,8 +1181,6 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 		int		done;
 		double		dt_write_elp;
 
-		struct timespec	ts_delta;
-
 		chunk=chunk_max;
 		tmp=end_next_pos-cur_pos;
 		if (((off64_t)chunk)>tmp) {
@@ -1152,9 +1192,9 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 			MarkFileImage(img,chunk,block_no,opt->BlockSize);
 		}
 		done=0;
-		clock_gettime(CLOCK_REALTIME,&ts_write_s);
+		TTimeSpecGetRealTime(&ts_write_s);
 		wresult=TryWrite(fd,img,chunk,&done);
-		clock_gettime(CLOCK_REALTIME,&ts_write_e_tmp);
+		TTimeSpecGetRealTime(&ts_write_e_tmp);
 		if ((!done) || (wresult!=chunk)) {
 			/* Can't write requested. */
 			printf("%s: Error: Write failed. wresult=0x%lx,  chunk=0x%lx. %s(%d)\n"
@@ -1163,16 +1203,16 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 			return(0 /* false */);
 		}
 
-		timespecAdd(&ts_mem_a,&ts_mem_a,&ts_write_s);
-		timespecSub(&ts_mem_a,&ts_mem_a,&ts_write_e);
-		timespecAdd(&ts_write_aa,&ts_write_aa,&ts_write_e_tmp);
-		timespecSub(&ts_write_aa,&ts_write_aa,&ts_write_s);
+		TTimeSpecAdd(&ts_mem_a,&ts_mem_a,&ts_write_s);
+		TTimeSpecSub(&ts_mem_a,&ts_mem_a,&ts_write_e);
+		TTimeSpecAdd(&ts_write_aa,&ts_write_aa,&ts_write_e_tmp);
+		TTimeSpecSub(&ts_write_aa,&ts_write_aa,&ts_write_s);
 		ts_write_e=ts_write_e_tmp;
 
 		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
 		
-		dt_write_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_print));
+		dt_write_elp=TTimeSpecSubDouble(&ts_write_e_tmp, &ts_print);
 		if (  (dt_write_elp>=1.0)
 		    ||(cur_pos>=end_next_pos)
 		   ) {	/* Finish filling or elapsed 1 sec from last show. */
@@ -1183,10 +1223,10 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 			double		print_pos_delta;
 			double		pos_delta;
 
-			dt_write=timespecToDouble(timespecSub(&ts_delta,&ts_write_aa, &ts_write_ap));
-			dt_all=timespecToDouble(&ts_write_aa);
-			dt_elp=timespecToDouble(timespecSub(&ts_delta,&ts_write_e_tmp, &ts_write_0));
-			dt_mem=timespecToDouble(&ts_mem_a);
+			dt_write=TTimeSpecSubDouble(&ts_write_aa, &ts_write_ap);
+			dt_all=TTimeSpecToDouble(&ts_write_aa);
+			dt_elp=TTimeSpecSubDouble(&ts_write_e_tmp, &ts_write_0);
+			dt_mem=TTimeSpecToDouble(&ts_mem_a);
 			print_pos_delta=cur_pos-print_pos;
 			pos_delta=cur_pos-start_pos;
 			printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
@@ -1235,14 +1275,14 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
 
-	struct timespec	ts_read_0;
-	struct timespec	ts_print;
-	struct timespec	ts_read_s;
-	struct timespec	ts_read_e;
-	struct timespec	ts_read_e_tmp;
-	struct timespec	ts_read_ap;
-	struct timespec	ts_read_aa;
-	struct timespec	ts_mem_a;
+	TTimeSpec	ts_read_0;
+	TTimeSpec	ts_print;
+	TTimeSpec	ts_read_s;
+	TTimeSpec	ts_read_e;
+	TTimeSpec	ts_read_e_tmp;
+	TTimeSpec	ts_read_ap;
+	TTimeSpec	ts_read_aa;
+	TTimeSpec	ts_mem_a;
 
 	if (!img) {
 		/* img is NULL. */
@@ -1251,7 +1291,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		);
 		return(0 /* false */);
 	}
-	start_pos=opt->BlockSize*opt->BlockStart;
+	start_pos=(opt->BlockSize)*(opt->BlockStart);
 	/* Seek to start position. */
 	cur_pos=lseek64(fd,start_pos,SEEK_SET);
 	if (cur_pos<0) {
@@ -1260,7 +1300,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	chunk_max=opt->BlockSize*opt->SequentialRWBlocks;
+	chunk_max=(opt->BlockSize)*(opt->SequentialRWBlocks);
 	if (chunk_max>img_size) {
 		/* allocated buffer is small. */
 		printf("%s(): Error: Internal, buffer is small. chunk_max=%ld, img_size=%ld.\n"
@@ -1269,9 +1309,9 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
-	memset(&ts_read_ap,0,sizeof(ts_read_ap));
-	memset(&ts_read_aa,0,sizeof(ts_read_aa));
-	memset(&ts_mem_a,0,sizeof(ts_mem_a));
+	TTimeSpecZero(&ts_read_ap);
+	TTimeSpecZero(&ts_read_aa);
+	TTimeSpecZero(&ts_mem_a);
 
 	block_no=opt->BlockStart;
 	cur_pos=start_pos;
@@ -1284,7 +1324,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 	/*      0123456789  0123456789  0123456789  0123456789 cur_pos progress, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, */
 	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n");
 
-	clock_gettime(CLOCK_REALTIME,&ts_read_0);
+	TTimeSpecGetRealTime(&ts_read_0);
 	ts_read_e=ts_read_0;
 	ts_print= ts_read_0;
 	while (cur_pos<end_next_pos) {
@@ -1294,8 +1334,6 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		int		done;
 		double		dt_read_elp;
 
-		struct timespec	ts_delta;
-
 		chunk=chunk_max;
 		tmp=end_next_pos-cur_pos;
 		if (((off64_t)chunk)>tmp) {
@@ -1304,9 +1342,9 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		}
 
 		done=0;
-		clock_gettime(CLOCK_REALTIME,&ts_read_s);
+		TTimeSpecGetRealTime(&ts_read_s);
 		rresult=TryRead(fd,img,chunk,&done);
-		clock_gettime(CLOCK_REALTIME,&ts_read_e_tmp);
+		TTimeSpecGetRealTime(&ts_read_e_tmp);
 		if ((!done) || (rresult!=chunk)) {
 			/* Can't write requested. */
 			printf("%s: Error: Read failed. rresult=0x%lx,  chunk=0x%lx. %s\n"
@@ -1314,10 +1352,10 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 			);
 			return(0 /* false */);
 		}
-		timespecAdd(&ts_mem_a,&ts_mem_a,&ts_read_s);
-		timespecSub(&ts_mem_a,&ts_mem_a,&ts_read_e);
-		timespecAdd(&ts_read_aa,&ts_read_aa,&ts_read_e_tmp);
-		timespecSub(&ts_read_aa,&ts_read_aa,&ts_read_s);
+		TTimeSpecAdd(&ts_mem_a,&ts_mem_a,&ts_read_s);
+		TTimeSpecSub(&ts_mem_a,&ts_mem_a,&ts_read_e);
+		TTimeSpecAdd(&ts_read_aa,&ts_read_aa,&ts_read_e_tmp);
+		TTimeSpecSub(&ts_read_aa,&ts_read_aa,&ts_read_s);
 		ts_read_e=ts_read_e_tmp;
 
 		if (opt->DoMark!=0) {
@@ -1347,12 +1385,12 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 				return 0;
 			}
 		} else {
-			TouchSums+=TouchMemory(img,chunk);
+			ReadMemorySum+=ReadMemoryStepByPage(img,chunk);
 		}
 
 		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
-		dt_read_elp=timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_print));
+		dt_read_elp=TTimeSpecSubDouble(&ts_read_e_tmp, &ts_print);
 		if (  (dt_read_elp>=1.0)
 		    ||(cur_pos>=end_next_pos)
 		   ) {	/* Finish filling or elapsed 1 sec from last show. */
@@ -1364,10 +1402,10 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 			double		print_pos_delta;
 			double		pos_delta;
 
-			dt_read=timespecToDouble(timespecSub(&ts_delta,&ts_read_aa,    &ts_read_ap));
-			dt_all= timespecToDouble(&ts_read_aa);
-			dt_elp= timespecToDouble(timespecSub(&ts_delta,&ts_read_e_tmp, &ts_read_0));
-			dt_mem= timespecToDouble(&ts_mem_a);
+			dt_read=TTimeSpecSubDouble(&ts_read_aa,&ts_read_ap);
+			dt_all= TTimeSpecToDouble(&ts_read_aa);
+			dt_elp= TTimeSpecSubDouble(&ts_read_e_tmp, &ts_read_0);
+			dt_mem= TTimeSpecToDouble(&ts_mem_a);
 			print_pos_delta=cur_pos-print_pos;
 			pos_delta=cur_pos-start_pos;
 			printf("%10.4e, %10.4e, %10.4e, %10.4e, %" PRId64 ", %3.2f%%, %10.4e, %10.4e, %10.4e, %10.4e, %10.4e\n"
@@ -1419,10 +1457,10 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 	double		rw_time_max;
 	unsigned int	sleeps_prefer;
 
-	struct timespec	ts_0;
-	struct timespec	ts_mem_delta;
-	struct timespec	ts_rw_delta;
-	struct timespec	ts_op_done;
+	TTimeSpec	ts_0;
+	TTimeSpec	ts_mem_delta;
+	TTimeSpec	ts_rw_delta;
+	TTimeSpec	ts_op_done;
 
 	result=1;
 	seek_size=GetFileSizeFd(fd);
@@ -1434,7 +1472,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 	);
 	rw_time_max=0;
 	/* Record time at tests begin. */
-	if (clock_gettime(CLOCK_REALTIME,&ts_0)!=0) {
+	if (!TTimeSpecGetRealTime(&ts_0)) {
 		printf("%s(): Error: clock_gettime failed. %s\n",__func__,strerror(errno));
 		return 0; /* failed */
 	}
@@ -1449,16 +1487,16 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 		size_t		length;
 		int		ioresult;
 
-		struct timespec	ts_mem;
-		struct timespec	ts_rw_start;
-		struct timespec	ts_rw_done;
+		TTimeSpec	ts_mem;
+		TTimeSpec	ts_rw_start;
+		TTimeSpec	ts_rw_done;
 
 		char		read_write;
 		unsigned char	rw_act;
 
 		double		rw_time;
 		double		mem_time;
-		struct timespec	ts_elapsed;
+		TTimeSpec	ts_elapsed;
 
 		/* Calc random seek position and size. */
 		seek_to_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
@@ -1480,7 +1518,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			);
 			return 0; /* failed */
 		}
-		rw_act=((lrand48()>>16UL)&0x01UL);
+		rw_act=((lrand48()>>30UL)&0x01UL);
 		switch (opt->DoRandomAccess) {
 			case DO_RANDOM_ACCESS_BOTH: {
 				/* Both read and write. */
@@ -1521,10 +1559,10 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			}
 			done=0;
 			/* Record time at read. */
-			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
+			TTimeSpecGetRealTime(&ts_rw_start);
 			ioresult=TryRead(fd,mem,length,&done);
 			/* Record time at done read. */
-			clock_gettime(CLOCK_REALTIME,&ts_rw_done);
+			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
 				printf("%s: Error: read failed. %s length=0x%lx, ioresult=0x%lx.\n"
 				,opt->PathName,strerror(errno),(long)length,(long)(ioresult));
@@ -1548,19 +1586,19 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 					/* do remainig process. */
 				}
 			}  else {/* Only do touch. */
-				TouchSums+=TouchMemory(mem,length);
+				ReadMemorySum+=ReadMemoryStepByPage(mem,length);
 			}
-			clock_gettime(CLOCK_REALTIME,&ts_mem);
-			timespecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
-			timespecSub(&ts_mem_delta,&ts_mem,&ts_rw_done);
-			memcpy(&ts_op_done,&ts_mem,sizeof(ts_op_done));
+			TTimeSpecGetRealTime(&ts_mem);
+			TTimeSpecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
+			TTimeSpecSub(&ts_mem_delta,&ts_mem,&ts_rw_done);
+			ts_op_done=ts_mem;
 			read_write='r';
 		} else {/* write blocks. */
 			unsigned char	*img_work;
 			int		done;
 			off64_t		img_offset;
 
-			clock_gettime(CLOCK_REALTIME,&ts_mem);
+			TTimeSpecGetRealTime(&ts_mem);
 			/* Choose image to write by random. */
 			img_offset=(opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax)));
 			img_work=img+img_offset;
@@ -1575,18 +1613,18 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 				return 0; /* failed */
 			}
 			done=0;
-			clock_gettime(CLOCK_REALTIME,&ts_rw_start);
+			TTimeSpecGetRealTime(&ts_rw_start);
 			ioresult=TryWrite(fd,img_work,length,&done);
 			/* Record time at touch. */
-			clock_gettime(CLOCK_REALTIME,&ts_rw_done);
+			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
 				printf("%s: Error: write failed. %s length=0x%lx, ioresult=0x%lx.\n"
 				,opt->PathName,strerror(errno),(long)length,(long)ioresult);
 				return 0;
 			}
-			timespecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
-			timespecSub(&ts_mem_delta,&ts_rw_start,&ts_mem);
-			memcpy(&ts_op_done,&ts_rw_done,sizeof(ts_op_done));
+			TTimeSpecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
+			TTimeSpecSub(&ts_mem_delta,&ts_rw_start,&ts_mem);
+			ts_op_done=ts_rw_done;
 			read_write='w';
 		}
 		if (seek_to_prev>=0) {
@@ -1595,12 +1633,12 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			seek_to_delta=0;
 		}
 
-		rw_time=timespecToDouble(&ts_rw_delta);
-		mem_time=timespecToDouble(&ts_mem_delta);
+		rw_time=TTimeSpecToDouble(&ts_rw_delta);
+		mem_time=TTimeSpecToDouble(&ts_mem_delta);
 		/*       i, elp, rw, pos, len, rw_time, bps, touchtime */
 		printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
 			,i
-			,timespecToDouble(timespecSub(&ts_elapsed,&ts_op_done,&ts_0))
+			,TTimeSpecToDouble(TTimeSpecSub(&ts_elapsed,&ts_op_done,&ts_0))
 			,read_write
 			,seek_to
 			,(long)length
@@ -1854,7 +1892,7 @@ EXIT_CLOSE:;
     @param opt command line option.
     @return int !=0: Pass, ==0: Failed.
 */
-int MainTest(TCommandLineOption *opt)
+int MainB(TCommandLineOption *opt)
 {	int		result;
 
 	unsigned char	*mem;
@@ -1895,7 +1933,7 @@ int MainTest(TCommandLineOption *opt)
 		result=0 /* false */;
 		goto EXIT_UNMAP_MEM;
 	}
-	MakeFileImage(img, img_size);
+	FillRandomFileImage(img, img_size);
 	if (opt->DoMark!=0) {
 		PreMarkFileImage(img, img_size, opt->BlockSize);
 	}
@@ -1918,13 +1956,14 @@ EXIT_UNMAP_MEM:;
 	}
 	if (opt->DoMark==0) {
 		/* Skip check, only touch memory. */
-		printf("TouchSums: Info: 0x%" PRIx64 "\n",TouchSums);
+		printf("ReadMemorySum: Info: 0x%" PRIx64 "\n",ReadMemorySum);
 	}
 	return result;
 }
 
-void show_help(void)
-{	printf(
+void ShowHelp(void)
+{	printf(copyright_notice);
+	printf(
 	"Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
 
@@ -1987,11 +2026,11 @@ int main(int argc, char **argv)
 		printf("%s: Error: Failed sysconf(). %s(%d)\n", argv[0], strerror(errno), errno);
 		return 1;
 	}
-	if (!TCommandLineOptionParseArgs(&CommandLine,argc,argv)) {
-		show_help();
+	if (!TCommandLineOptionGetopt(&CommandLine,argc,argv)) {
+		ShowHelp();
 		return 1;
 	}
-	if (!MainTest(&CommandLine)) {
+	if (!MainB(&CommandLine)) {
 		printf("%s: Fail: Test FAIL.\n",CommandLine.PathName);
 		return 2;
 	}
