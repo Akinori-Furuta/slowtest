@@ -1981,7 +1981,7 @@ void ShowHelp(void)
 	"-n n number of random read/write access(%d).\n"
 	"-s n random seed number(%d). \n"
 	"path_name: File path name to test.\n"
-
+	"Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3, t: x1024^4\n"
 	,(DEF_FillFile ? 'y' : 'n')
 
 	,do_only_options[DEF_DoRandomAccess]
