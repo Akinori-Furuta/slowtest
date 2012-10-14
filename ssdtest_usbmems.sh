@@ -1,0 +1,6 @@
+#!/bin/bash
+# Will be sourced by bash.
+
+export MAX_SECTORS_RANDOM_LONG=131072
+export MAX_SECTORS_RANDOM_MIDDLE=4096
+export MAX_SECTORS_RANDOM_SHORT=128
