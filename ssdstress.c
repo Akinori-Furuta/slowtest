@@ -921,9 +921,9 @@ off64_t GetFileSizeFd(int fd)
 */
 void FillRandomFileImage(unsigned char *b, long len)
 {	while (len>0) {
-		*b=lrand48()>>16;
-		b++;
-		len--;
+		*((uint32_t*)b)=genrand_uint32();
+		b+=sizeof(uint32_t);
+		len-=sizeof(uint32_t);
 	}
 }
 
@@ -1084,10 +1084,8 @@ void MarkFileImage(unsigned char *b, long len, off64_t block_number, off64_t blo
 
 	m=0xffff;
 	while (len>0) {
-		r =((((uint64_t)lrand48())>>8)&m)<<(uint64_t) 0;
-		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)16;
-		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)32;
-		r|=((((uint64_t)lrand48())>>8)&m)<<(uint64_t)48;
+		r =((uint64_t)genrand_uint32())<<(uint64_t) 0;
+		r|=((uint64_t)genrand_uint32())<<(uint64_t)32;
 
 		a= *(((off64_t*)b)+0)
 		  +*(((off64_t*)b)+1);
@@ -1499,9 +1497,9 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 		TTimeSpec	ts_elapsed;
 
 		/* Calc random seek position and size. */
-		seek_to_block=(off64_t)(drand48()*(double)area_blocks)+opt->BlockStart;
+		seek_to_block=(off64_t)(genrand_real2()*(double)area_blocks)+opt->BlockStart;
 		seek_to=(opt->BlockSize)*seek_to_block;
-		length=(opt->BlockSize)*((long)(drand48()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
+		length=(opt->BlockSize)*((long)(genrand_real2()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
 		if ((length+seek_to)>end_next_pos) {
 			/* over runs at block end. */
 			length=end_next_pos-seek_to;
@@ -1518,7 +1516,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			);
 			return 0; /* failed */
 		}
-		rw_act=((lrand48()>>30UL)&0x01UL);
+		rw_act=genrand_uint32()&0x01UL;
 		switch (opt->DoRandomAccess) {
 			case DO_RANDOM_ACCESS_BOTH: {
 				/* Both read and write. */
@@ -1600,7 +1598,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 
 			TTimeSpecGetRealTime(&ts_mem);
 			/* Choose image to write by random. */
-			img_offset=(opt->BlockSize)*(off64_t)(drand48()*((double)(opt->BlocksMax)));
+			img_offset=(opt->BlockSize)*(off64_t)(genrand_real2()*((double)(opt->BlocksMax)));
 			img_work=img+img_offset;
 			if (opt->DoMark) {
 				/* Do block number marking. */
@@ -1904,7 +1902,7 @@ int MainB(TCommandLineOption *opt)
 
 	result=1 /* true */;
 	/* Initialize random seed. */
-	srand48(opt->Seed);
+	init_genrand(opt->Seed);
 
 	/* allocate random read buffer mem. */
 	mem_size=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
