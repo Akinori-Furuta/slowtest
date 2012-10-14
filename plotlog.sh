@@ -164,6 +164,15 @@ ${DoDirectRandom}\\ntransfer length - access time"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read_tlength_at.gnuplot\"; quit" > ${ra_r_tlength_at_png}
 
+			ra_r_tspeed_tlength_png=${f%.*}-rr-ts_tl.png
+			echo "${f}: ${ra_r_tspeed_tlength_png}: Plot random read transfer speed - transfer length."
+			cat << EOF > ${GnuplotVarFile}
+set title "${Model} ${CapacityGB}G bytes, random read\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, \
+${DoDirectRandom}\\ntransfer speed - transfer length"
+EOF
+			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_read_tspeed_tlength.gnuplot\"; quit" > ${ra_r_tspeed_tlength_png}
+
+
 			rm ${part_data_file}
 
 			ra_w_tspeed_at_png=${f%.*}-rw-ts_at.png
@@ -182,6 +191,14 @@ set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki
 ${DoDirectRandom}\\ntransfer length - access time"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write_tlength_at.gnuplot\"; quit" > ${ra_w_tlength_at_png}
+
+			ra_w_tspeed_tlength_png=${f%.*}-rw-ts_tl.png
+			echo "${f}: ${ra_w_tspeed_tlength_png}: Plot random write transfer speed - transfer length."
+			cat << EOF > ${GnuplotVarFile}
+set title "${Model} ${CapacityGB}G bytes, random write\\n${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, \
+${DoDirectRandom}\\ntransfer speed - transfer length"
+EOF
+			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; load \"${my_dir}/random_write_tspeed_tlength.gnuplot\"; quit" > ${ra_w_tspeed_tlength_png}
 
 			rm "${part_data_file}"
 			rm "${ra_file}"
