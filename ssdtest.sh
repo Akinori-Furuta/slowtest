@@ -122,7 +122,7 @@ i=0
 while (( ${i} < ${parsed_arg_n} ))
 do
 	opt="${parsed_arg[${i}]}"
-	case in ${opt}
+	case ${opt} in
 		(-L)
 			i=$(( ${i} + 1 ))
 			OptionalLabel="${parsed_arg[${i}]}"
