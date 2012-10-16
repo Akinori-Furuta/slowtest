@@ -101,14 +101,51 @@ function signaled() {
 # Trap signals.
 trap signaled HUP INT
 
-# Argument copy.
-if [[ -z $1 ]]
+# Parse Argument
+
+function Help() {
+	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
+	exit 1
+}
+
+parsed_arg=( `getopt L:h $*` )
+if (( $? != 0 ))
 then
-	echo "$0: Error: Feed test pass to argument."
+	Help
+fi
+
+OptionalLabel=""
+
+parsed_arg_n=${#parsed_arg[*]}
+
+i=0
+while (( ${i} < ${parsed_arg_n} ))
+do
+	opt="${parsed_arg[${i}]}"
+	case in ${opt}
+		(-L)
+			i=$(( ${i} + 1 ))
+			OptionalLabel="${parsed_arg[${i}]}"
+		;;
+		(-h)
+			Help
+			exit 1
+		;;
+		(--)
+			i=$(( ${i} + 1 ))
+			break
+		;;
+	esac
+	i=$(( ${i} + 1 ))
+done
+
+if [[ -z ${parsed_arg[${i}]} ]]
+then
+	Help
 	exit 1
 fi
 
-TestFile="$1"
+TestFile="${parsed_arg[${i}]}"
 
 
 # This test context.
@@ -295,7 +332,7 @@ function show_config() {
 
 now_date="`date +%y%m%d%H%M%S`"
 
-LOG_DIR="log-${ModelName}-${now_date}-${FILE_SIZE}"
+LOG_DIR="log-${ModelName}${OptionalLabel}-${now_date}-${FILE_SIZE}"
 
 if [[ ! -d "${LOG_DIR}" ]]
 then
@@ -318,11 +355,11 @@ do
 		then
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			${DEF_CONFIG_RA_L} \
-			-dn${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
+			-d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
 		else
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			-py -xb -rn -my -b ${BLOCK_SIZE} -i 1 -a ${MAX_SECTORS_RANDOM_LONG} -n ${RANDOM_REPEATS} \
-			-dn${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
+			-dn -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
 		fi
 
 		echo "COMMAND: ${CommandBody}" >> ${LogFile}
@@ -337,11 +374,11 @@ do
 		then
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			${DEF_CONFIG_RA_M} \
-			-dn${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
+			-d${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
 		else
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			-pn -xb -rn -my -b ${BLOCK_SIZE} -i 1 -a ${MAX_SECTORS_RANDOM_MIDDLE} -n ${RANDOM_REPEATS} \
-			-dn${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
+			-dn -d${direct} -s $(( ${i} * 3 + 1 + ${SEED} )) ${TestFile}"
 		fi
 
 		echo "COMMAND: ${CommandBody}" >> ${LogFile}
@@ -356,12 +393,12 @@ do
 		then
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			${DEF_CONFIG_RA_S} \
-			-dn${direct} -s $(( ${i} * 3 + 2 + ${SEED} )) ${TestFile}"
+			-d${direct} -s $(( ${i} * 3 + 2 + ${SEED} )) ${TestFile}"
 		else
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			-pn -xb -ry -my -b ${BLOCK_SIZE} -i 1 -a ${MAX_SECTORS_RANDOM_SHORT} -n ${RANDOM_REPEATS} \
 			-u $(( ${MAX_SECTORS_RANDOM_LONG} * 2 )) \
-			-dn${direct} -s $(( ${i} * 3 + 2 + ${SEED} )) ${TestFile}"
+			-dn -d${direct} -s $(( ${i} * 3 + 2 + ${SEED} )) ${TestFile}"
 		fi
 
 		echo "COMMAND: ${CommandBody}" >> ${LogFile}
