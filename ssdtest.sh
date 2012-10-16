@@ -90,11 +90,30 @@ function recover_max_sectors_kb() {
 	fi
 }
 
+HungTo=/proc/sys/kernel/hung_task_timeout_secs
+
+# Recover hung_task_timeout_secs
+# No arguments.
+# global SavedMaxSectorsKb, MaxSectorsKb, Uid
+function recover_hung_task_to() {
+	if [[ -n ${SavedHungTaskTo} ]]
+	then
+		if (( ${Uid} == 0 ))
+		then
+			echo "${HungTo}: Info: Restore hung_task_timeout_secs. SavedHungTaskTo=${SavedHungTaskTo}"
+			echo ${SavedHungTaskTo} > ${HungTo}
+		else
+			echo "${HungTo}: Notice: Skip hung_task_timeout_secs, not root. SavedHungTaskTo=${SavedHungTaskTo}"
+		fi
+	fi
+}
+
 # Signal handler.
 function signaled() {
 	echo "$0: Interrupted."
 	remove_test_file
 	recover_max_sectors_kb
+	recover_hung_task_to
 	exit 2
 }
 
@@ -217,6 +236,14 @@ else
 	SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
 fi
 
+# Fix hung task timeout
+
+SavedHungTaskTo=`cat ${HungTo}`
+if (( ${Uid} == 0 ))
+then
+	echo 0 > ${HungTo}
+fi
+
 # Trim max_sectors_kb
 
 MaxHwSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_hw_sectors_kb
@@ -274,6 +301,7 @@ then
 		echo "${TestFile}: Error: Not enough space to test. VolumeFreeSpace=${VolumeFreeSpace}Kibytes"
 		remove_test_file
 		recover_max_sectors_kb
+		recover_hung_task_to
 		exit 2
 	fi
 	FILE_SIZE="${FILE_SIZE}${FILE_SIZE_UNIT}"
@@ -413,4 +441,5 @@ do
 done
 
 recover_max_sectors_kb
+recover_hung_task_to
 exit 0
