@@ -146,9 +146,9 @@ set xrange [ 1.0e+2 : 1.0e+9 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
 set ylabel "transfer speed (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
+# Feed yrange from external settings.
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 100000. : 1.00000e+10 ] noreverse nowriteback
 set y2range [ * : * ] noreverse nowriteback  # (currently [5.00000:10.0000] )
 set zlabel "" 
 set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
