@@ -93,10 +93,10 @@ function remove_test_file() {
 	fi
 }
 
-# Recover max_sectors_kb kernel parameter.
+# Recover max_sectors_kb, read_ahead_kb kernel parameter.
 # No arguments.
-# global SavedMaxSectorsKb, MaxSectorsKb, Uid
-function recover_max_sectors_kb() {
+# global SavedMaxSectorsKb, MaxSectorsKb, ReadAheadKb, SavedReadAheadKb, Uid
+function recover_queue_config() {
 	if [[ -n ${SavedMaxSectorsKb} ]]
 	then
 		if (( ${Uid} == 0 ))
@@ -105,6 +105,16 @@ function recover_max_sectors_kb() {
 			echo ${SavedMaxSectorsKb} > ${MaxSectorsKb}
 		else
 			echo "${MaxSectorsKb}: Notice: Skip restore max_sectors_kb, not root. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
+		fi
+	fi
+	if [[ -n ${SavedReadAheadKb} ]]
+	then
+		if (( ${Uid} == 0 ))
+		then
+			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${ReadAheadKb}"
+			echo ${SavedReadAheadKb} > ${ReadAheadKb}
+		else
+			echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${ReadAheadKb}"
 		fi
 	fi
 }
@@ -131,7 +141,7 @@ function recover_hung_task_to() {
 function signaled() {
 	echo "$0: Interrupted."
 	remove_test_file
-	recover_max_sectors_kb
+	recover_queue_config
 	recover_hung_task_to
 	exit 2
 }
@@ -271,13 +281,15 @@ then
 	fi
 fi
 
-# Trim max_sectors_kb
+# Trim max_sectors_kb, read_ahead_kb
 
 MaxHwSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_hw_sectors_kb
 MaxSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
+ReadAheadKb=/sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
 
 ReadMaxHwSectorsKb=`cat ${MaxHwSectorsKb}`
 SavedMaxSectorsKb=`cat ${MaxSectorsKb}`
+SavedReadAheadKb=`cat ${ReadAheadKb}`
 
 if (( ${Uid} == 0 ))
 then
@@ -293,8 +305,10 @@ then
 	else
 		echo "${MaxSectorsKb}: Info: Sekip update max_sectors_kb, already modified large enough."
 	fi
+	echo 0 > ${ReadAheadKb}
 else
 	echo "${MaxSectorsKb}: Notice: Skip update max_sectors_kb, not root."
+	echo "${ReadAheadKb}: Notice: Skip update read_ahead_kb, not root."
 fi
 
 # Estimate test file size.
@@ -327,7 +341,7 @@ then
 	then
 		echo "${TestFile}: Error: Not enough space to test. VolumeFreeSpace=${VolumeFreeSpace}Kibytes"
 		remove_test_file
-		recover_max_sectors_kb
+		recover_queue_config
 		recover_hung_task_to
 		exit 2
 	fi
@@ -449,6 +463,6 @@ do
 	done
 done
 
-recover_max_sectors_kb
+recover_queue_config
 recover_hung_task_to
 exit 0
