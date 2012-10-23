@@ -422,9 +422,8 @@ do
 			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
 			-p${FillAction} -xb -r${ReadAction} -my \
 			-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n ${RANDOM_REPEATS} \
-			-u $(( ${SEQUENTIAL_BLOCKS} )) 
+			-u ${SEQUENTIAL_BLOCKS} \
 			-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
-
 
 			echo "COMMAND: ${CommandBody}" >> ${LogFile}
 			( show_config ) >> ${LogFile}
