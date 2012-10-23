@@ -257,10 +257,18 @@ fi
 
 # Fix hung task timeout
 
-SavedHungTaskTo=`cat ${HungTo}`
+if [[ -e ${HungTo} ]]
+then
+	SavedHungTaskTo=`cat ${HungTo}`
+else
+	SavedHungTaskTo=""
+fi
 if (( ${Uid} == 0 ))
 then
-	echo 0 > ${HungTo}
+	if [[ -e ${HungTo} ]]
+	then
+		echo 0 > ${HungTo}
+	fi
 fi
 
 # Trim max_sectors_kb
@@ -385,6 +393,7 @@ LOG_DIR="log-${ModelName}${OptionalLabel}-${now_date}-${FILE_SIZE}"
 
 if [[ ! -d "${LOG_DIR}" ]]
 then
+	echo "${LOG_DIR}: Create log directory."
 	mkdir -p "${LOG_DIR}"
 fi
 
