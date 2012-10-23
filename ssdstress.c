@@ -1974,8 +1974,8 @@ void ShowHelp(void)
 
 	"-b n block size(%d).\n"
 	"-u n Sequential read/write blocks per one IO (if zero or not set, same as \"-a n\" * 2)(%d).\n"
-	"-i n Minimum blocks to random read/write(%d).\n"
-	"-a n Maximum blocks to random read/write(%d).\n"
+	"-i n Random read/write minimum blocks(%d).\n"
+	"-a n Random read/write maximum blocks(%d).\n"
 	"-o n Start block number to read/write(%d).\n"
 	"-e n End block number to read/write(%d).\n"
 	"-n n number of random read/write access(%d).\n"
