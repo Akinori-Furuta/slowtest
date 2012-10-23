@@ -25,6 +25,11 @@ then
 	LOOP_MAX=2
 fi
 
+if [[ -z ${SEQUENTIAL_DIRECT} ]]
+then
+	SEQUENTIAL_DIRECT=n
+fi
+
 if [[ -z ${SEED} ]]
 then
 	# random seed.
@@ -418,7 +423,7 @@ do
 			-p${FillAction} -xb -r${ReadAction} -my \
 			-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n ${RANDOM_REPEATS} \
 			-u $(( ${SEQUENTIAL_BLOCKS} )) 
-			-dn -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
 
 
 			echo "COMMAND: ${CommandBody}" >> ${LogFile}
