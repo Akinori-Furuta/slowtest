@@ -111,10 +111,10 @@ function recover_queue_config() {
 	then
 		if (( ${Uid} == 0 ))
 		then
-			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${ReadAheadKb}"
+			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${SavedReadAheadKb}"
 			echo ${SavedReadAheadKb} > ${ReadAheadKb}
 		else
-			echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${ReadAheadKb}"
+			echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${SavedReadAheadKb}"
 		fi
 	fi
 }
