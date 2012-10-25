@@ -14,14 +14,24 @@ then
 	export GDFONTPATH=/usr/share/fonts/dejavu:/usr/share/fonts/truetype/ttf-dejavu
 fi
 
-if [[ -z ${TRANSFER_SPEED_MIN} ]]
+if [[ -z ${SEQUENTIAL_TRANSFER_SPEED_MIN} ]]
 then
-	TRANSFER_SPEED_MIN="1.0e+5"
+	SEQUENTIAL_TRANSFER_SPEED_MIN="0"
 fi
 
-if [[ -z ${TRANSFER_SPEED_MAX} ]]
+if [[ -z ${SEQUENTIAL_TRANSFER_SPEED_MAX} ]]
 then
-	TRANSFER_SPEED_MAX="1.0e+10"
+	SEQUENTIAL_TRANSFER_SPEED_MAX="6.0e+8"
+fi
+
+if [[ -z ${RANDOM_TRANSFER_SPEED_MIN} ]]
+then
+	RANDOM_TRANSFER_SPEED_MIN="1.0e+5"
+fi
+
+if [[ -z ${RANDOM_TRANSFER_SPEED_MAX} ]]
+then
+	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
 fi
 
 
@@ -135,7 +145,7 @@ set title "${Model} ${CapacityGB}G bytes, sequential write\\n\
 ${RWBytesMi}Mi bytes per one write() call, \
 up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#ff0000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		sw_png=${f%.*}-sw.png
 		echo "${f}: ${sw_png}: Plot sequential write."
@@ -171,7 +181,7 @@ plot reads of random read/write\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, \
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#00c000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			grep 'r' "${ra_file}"  > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
@@ -200,7 +210,7 @@ plot reads of random read/write\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read() call, \
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#00c000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
 				    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
@@ -216,7 +226,7 @@ plot writes of random read/write\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, \
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#ff0000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			grep 'w' "${ra_file}" > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
@@ -244,7 +254,7 @@ plot writes of random read/write\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write() call, \
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#ff0000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
 				    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
@@ -264,7 +274,7 @@ set title "${Model} ${CapacityGB}G bytes, sequential read\\n\
 ${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, \
 ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#00c000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		sr_png=${f%.*}-sr.png
 		echo "${f}: ${sr_png}: Plot sequential read."

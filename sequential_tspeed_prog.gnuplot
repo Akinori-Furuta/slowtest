@@ -139,13 +139,12 @@ set xlabel "progress (%)"
 set xlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
-set xrange [ * : * ] noreverse nowriteback  # (currently [0.00000:100.000] )
+set xrange [ 0.0 : 100.0 ] noreverse nowriteback  # (currently [0.00000:100.000] )
 set x2range [ * : * ] noreverse nowriteback  # (currently [1.00000:100.000] )
 set ylabel "transfer speed (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 0.00000 : 6.00000e+08 ] noreverse nowriteback
 set y2range [ * : * ] noreverse nowriteback  # (currently [0.00000:6.00000e+08] )
 set zlabel "" 
 set zlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
