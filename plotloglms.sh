@@ -310,7 +310,7 @@ EOF
 			> ${ra_w_tlength_at_png}
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
-		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mxied random write transfer speed - transfer length."
+		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mixed random write transfer speed - transfer length."
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
