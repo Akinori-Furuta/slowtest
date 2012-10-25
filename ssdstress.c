@@ -2035,7 +2035,7 @@ void ShowHelp(void)
 	"-s n random seed number(%d). \n"
 	"-z n Sleep time in seconds after test(%u).\n"
 	"path_name: File path name to test.\n"
-	"Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3, t: x1024^4\n"
+	"Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3, t: x1024^4, p: x1024^5\n"
 	,(DEF_FillFile ? 'y' : 'n')
 
 	,do_only_options[DEF_DoRandomAccess]
