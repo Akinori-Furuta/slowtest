@@ -13,6 +13,17 @@ then
 	MAX_SECTORS_KB_UNIT=2048
 fi
 
+if [[ -z ${SEQUENTIAL_READ_AHEAD_KB} ]]
+then
+	SEQUENTIAL_READ_AHEAD_KB=128
+fi
+
+if [[ -z ${RANDOM_READ_AHEAD_KB} ]]
+then
+	RANDOM_READ_AHEAD_KB=0
+fi
+
+
 if [[ -z ${TEST_USAGE_RATIO} ]]
 then
 	# Test file size ratio at free space in volume.
@@ -97,27 +108,39 @@ function remove_test_file() {
 # No arguments.
 # global SavedMaxSectorsKb, MaxSectorsKb, ReadAheadKb, SavedReadAheadKb, Uid
 function recover_queue_config() {
-	if [[ -n ${SavedMaxSectorsKb} ]]
+	if (( ${Uid} == 0 ))
 	then
-		if (( ${Uid} == 0 ))
+		if [[ -n ${SavedMaxSectorsKb} ]]
 		then
 			echo "${MaxSectorsKb}: Info: Restore max_sectors_kb. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
 			echo ${SavedMaxSectorsKb} > ${MaxSectorsKb}
-		else
-			echo "${MaxSectorsKb}: Notice: Skip restore max_sectors_kb, not root. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
 		fi
-	fi
-	if [[ -n ${SavedReadAheadKb} ]]
-	then
-		if (( ${Uid} == 0 ))
+		if [[ -n ${SavedReadAheadKb} ]]
 		then
 			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${SavedReadAheadKb}"
 			echo ${SavedReadAheadKb} > ${ReadAheadKb}
-		else
-			echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${SavedReadAheadKb}"
 		fi
+	else
+		echo "${MaxSectorsKb}: Notice: Skip restore max_sectors_kb, not root. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
+		echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${SavedReadAheadKb}"
 	fi
 }
+
+# Set read_ahead_kb.
+# @param $1 read ahead kibytes.
+function set_read_ahead_kb() {
+	if (( ${Uid} == 0 ))
+	then
+		if [[ -n $1 ]]
+		then
+			echo "${ReadAheadKb}: Info: Set read_ahead_kb. argv[1]=$1"
+			echo $1 > ${ReadAheadKb}
+		fi
+	else
+		echo "${ReadAheadKb}: Notice: Skip set read_ahead_kb, not root. argv[1]=$1"
+	fi
+}
+
 
 HungTo=/proc/sys/kernel/hung_task_timeout_secs
 
@@ -415,51 +438,79 @@ file_index=0
 
 for direct in N Y
 do
+
 	i=0
 	while (( ${i} < ${LOOP_MAX} ))
 	do
 		remove_test_file
 
+		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-00" ${i}`.txt
+		echo "TEST: index=${i}, SequentialWrite, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}" >> ${LogFile}
+
+		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+		-py -xb -rn -my \
+		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
+		-u ${SEQUENTIAL_BLOCKS} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+		)
+
+		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
+		( show_config ) >> ${LogFile}
+		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
+
+		file_index=$(( ${file_index} + 1 ))
+
 		RandomMaxBlocks=${RandomMaxBlocksL0}
 		level=0
 		while (( ${level} < ${RANDOM_MAX_BLOCKS_LEVEL} ))
 		do
+			level=$(( ${level} + 1 ))
+
 			LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-%02d" ${i} ${level}`.txt
 			echo "TEST: index=${i}, RandomMaxBlocks=${RandomMaxBlocks}, DoDirectRW=${direct}" >> ${LogFile}
 
-			level=$(( ${level} + 1 ))
-
-			if (( ${level} == 1 ))
-			then
-				FillAction="y"
-				ReadAction="n"
-			else
-				FillAction="n"
-				if (( ${level} < ${RANDOM_MAX_BLOCKS_LEVEL} ))
-				then
-					ReadAction="n"
-				else
-					ReadAction="y"
-				fi
-			fi
-			CommandBody="${MyBase}/${TestBin} -f ${FILE_SIZE} \
-			-p${FillAction} -xb -r${ReadAction} -my \
+			CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+			-pn -xb -rn -my \
 			-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n ${RANDOM_REPEATS} \
 			-u ${SEQUENTIAL_BLOCKS} \
-			-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile}"
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+			)
 
-			echo "COMMAND: ${CommandBody}" >> ${LogFile}
+			echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+			set_read_ahead_kb ${RANDOM_READ_AHEAD_KB}
 			( show_config ) >> ${LogFile}
-			( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody} 2>&1 ) | tee -a ${LogFile}
-
-			RandomMaxBlocks=$(( ${RandomMaxBlocks} / ${RANDOM_MAX_BLOCKS_MAG} ))
+			( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
 
 			file_index=$(( ${file_index} + 1 ))
-		done
 
-		remove_test_file
+			RandomMaxBlocks=$(( ${RandomMaxBlocks} / ${RANDOM_MAX_BLOCKS_MAG} ))
+		done
+		level=$(( ${level} + 1 ))
+
+		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-%02d" ${i} ${level}`.txt
+		echo "TEST: index=${i}, SequentialRead, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}," >> ${LogFile}
+
+		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+		-pn -xb -ry -my \
+		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
+		-u ${SEQUENTIAL_BLOCKS} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+		)
+
+		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
+		( show_config ) >> ${LogFile}
+		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
+
+		file_index=$(( ${file_index} + 1 ))
 
 		i=$(( ${i} + 1 ))
+
+		remove_test_file
 	done
 done
 

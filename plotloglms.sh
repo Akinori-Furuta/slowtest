@@ -103,39 +103,23 @@ do
 		Repeats=`grep 'Repeats(-n):' ${header} | cut -d ':' -f 2`
 		LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${header}`
 
-		if [[ -z  ${FileSize} ]]
+		if [[ -z "${FileSize}" || -z "${BlocksMin}" || -z "${BlocksMax}"  ]]
 		then
 			echo "${f}: Not access log, skip."
 			rm ${header}
 			break
-		fi
-
-		contain_plot_data=0
-		if [[ "${FillFile}x" == "yx" ]]
-		then
-			contain_plot_data=1
 		fi
 
 		if [[ -n ${Repeats} ]]
 		then
-			if (( ${Repeats} > 0 ))
+			if (( ${Repeats} <= 0 ))
 			then
-				contain_plot_data=1
+				echo "${f}: No random access log."
+				continue
 			fi
 		else
-			Repeats=0
-		fi
-
-		if [[ "${DoReadFile}x" != "nx" ]]
-		then
-			contain_plot_data=1
-		fi
-
-		if (( ${contain_plot_data} == 0 ))
-		then
 			echo "${f}: Not access log, skip."
-			rm ${header}
-			break
+			continue
 		fi
 
 		if (( ${BlocksMinMin} > ${BlocksMin} ))
@@ -326,7 +310,7 @@ EOF
 			> ${ra_w_tlength_at_png}
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
-		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mxied random write transfer speed - transfer length."
+		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mixed random write transfer speed - transfer length."
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
