@@ -38,16 +38,16 @@
 
 #include <stdint.h>
 #include <inttypes.h>
+#include <limits.h>
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-#include <time.h>
 
 #include "mt19937ar.h"
 
@@ -90,29 +90,31 @@ long	ScPageSize=4096;
 #define	DEF_DoMark		(DO_OPTION_YES)
 #define	DEF_TestToTestSleeps	(10)
 
-const char copyright_notice[]="ssdstress: SSD stress test tool. Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
+/*! Copyright notice. */
+const char copyright_notice[]=
+	"ssdstress: SSD stress test tool. "
+	"Copyright (C) 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
 
 /*! Command line argument holder. */
 typedef struct {
-	off64_t			FileSize;	/*!< -f n file size. */
-	off64_t			BlockSize;	/*!< -b n block size. */
-	off64_t			SequentialRWBlocks; /*!< -u n Sequential Read/Write blocks per one IO. */
-	off64_t			BlocksMin;	/*!< -i n Minimum blocks to read/write. */
-	off64_t			BlocksMax;	/*!< -a n Maximum blocks to read/write. */
-	off64_t			BlockStart;	/*!< -o n Origin block number to test. */
-	off64_t			BlockEnd;	/*!< -e n End block number to test.  */
-	long			Repeats;	/*!< -n n the number of repeat random access. */
-	long			Seed;		/*!< -s n random seed number. */
-	char			*Argv0;		/*!< This program name. */
-	char			*PathName;	/*!< Device or file path name to test. */
-	int			FillFile;	/*!< Sequential Fill work file. */
-	int			DoReadFile;	/*!< -r {s|y|n} Sequential Read work file. */
-	int			DoRandomAccess;	/*!< -x {b|r|w} Do Random access Both r/w, Read only, Write only. */
-	int			DoDirect;	/*!< -d {y|n} Do O_DIRECT io */
-	int			DoDirectRandomRW; /*!< -d {Y|N} Do O_DIRECT io at random read/write. */
-	int			DoMark;		  /*!< -m {y|n} Do Block Marking. */
-	/* Internal state members. */
-	unsigned int		TestToTestSleeps;	/*!< Sleep seconds between test to test. */
+	off64_t		FileSize;	/*!< -f n file size. */
+	off64_t		BlockSize;	/*!< -b n block size. */
+	off64_t		SequentialRWBlocks; /*!< -u n Sequential Read/Write blocks per one IO. */
+	off64_t		BlocksMin;	/*!< -i n Minimum blocks to read/write. */
+	off64_t		BlocksMax;	/*!< -a n Maximum blocks to read/write. */
+	off64_t		BlockStart;	/*!< -o n Origin block number to test. */
+	off64_t		BlockEnd;	/*!< -e n End block number to test.  */
+	long		Repeats;	/*!< -n n the number of repeat random access. */
+	long		Seed;		/*!< -s n random seed number. */
+	char		*Argv0;		/*!< This program name. */
+	char		*PathName;	/*!< Device or file path name to test. */
+	int		FillFile;	/*!< Sequential Fill work file. */
+	int		DoReadFile;	/*!< -r {s|y|n} Sequential Read work file. */
+	int		DoRandomAccess;	/*!< -x {b|r|w} Do Random access Both r/w, Read only, Write only. */
+	int		DoDirect;	/*!< -d {y|n} Do O_DIRECT io */
+	int		DoDirectRandomRW; /*!< -d {Y|N} Do O_DIRECT io at random read/write. */
+	int		DoMark;		  /*!< -m {y|n} Do Block Marking. */
+	unsigned int	TestToTestSleeps; /*!< -t n Sleep seconds between test to test. */
 } TCommandLineOption;
 
 
@@ -134,11 +136,12 @@ TCommandLineOption	CommandLine={
 	.DoDirect=DEF_DoDirect,
 	.DoDirectRandomRW=DEF_DoDirectRandomRW,
 	.DoMark=DEF_DoMark,
-	/* Internal state members. */
 	.TestToTestSleeps=DEF_TestToTestSleeps
 };
 
-/*! Accumulated number from read memory. */
+/*! Accumulated number from read memory. 
+    @note To avoid deep optimization.
+*/
 uint64_t	ReadMemorySum=0;
 
 /*! Get CLOCK_REALTIME.
@@ -286,7 +289,7 @@ unsigned long long StrToULLKmg(char *p, char **p2, int radix)
 	switch (*p) {
 		case 'k': 
 		case 'K': {
-			/* kilo */
+			/* Kilo */
 			p++;
 			a*=1024ULL;
 			break;
@@ -313,6 +316,14 @@ unsigned long long StrToULLKmg(char *p, char **p2, int radix)
 			/* Tera */
 			p++;
 			a*=1024ULL*1024ULL*1024ULL*1024ULL;
+			break;
+		}
+
+		case 'p': 
+		case 'P': {
+			/* Peta */
+			p++;
+			a*=1024ULL*1024ULL*1024ULL*1024ULL*1024ULL;
 			break;
 		}
 	}
@@ -498,7 +509,7 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 	result=1;
 	opt->Argv0=*argv0;
 
-	while ((c=getopt(argc,argv0,"b:u:f:p:r:x:d:m:i:a:o:e:n:s:h"))!=-1) {
+	while ((c=getopt(argc,argv0,"b:u:f:p:r:x:d:m:i:a:o:e:n:s:z:h"))!=-1) {
 		switch (c) {
 			case 'b': { /* -b block_size */
 				const char error_message[]="-b: Error: Need block size by number[k|m|g|t|]\n";
@@ -744,7 +755,7 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 				break;
 			}
 			case 'n': { /* -n repeat counts. */
-				const char error_message[]="-n: Error: Need repeat counts by number\n";
+				const char error_message[]="-n: Error: Need repeat counts by number.\n";
 				p=optarg;
 				if (p) {
 					opt->Repeats=StrToULLKmg(p,&p2,0);
@@ -759,6 +770,22 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 				p=optarg;
 				if (p) {
 					opt->Seed=StrToULLKmg(p,&p2,0);
+				} else {
+					printf(error_message);
+					result=0;
+				}
+				break;
+			}
+			case 'z': { /* -z sleep time after test. */
+				const char error_message[]="-z: Error: Need sleep time in seconds by number.\n";
+				p=optarg;
+				if (p) {
+					unsigned long long t;
+					t=StrToULLKmg(p,&p2,0);
+					if (t>UINT_MAX) {
+						t=UINT_MAX;
+					}
+					opt->TestToTestSleeps=(unsigned int)t;
 				} else {
 					printf(error_message);
 					result=0;
@@ -828,8 +855,8 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 	return(result /* true */);
 }
 
-char	*do_only_options[]={"b","r","w"};
-char	*do_read_file_options[]={"n","y","s"};
+const char	*do_only_options[]={"b","r","w"};
+const char	*do_read_file_options[]={"n","y","s"};
 
 /*! Show command line arguments.
     @param p points TCommandLineOption structure to show.
@@ -855,6 +882,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 "BlockEnd(-e): %" PRId64 "\n"
 		 "Repeats(-n): %ld\n"
 		 "Seed(-s): %ld\n"
+		 "WaitTime(-z): %u\n"
 		 ,opt->PathName
 		 ,(int64_t)(opt->FileSize)
 		 ,(opt->FillFile ? 'y' : 'n')
@@ -871,6 +899,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,(int64_t)(opt->BlockEnd)
 		 ,opt->Repeats
 		 ,opt->Seed
+		 ,opt->TestToTestSleeps
 		);
 }
 
@@ -1711,14 +1740,14 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 		/* Can't stat. */
 		printf("%s: Error: fstat64() failed. %s(%d)\n",opt->PathName,strerror(errno), errno);
 		result=0 /* false */;
-		goto EXIT_CLOSE;
+		goto EXIT_CLOSE_ERROR;
 	}
 
 	seek_size=GetFileSizeFd(fd);
 	if (seek_size<0) {
 		printf("%s(): Error: lseek64() to get file size failed. %s(%d)\n",__func__,strerror(errno), errno);
 		result=0 /* false */;
-		goto EXIT_CLOSE;
+		goto EXIT_CLOSE_ERROR;
 	}
 	if (opt->BlockStart<0) {
 		/* Command line option -o Start block missing. */
@@ -1733,7 +1762,7 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 		if (seek_size<=0) {
 			printf("%s: Error: Use option -f to set file size.\n",opt->PathName);
 			result=0 /* false */;
-			goto EXIT_CLOSE;
+			goto EXIT_CLOSE_ERROR;
 		}
 		blocks_file=opt->FileSize/opt->BlockSize;
 		if (opt->BlockEnd>=blocks_file) {
@@ -1750,13 +1779,13 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
-				goto EXIT_CLOSE;
+				goto EXIT_CLOSE_ERROR;
 			}
 		} else {/* Truncate file. */
 			if (ftruncate64(fd,opt->FileSize)!=0) {
 				printf("%s: Error: ftruncate64() failed. %s\n",opt->PathName,strerror(errno));
 				result=0 /* false */;
-				goto EXIT_CLOSE;
+				goto EXIT_CLOSE_ERROR;
 			}
 		}
 	} else {/* open exist file. */
@@ -1770,7 +1799,7 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 						/* fail to truncate. */
 						printf("%s: Error: ftruncate64() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 						result=0 /* false */;
-						goto EXIT_CLOSE;
+						goto EXIT_CLOSE_ERROR;
 					}
 				} else {
 					/* Maybe block device. */
@@ -1793,7 +1822,7 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 			if (!FillWriteFile(fd,img,img_size,opt)) {
 				/* Fail to create. */
 				result=0 /* false */;
-				goto EXIT_CLOSE;
+				goto EXIT_CLOSE_ERROR;
 			}
 		}
 	}
@@ -1807,8 +1836,12 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)(time(0)));
 	printf("%s: Info: Sync.\n", opt->Argv0);
 	sync();
-	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
-	sleep(opt->TestToTestSleeps);
+
+	if (opt->FillFile!=0) {
+		/* Need sleep to stabilize drive. */
+		printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+		sleep(opt->TestToTestSleeps);
+	}
 
 	/* random read/write part. */
 	fd_flags_add_random=0;
@@ -1832,7 +1865,7 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 		/* Random read/write failed. */
 		printf("%s: Error: random read/write failed. %s\n",opt->PathName,strerror(errno));
 		result=0;
-		goto EXIT_CLOSE;
+		goto EXIT_CLOSE_ERROR;
 	}
 
 	if (fsync(fd)!=0) {
@@ -1845,8 +1878,12 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
 	printf("%s: Info: Sync.\n", opt->Argv0);
 	sync();
-	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
-	sleep(opt->TestToTestSleeps);
+
+	if (opt->Repeats>0) {
+		/* Need sleep to stabilize drive. */
+		printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+		sleep(opt->TestToTestSleeps);
+	}
 
 	/* Sequential read() part. */
 	flags=fd_flags_base | fd_flags_add_seq;
@@ -1862,15 +1899,31 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)time(0));
 
-	if (opt->DoReadFile!=0) 
-		{/* Do sequential read. */
+	if (opt->DoReadFile!=0) {
+		/* Do sequential read. */
 		if (!ReadFile(fd,img,img_size,opt)) {
 			printf("%s: Error: Sequential read failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
 			result=0;
 		}
 	}
+	if (fsync(fd)!=0) {
+		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
+	}
+	if (close(fd)!=0) {
+		printf("%s: Error: close() failed. %s(%d)\n",opt->PathName,strerror(errno),errno);
+		result=0;
+	}
+	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
+	printf("%s: Info: Sync.\n", opt->Argv0);
+	sync();
+	if (opt->DoReadFile!=0) {
+		/* Need sleep to stabilize drive. */
+		printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
+		sleep(opt->TestToTestSleeps);
+	}
+	return(result);
 
-EXIT_CLOSE:;
+EXIT_CLOSE_ERROR:;
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
@@ -1980,6 +2033,7 @@ void ShowHelp(void)
 	"-e n End block number to read/write(%d).\n"
 	"-n n number of random read/write access(%d).\n"
 	"-s n random seed number(%d). \n"
+	"-z n Sleep time in seconds after test(%u).\n"
 	"path_name: File path name to test.\n"
 	"Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3, t: x1024^4\n"
 	,(DEF_FillFile ? 'y' : 'n')
@@ -2000,6 +2054,7 @@ void ShowHelp(void)
 	,DEF_Repeats
 
 	,DEF_Seed
+	,DEF_TestToTestSleeps
 	);
 	printf(
 	"Output format: sequential write.\n"
