@@ -14,14 +14,14 @@ then
 	export GDFONTPATH=/usr/share/fonts/dejavu:/usr/share/fonts/truetype/ttf-dejavu
 fi
 
-if [[ -z ${TRANSFER_SPEED_MIN} ]]
+if [[ -z ${RANDOM_TRANSFER_SPEED_MIN} ]]
 then
-	TRANSFER_SPEED_MIN="1.0e+5"
+	RANDOM_TRANSFER_SPEED_MIN="1.0e+5"
 fi
 
-if [[ -z ${TRANSFER_SPEED_MAX} ]]
+if [[ -z ${RANDOM_TRANSFER_SPEED_MAX} ]]
 then
-	TRANSFER_SPEED_MAX="1.0e+10"
+	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
 fi
 
 # Parse Argument
@@ -239,7 +239,7 @@ plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#00c000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
 			load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
@@ -266,7 +266,7 @@ plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#00c000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
@@ -290,7 +290,7 @@ plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#ff0000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
@@ -317,7 +317,7 @@ plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#ff0000"
-set yrange [ ${TRANSFER_SPEED_MIN} : ${TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
