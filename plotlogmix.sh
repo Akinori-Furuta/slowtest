@@ -31,7 +31,7 @@ function Help() {
 	exit 1
 }
 
-parsed_arg=( `getopt L:h $*` )
+parsed_arg=( `getopt h $*` )
 if (( $? != 0 ))
 then
 	Help
