@@ -86,7 +86,12 @@ then
 	SEQUENTIAL_BLOCKS=$(( ${RandomMaxBlocksL0} * 2 ))
 fi
 
-
+if ( awk "BEGIN { if ( ( 1.0 * ${SEQUENTIAL_BLOCKS} * ${BLOCK_SIZE} ) >= ( 65536.0 * 65536.0 ) ) {exit 0;} else {exit 1;}}" )
+then
+	echo "$0: Notice: It may caught General Protection Fault when SEQUENTIAL_BLOCKS * BLOCK_SIZE is bigger than 4Gi. SEQUENTIAL_BLOCKS=${SEQUENTIAL_BLOCKS}, BLOCK_SIZE=${BLOCK_SIZE}"
+	SEQUENTIAL_BLOCKS=`awk "BEGIN { print ( 256.0 * 1024 * 1024 ) / ${BLOCK_SIZE} }"`
+	echo "$0: Notice: Truncate SEQUENTIAL_BLOCKS * BLOCK_SIZE under 256Mi. SEQUENTIAL_BLOCKS=${SEQUENTIAL_BLOCKS}, BLOCK_SIZE=${BLOCK_SIZE}"
+fi
 
 # Get uid.
 # Strongly recommended root.
