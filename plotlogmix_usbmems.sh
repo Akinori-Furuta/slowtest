@@ -1,6 +1,6 @@
 #!/bin/bash
-# Will be sourced by bash.
-# for USB / Card memory plot settings.
+# plot for USB / Card memories.
+# this script wraps plotlogmix.sh
 
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
