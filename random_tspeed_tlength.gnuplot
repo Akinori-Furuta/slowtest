@@ -142,7 +142,7 @@ set xlabel "transfer length (bytes)"
 set xlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
-set xrange [ 1.0e+2 : 1.0e+9 ] noreverse nowriteback
+set xrange [ 1.0e+2 : 1.0e+10 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
 set ylabel "transfer speed (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
