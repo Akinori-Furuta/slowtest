@@ -44,7 +44,7 @@
 */
 
 /* Change log.
-   2012.10.14 introduce int types.
+   2012.10.14 introduce bit size specified int types.
               Akinori Furuta <afuruta@m7.dion.ne.jp>
    2012.10.14 introduce doxygen style comment. 
               Akinori Furuta <afuruta@m7.dion.ne.jp>
