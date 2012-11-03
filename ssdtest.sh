@@ -124,6 +124,9 @@ trap signaled HUP INT
 
 function Help() {
 	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
+	echo "-L OptionalLabel Jam string into log directory path"
+	echo "-h Show this help"
+	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
 	exit 1
 }
 
