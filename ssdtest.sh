@@ -74,6 +74,12 @@ then
 	SEED=1000
 fi
 
+if [[ -z ${SEED_SPAN_DIRECT} ]]
+then
+	# random seed span O_DIRECT loop.
+	SEED_SPAN_DIRECT=0
+fi
+
 if [[ -z ${BLOCK_SIZE} ]]
 then
 	BLOCK_SIZE=512
@@ -470,15 +476,16 @@ then
 	mkdir -p "${LOG_DIR}"
 fi
 
+yn_index=0
 file_index=0
 
 for direct in N Y
 do
-
 	i=0
 	while (( ${i} < ${LOOP_MAX} ))
 	do
 		remove_test_file
+		context_seed=$(( ${i} + ${yn_index} * ${SEED_SPAN_DIRECT} + ${SEED} ))
 
 		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-00" ${i}`.txt
 		echo "TEST: index=${i}, SequentialWrite, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}" >> ${LogFile}
@@ -487,7 +494,7 @@ do
 		-py -xb -rn -my \
 		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
 		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
@@ -511,7 +518,7 @@ do
 			-pn -xb -rn -my \
 			-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n ${RANDOM_REPEATS} \
 			-u ${SEQUENTIAL_BLOCKS} \
-			-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
 			)
 
 			echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
@@ -533,7 +540,7 @@ do
 		-pn -xb -ry -my \
 		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
 		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s $(( ${i} * 3 + 0 + ${SEED} )) ${TestFile} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
@@ -548,6 +555,7 @@ do
 
 		remove_test_file
 	done
+	yn_index=$(( ${yn_index} + 1 ))
 done
 
 recover_queue_config
