@@ -424,7 +424,7 @@ then
 		| sed -n 's/.*Model=\(.*\),*/\1/p' \
 		| cut -f 1 -d ',' \
 		| tr -d '\012' \
-		| tr '[[:space:]]' '_' \
+		| tr '[[:space:]-]' '_' \
 		`
 	if [[ -n ${ModelName} ]]
 	then
