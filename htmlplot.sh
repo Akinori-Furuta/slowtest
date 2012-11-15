@@ -78,6 +78,11 @@ else
 	LogDirectory="."
 fi
 
+if [[ -z "${IMAGE_RESIZE}" ]]
+then
+	IMAGE_RESIZE="width=640 height=480"
+fi
+
 cd "${LogDirectory}"
 
 # @note It slightly buggy, I don't care at acrossing 2099 to 2100.
@@ -167,20 +172,26 @@ do
 			case ${ODirect} in
 				(N)
 					echo "<HR>"
-					echo "<H2>TestPart: Sequential write - Random access without O_DIRECT - Sequential read #${SequenceNumber}</H2>"
+					echo "<H2>TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write without O_DIRECT - Sequential read</H2>"
 				;;
 				(Y)
 					echo "<HR>"
-					echo "<H2>TestPart: Sequential write - Random access with O_DIRECT - Sequential read #${SequenceNumber}</H2>"
+					echo "<H2>TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write with O_DIRECT - Sequential</H2>"
 				;;
 			esac
+			echo "<H3>Sequential write</H3>"
 			echo "<P>Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
-			echo "<IMG src=\"${p}\" width=800 height=600><BR>"
+			echo -n "<A href=\"${p}\">"
+			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
+			echo -n "</A><BR>"
 			echo "</P>"
 		;;
 		(sr) # Sequential read.
+			echo "<H3>Sequential read</H3>"
 			echo "<P>Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
-			echo "<IMG src=\"${p}\" width=800 height=600><BR>"
+			echo -n "<A href==\"${p}\">"
+			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
+			echo -n "</A><BR>"
 			echo "</P>"
 		;;
 	esac
@@ -199,30 +210,43 @@ do
 	then
 		if [[ "${random_plot}" == "y" ]]
 		then
-			echo "<TABLE>"
+			echo "<H3>Random read/write</H3>"
+			echo "<TABLE border=1>"
 			echo "<TR>"
 			echo "<TD><P>Random access, read transfer speed - access time<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "<TD><P>Random access, write transfer speed - access time<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "</TR>"
 			echo "<TR>"
 			echo "<TD><P>Random access, read transfer speed - transfer length<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "<TD><P>Random access, write transfer speed - transfer length<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "</TR>"
 			echo "<TR>"
 			echo "<TD><P>Random access, read transfer length - access time<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "<TD><P>Random access, write transfer length - access time<BR>"
-			echo "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" width=800 height=600></P></TD>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" ${IMAGE_RESIZE}>"
+			echo -n "</A></P></TD>"
 			echo "</TR>"
 			echo "</TABLE>"
 			PlotRandomAccess="y"
 		fi
 	fi
-
+	ODirectPrev="${ODirect}"
 done
 echo "</BODY>"
 echo "</HTML>"
