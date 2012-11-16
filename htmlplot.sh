@@ -122,7 +122,6 @@ else
 	FileSizeShow="${FileSizeGi}Gi"
 fi
 
-
 if [[ -n ${LBASectors} ]]
 then
 	CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
@@ -146,6 +145,16 @@ echo "</HEAD>"
 echo "<BODY>"
 echo "<H1>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</H1>"
 
+TotalWrittenBytes=0
+for f in ${LogFiles[*]}
+do
+	if [[ ${f} == *-mw-bytes.txt ]]
+	then
+		TotalWrittenBytes=$(( ${TotalWrittenBytes} + `cat ${f}` ))
+		echo "<!-- ${f} RandomWrites=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
+	fi
+done
+
 
 ODirectPrev='X'
 SequenceNumber=0
@@ -167,6 +176,8 @@ do
 	random_plot="n"
 	case "${Access}" in
 		(sw) # Sequential write.
+			TotalWrittenBytes=$(( ${TotalWrittenBytes} + ${FileSize} ))
+			echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} ${TotalWrittenBytes} -->"
 			SequenceNumber=$(( ${SequenceNumber} + 1 ))
 			PlotRandomAccess="n"
 			case ${ODirect} in
@@ -189,7 +200,7 @@ do
 		(sr) # Sequential read.
 			echo "<H3>Sequential read</H3>"
 			echo "<P>Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
-			echo -n "<A href==\"${p}\">"
+			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
 			echo "</P>"
@@ -248,6 +259,27 @@ do
 	fi
 	ODirectPrev="${ODirect}"
 done
+echo "<HR>"
+
+TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
+TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
+
+
+if (( ${TotalWrittenBytes} < 17179869184 ))
+then
+	TotalWrittenBytesShow="${TotalWrittenBytesMi}Mi"
+else
+	if (( ${TotalWrittenBytes} < 17592186044416 ))
+	then
+		TotalWrittenBytesShow="${TotalWrittenBytesGi}Gi"
+	else
+		TotalWrittenBytesShow="${TotalWrittenBytesTi}Ti"
+	fi
+fi
+
+
+echo "<P>Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes</P>"
 echo "</BODY>"
 echo "</HTML>"
 

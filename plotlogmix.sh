@@ -93,7 +93,10 @@ fi
 
 cd "${LogDirectory}"
 
-FileGroups=(`ls *.txt | gawk 'BEGIN{FS="-"} {printf("%s-%s\n", $2, $3);}' | uniq`)
+ReadBytes=0
+WriteBytes=0
+
+FileGroups=(`ls *.txt | grep -v 'bytes.txt$' | awk 'BEGIN{FS="-"} {printf("%s-%s\n", $2, $3);}' | uniq`)
 
 for g in ${FileGroups[*]}
 do
@@ -111,7 +114,7 @@ do
 
 	echo -n > ${part_rand_file}
 
-	for f in *-${g}-*.txt
+	for f in `ls *-${g}-*.txt | grep -v 'bytes.txt$'`
 	do
 		header=${TempPath}/${uuid}-`basename ${f%.*}-hd.txt`
 		sed -n '1,/Seed(-s):/ {p}' ${f} > ${header}
@@ -182,8 +185,8 @@ do
 			fi
 		fi
 
-		FileSizeMi=`gawk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-		FileSizeGi=`gawk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+		FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
+		FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
 
 		if (( ${FileSizeMi} < 20480 ))
 		then
@@ -193,18 +196,18 @@ do
 		fi
 
 		RWBytes=$(( ${BlockSize} * ${SequentialRWBlocks} ))
-		RWBytesKi=`gawk "BEGIN { print  ${RWBytes} / 1024 }"`
-		RWBytesMi=`gawk "BEGIN { print  ${RWBytesKi} / 1024 }"`
+		RWBytesKi=`awk "BEGIN { print  ${RWBytes} / 1024 }"`
+		RWBytesMi=`awk "BEGIN { print  ${RWBytesKi} / 1024 }"`
 
 		RandomRWMinBytes=$(( ${BlockSize} * ${BlocksMinMin} ))
 		RandomRWMaxBytes=$(( ${BlockSize} * ${BlocksMaxMax} ))
 
-		RandomRWMinBytesKi=`gawk "BEGIN { print  ${RandomRWMinBytes} / 1024 }"`
-		RandomRWMaxBytesKi=`gawk "BEGIN { print  ${RandomRWMaxBytes} / 1024 }"`
+		RandomRWMinBytesKi=`awk "BEGIN { print  ${RandomRWMinBytes} / 1024 }"`
+		RandomRWMaxBytesKi=`awk "BEGIN { print  ${RandomRWMaxBytes} / 1024 }"`
 
 		if [[ -n ${LBASectors} ]]
 		then
-			CapacityGB=`gawk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
+			CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
 			CapacityGBTitle="${CapacityGB}G bytes(test file size ${FileSizeShow})"
 		else
 			CapacityGB=0
@@ -303,6 +306,9 @@ EOF
 		echo "${g}: No read record in random access records."
 	fi
 
+	ra_r_total_bytes_txt=${f%.*}-mr-bytes.txt
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_txt}
+
 	rm "${part_read_file}"
 
 	part_write_size=`stat --format=%s ${part_write_file}`
@@ -353,6 +359,9 @@ EOF
 	else
 		echo "${g}: No write record in random access records."
 	fi
+
+	ra_w_total_bytes_txt=${f%.*}-mw-bytes.txt
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_txt}
 
 	rm "${part_write_file}"
 done
