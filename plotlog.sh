@@ -131,8 +131,8 @@ do
 		continue
 	fi
 
-	FileSizeMi=`gawk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-	FileSizeGi=`gawk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+	FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
+	FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
 
 	if (( ${FileSizeMi} < 20480 ))
 	then
@@ -142,18 +142,18 @@ do
 	fi
 
 	RWBytes=$(( ${BlockSize} * ${SequentialRWBlocks} ))
-	RWBytesKi=`gawk "BEGIN { print  ${RWBytes} / 1024 }"`
-	RWBytesMi=`gawk "BEGIN { print  ${RWBytesKi} / 1024 }"`
+	RWBytesKi=`awk "BEGIN { print  ${RWBytes} / 1024 }"`
+	RWBytesMi=`awk "BEGIN { print  ${RWBytesKi} / 1024 }"`
 
 	RandomRWMinBytes=$(( ${BlockSize} * ${BlocksMin} ))
 	RandomRWMaxBytes=$(( ${BlockSize} * ${BlocksMax} ))
 
-	RandomRWMinBytesKi=`gawk "BEGIN { print  ${RandomRWMinBytes} / 1024 }"`
-	RandomRWMaxBytesKi=`gawk "BEGIN { print  ${RandomRWMaxBytes} / 1024 }"`
+	RandomRWMinBytesKi=`awk "BEGIN { print  ${RandomRWMinBytes} / 1024 }"`
+	RandomRWMaxBytesKi=`awk "BEGIN { print  ${RandomRWMaxBytes} / 1024 }"`
 
 	if [[ -n ${LBASectors} ]]
 	then
-		CapacityGB=`gawk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
+		CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
 	else
 		CapacityGB="Unknown"
 	fi

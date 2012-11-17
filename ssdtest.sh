@@ -300,11 +300,11 @@ echo "${TestFile}: Info: Canonical path. TestFileCanon=${TestFileCanon}"
 # resolv volume name (mounted block device or partiton).
 # Note: This program can resolv volume not using volume group.
 
-for mount_point in `gawk '{print $2}' /proc/mounts | sort -r`
+for mount_point in `awk '{print $2}' /proc/mounts | sort -r`
 do
 	if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
 	then
-		Volume=`grep "${mount_point}" /proc/mounts | gawk '{print $1}'`
+		Volume=`grep "${mount_point}" /proc/mounts | awk '{print $1}'`
 		break
 	fi
 done
@@ -381,7 +381,7 @@ fi
 VolumeFreeSpace=-1
 if [[ -n ${Volume} ]]
 then
-	VolumeFreeSpace=`df -k | grep  "^${Volume}" | gawk '{print $4}'`
+	VolumeFreeSpace=`df -k | grep  "^${Volume}" | awk '{print $4}'`
 fi
 
 if [[ -z ${FILE_SIZE} ]]
@@ -393,13 +393,13 @@ then
 		exit 2
 	fi
 
-	VolumeFreeSpaceMiB=`gawk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
+	VolumeFreeSpaceMiB=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
 	if (( ${VolumeFreeSpaceMiB} <= 20480 ))
 	then
-		FILE_SIZE=`gawk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
+		FILE_SIZE=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
 		FILE_SIZE_UNIT=m
 	else
-		FILE_SIZE=`gawk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 * 1024.0 ) ) }"`
+		FILE_SIZE=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 * 1024.0 ) ) }"`
 		FILE_SIZE_UNIT=g
 	fi
 	if (( ${FILE_SIZE} < 1 ))
