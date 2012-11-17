@@ -143,7 +143,7 @@ echo "<HEAD>"
 echo "<TITLE>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</TITLE>"
 echo "</HEAD>"
 echo "<BODY>"
-echo "<H1>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</H1>"
+echo "<H1 id=\"TestRecord\">Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</H1>"
 
 TotalReadBytes=0
 TotalWrittenBytes=0
@@ -188,16 +188,16 @@ do
 			case ${ODirect} in
 				(N)
 					echo "<HR>"
-					echo "<H2>TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write without O_DIRECT - Sequential read</H2>"
+					echo "<H2 id=\"TestFlowWithoutODIRECT_${ODirect}_${SequenceNumber}\">TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write without O_DIRECT - Sequential read</H2>"
 				;;
 				(Y)
 					echo "<HR>"
-					echo "<H2>TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write with O_DIRECT - Sequential</H2>"
+					echo "<H2 id=\"TestFlowWithODIRECT_${ODirect}_${SequenceNumber}\">TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write with O_DIRECT - Sequential</H2>"
 				;;
 			esac
-			echo "<H3>Sequential write</H3>"
+			echo "<H3 id=\"SequentialWrite_${ODirect}_${SequenceNumber}\">Sequential write</H3>"
 			echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} TotalWrittenBytes=${TotalWrittenBytes} -->"
-			echo "<P>Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
+			echo "<P id=\"SequentialWritePlot_${ODirect}_${SequenceNumber}\">Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
@@ -205,9 +205,9 @@ do
 		;;
 		(sr) # Sequential read.
 			TotalReadBytes=$(( ${TotalReadBytes} + ${FileSize} ))
-			echo "<H3>Sequential read</H3>"
+			echo "<H3 id=\"SequentialRead_${ODirect}_${SequenceNumber}\">Sequential read</H3>"
 			echo "<!-- ${p%-sr.png}.txt SequentialReads=${FileSize} TotalReadBytes=${TotalReadBytes} -->"
-			echo "<P>Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
+			echo "<P id=\"SequentialReadPlot_${ODirect}_${SequenceNumber}\">Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
@@ -229,34 +229,40 @@ do
 	then
 		if [[ "${random_plot}" == "y" ]]
 		then
-			echo "<H3>Random read/write</H3>"
-			echo "<TABLE border=1>"
+			echo "<H3 id=\"RandomReadWrite_${ODirect}_${SequenceNumber}\">Random read/write</H3>"
+			echo "<TABLE id=\"PlotTable_${ODirect}_${SequenceNumber}\" border=1>"
 			echo "<TR>"
-			echo "<TD><P>Random access, read transfer speed - access time<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tsat\">"
+			echo "Random access, read transfer speed - access time<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
-			echo "<TD><P>Random access, write transfer speed - access time<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tsat\">"
+			echo "Random access, write transfer speed - access time<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
 			echo "</TR>"
 			echo "<TR>"
-			echo "<TD><P>Random access, read transfer speed - transfer length<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tstl\">"
+			echo "Random access, read transfer speed - transfer length<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
-			echo "<TD><P>Random access, write transfer speed - transfer length<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tstl\">"
+			echo "Random access, write transfer speed - transfer length<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
 			echo "</TR>"
 			echo "<TR>"
-			echo "<TD><P>Random access, read transfer length - access time<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tlat\">"
+			echo "Random access, read transfer length - access time<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
-			echo "<TD><P>Random access, write transfer length - access time<BR>"
+			echo "<TD><P id=\"RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tlat\">"
+			echo "Random access, write transfer length - access time<BR>"
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo -n "</A></P></TD>"
@@ -268,8 +274,8 @@ do
 	ODirectPrev="${ODirect}"
 done
 echo "<HR>"
-echo "<H2>Summary</H2>"
-echo "<P>"
+echo "<H2 id=\"Summary\">Summary</H2>"
+echo "<P id=\"SummaryStatistics\">"
 if (( ${TotalWrittenBytes} < 17179869184 ))
 then
 	# Under 16GiBytes, show in Mi bytes.
