@@ -53,17 +53,20 @@ fi
 # Parse Argument
 
 function Help() {
-	echo "$0 test_log_directory"
+	echo "$0 [-D] [-h] test_log_directory"
+	echo "-D   : Debug mode."
+	echo "-h   : Print this help."
 	exit 1
 }
 
-parsed_arg=( `getopt h $*` )
+parsed_arg=( `getopt Dh $*` )
 if (( $? != 0 ))
 then
 	Help
 fi
 
 OptionalLabel=""
+Debug=0
 
 parsed_arg_n=${#parsed_arg[*]}
 
@@ -75,6 +78,9 @@ do
 		(-h)
 			Help
 			exit 1
+		;;
+		(-D)
+			Debug=1
 		;;
 		(--)
 			i=$(( ${i} + 1 ))
@@ -107,10 +113,19 @@ do
 	DoDirectPrev=""
 	DoDirectRandomPrev=""
 
-	GnuplotVarFile=${TempPath}/${uuid}-`basename ${g%.*}-gp.txt`
-	part_rand_file=${TempPath}/${uuid}-`basename ${g%.*}-prand.txt`
-	part_read_file=${TempPath}/${uuid}-`basename ${g%.*}-pread.txt`
-	part_write_file=${TempPath}/${uuid}-`basename ${g%.*}-pwrite.txt`
+	if (( ${Debug} == 0 ))
+	then
+		GnuplotVarFile=${TempPath}/${uuid}-`basename ${g%.*}-gp.txt`
+		part_rand_file=${TempPath}/${uuid}-`basename ${g%.*}-prand.txt`
+		part_read_file=${TempPath}/${uuid}-`basename ${g%.*}-pread.txt`
+		part_write_file=${TempPath}/${uuid}-`basename ${g%.*}-pwrite.txt`
+	else
+		# note: GnuplotVarFile will be overridden.
+		GnuplotVarFile=${LogDirectory}/`basename ${g%.*}-gp.tmp`
+		part_rand_file=${LogDirectory}/`basename ${g%.*}-prand.tmp`
+		part_read_file=${LogDirectory}/`basename ${g%.*}-pread.tmp`
+		part_write_file=${LogDirectory}/`basename ${g%.*}-pwrite.tmp`
+	fi
 
 	echo -n > ${part_rand_file}
 
@@ -240,7 +255,6 @@ do
 
 		rm ${header}
 
-
 		if (( ${Repeats} <= 0 ))
 		then
 			echo "${f}: No random access part."
@@ -255,13 +269,20 @@ do
 	grep 'r' "${part_rand_file}"  > ${part_read_file}
 	grep 'w' "${part_rand_file}"  > ${part_write_file}
 
-	rm ${part_rand_file}
+	if (( ${Debug} == 0 ))
+	then
+		rm ${part_rand_file}
+	fi
 
 	part_read_size=`stat --format=%s ${part_read_file}`
 	if (( ${part_read_size} > 0 ))
 	then
 		ra_r_tspeed_at_png=${f%.*}-mr-ts_at.png
 		echo "${f}: ${ra_r_tspeed_at_png}: Plot mixed random read transfer speed - access time."
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mr-ts_at-gp.tmp
+		fi
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
@@ -276,6 +297,10 @@ EOF
 
 		ra_r_tlength_at_png=${f%.*}-mr-tl_at.png
 		echo "${f}: ${ra_r_tlength_at_png}: Plot mixed random read transfer length - access time."
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mr-tl_at-gp.tmp
+		fi
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
@@ -289,7 +314,11 @@ EOF
 
 		ra_r_tspeed_tlength_png=${f%.*}-mr-ts_tl.png
 		echo "${f}: ${ra_r_tspeed_tlength_png}: Plot mixed random read transfer speed - transfer length."
-			cat << EOF > ${GnuplotVarFile}
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mr-ts_tl-gp.tmp
+		fi
+		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -301,21 +330,31 @@ EOF
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
 			> ${ra_r_tspeed_tlength_png}
 
-		rm ${GnuplotVarFile}
+		if (( ${Debug} == 0 ))
+		then
+			rm ${GnuplotVarFile}
+		fi
 	else
 		echo "${g}: No read record in random access records."
 	fi
 
-	ra_r_total_bytes_txt=${f%.*}-mr-bytes.txt
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_txt}
+	ra_r_total_bytes_tmp=${f%.*}-mr-bytes.tmp
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}
 
-	rm "${part_read_file}"
+	if (( ${Debug} == 0 ))
+	then
+		rm "${part_read_file}"
+	fi
 
 	part_write_size=`stat --format=%s ${part_write_file}`
 	if (( ${part_write_size} > 0 ))
 	then
 		ra_w_tspeed_at_png=${f%.*}-mw-ts_at.png
 		echo "${f}: ${ra_w_tspeed_at_png}: Plot mixed random write transfer speed - access time."
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mw-ts_at-gp.tmp
+		fi
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
@@ -330,6 +369,10 @@ EOF
 
 		ra_w_tlength_at_png=${f%.*}-mw-tl_at.png
 		echo "${f}: ${ra_w_tlength_at_png}: Plot mixed random write transfer length - access time."
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mw-tl_at-gp.tmp
+		fi
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
@@ -343,6 +386,10 @@ EOF
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
 		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mixed random write transfer speed - transfer length."
+		if (( ${Debug} != 0 ))
+		then
+			GnuplotVarFile=${f%.*}-mw-ts_tl-gp.tmp
+		fi
 		cat << EOF > ${GnuplotVarFile}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
@@ -355,13 +402,19 @@ EOF
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
 			> ${ra_w_tspeed_tlength_png}
 
-		rm "${GnuplotVarFile}"
+		if (( ${Debug} == 0 ))
+		then
+			rm "${GnuplotVarFile}"
+		fi
 	else
 		echo "${g}: No write record in random access records."
 	fi
 
-	ra_w_total_bytes_txt=${f%.*}-mw-bytes.txt
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_txt}
+	ra_w_total_bytes_tmp=${f%.*}-mw-bytes.tmp
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}
 
-	rm "${part_write_file}"
+	if (( ${Debug} == 0 ))
+	then
+		rm "${part_write_file}"
+	fi
 done

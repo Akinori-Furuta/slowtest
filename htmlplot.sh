@@ -125,10 +125,10 @@ fi
 if [[ -n ${LBASectors} ]]
 then
 	CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
-	CapacityGBTitle="${CapacityGB}G bytes(test file size ${FileSizeShow})"
+	CapacityGBTitle="${CapacityGB}G bytes(test file size ${FileSizeShow} bytes)"
 else
 	CapacityGB=0
-	CapacityGBTitle="Unknown capacity (test file size ${FileSizeShow})"
+	CapacityGBTitle="Unknown capacity (test file size ${FileSizeShow} bytes)"
 fi
 
 if [[ -n ${LoopCount} ]]
@@ -145,13 +145,19 @@ echo "</HEAD>"
 echo "<BODY>"
 echo "<H1>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</H1>"
 
+TotalReadBytes=0
 TotalWrittenBytes=0
-for f in ${LogFiles[*]}
+for f in *-bytes.tmp
 do
-	if [[ ${f} == *-mw-bytes.txt ]]
+	if [[ ${f} == *-mw-bytes.tmp ]]
 	then
 		TotalWrittenBytes=$(( ${TotalWrittenBytes} + `cat ${f}` ))
 		echo "<!-- ${f} RandomWrites=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
+	fi
+	if [[ ${f} == *-mr-bytes.tmp ]]
+	then
+		TotalReadBytes=$(( ${TotalReadBytes} + `cat ${f}` ))
+		echo "<!-- ${f} RandomReads=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
 	fi
 done
 
@@ -177,7 +183,6 @@ do
 	case "${Access}" in
 		(sw) # Sequential write.
 			TotalWrittenBytes=$(( ${TotalWrittenBytes} + ${FileSize} ))
-			echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} ${TotalWrittenBytes} -->"
 			SequenceNumber=$(( ${SequenceNumber} + 1 ))
 			PlotRandomAccess="n"
 			case ${ODirect} in
@@ -191,6 +196,7 @@ do
 				;;
 			esac
 			echo "<H3>Sequential write</H3>"
+			echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} TotalWrittenBytes=${TotalWrittenBytes} -->"
 			echo "<P>Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
@@ -198,7 +204,9 @@ do
 			echo "</P>"
 		;;
 		(sr) # Sequential read.
+			TotalReadBytes=$(( ${TotalReadBytes} + ${FileSize} ))
 			echo "<H3>Sequential read</H3>"
+			echo "<!-- ${p%-sr.png}.txt SequentialReads=${FileSize} TotalReadBytes=${TotalReadBytes} -->"
 			echo "<P>Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
@@ -260,26 +268,49 @@ do
 	ODirectPrev="${ODirect}"
 done
 echo "<HR>"
-
-TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
-TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
-
-
+echo "<H2>Summary</H2>"
+echo "<P>"
 if (( ${TotalWrittenBytes} < 17179869184 ))
 then
+	# Under 16GiBytes, show in Mi bytes.
+	TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
 	TotalWrittenBytesShow="${TotalWrittenBytesMi}Mi"
 else
+	# Equal to or more than 16GiBytes, show in Mi bytes.
 	if (( ${TotalWrittenBytes} < 17592186044416 ))
 	then
+		# Under 16TiBytes, show in Gi bytes.
+		TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
 		TotalWrittenBytesShow="${TotalWrittenBytesGi}Gi"
 	else
+		# Equal to or more than 16TiBytes, show in Gi bytes.
+		TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
 		TotalWrittenBytesShow="${TotalWrittenBytesTi}Ti"
 	fi
 fi
+echo "Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes<BR>"
 
+if (( ${TotalReadBytes} < 17179869184 ))
+then
+	# Under 16GiBytes, show in Mi bytes.
+	TotalReadBytesMi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 ) ) }"`
+	TotalReadBytesShow="${TotalReadBytesMi}Mi"
+else
+	# Equal to or more than 16GiBytes, show in Mi bytes.
+	if (( ${TotalReadBytes} < 17592186044416 ))
+	then
+		# Under 16TiBytes, show in Gi bytes.
+		TotalReadBytesGi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+		TotalReadBytesShow="${TotalReadBytesGi}Gi"
+	else
+		# Equal to or more than 16TiBytes, show in Gi bytes.
+		TotalReadBytesTi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
+		TotalReadBytesShow="${TotalReadBytesTi}Ti"
+	fi
+fi
+echo "Total Read Bytes: ${TotalReadBytes} (${TotalReadBytesShow}) bytes<BR>"
+echo "</P>"
 
-echo "<P>Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes</P>"
 echo "</BODY>"
 echo "</HTML>"
 
