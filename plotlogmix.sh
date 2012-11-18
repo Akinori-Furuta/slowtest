@@ -27,6 +27,17 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+function Help() {
+	echo "Plot random access log."
+	echo "$0 [-D] [-h] test_log_directory"
+	echo "test_log_directory:"
+	echo "  Directory contains log files created by ssdtest.sh tool."
+	echo "  Graph plots will be stored in this directory."
+	echo "-D   : Debug mode."
+	echo "-h   : Print this help."
+	exit 1
+}
+
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
 
@@ -52,12 +63,6 @@ fi
 
 # Parse Argument
 
-function Help() {
-	echo "$0 [-D] [-h] test_log_directory"
-	echo "-D   : Debug mode."
-	echo "-h   : Print this help."
-	exit 1
-}
 
 parsed_arg=( `getopt Dh $*` )
 if (( $? != 0 ))

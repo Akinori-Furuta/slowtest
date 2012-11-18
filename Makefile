@@ -51,7 +51,7 @@ DIST_FILES=\
 	mt19937ar.c mt19937ar.h mtTest.c mtTestOut.txt \
 	ssdstress.c Makefile
 
-DIST_DIR=ssdtest_1.0
+DIST_DIR=ssdtest_0.7
 
 TARGET=ssdstress
 

@@ -27,6 +27,15 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+function Help() {
+	echo "Plot sequential log."
+	echo "$0 test_log_directory"
+	echo "test_log_directory:"
+	echo "  Directory contains log files created by ssdtest.sh tool."
+	echo "  Graph plots will be stored in this directory."
+	exit 1
+}
+
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
 
@@ -61,12 +70,6 @@ then
 fi
 
 # Parse Argument
-
-function Help() {
-	echo "Plot sequential log."
-	echo "$0 test_log_directory"
-	exit 1
-}
 
 parsed_arg=( `getopt h $*` )
 if (( $? != 0 ))

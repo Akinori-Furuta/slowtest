@@ -36,7 +36,11 @@ uuid=`cat /proc/sys/kernel/random/uuid`
 # Parse Argument
 
 function Help() {
-	echo "$0 test_log_directory"
+	#     0         1         2         3         4         5         6         7
+	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
+	echo "$0 [directory]"
+	echo "directory: directory to create html page. This directory has test"
+	echo "           logs and graph plots created by plotlohseq.sh and plotlogmix.sh."
 	exit 1
 }
 
@@ -84,6 +88,21 @@ then
 fi
 
 cd "${LogDirectory}"
+
+function ExtractSmartctl() {
+	(	echo "<HTML>"
+		echo "<HEAD>"
+		echo "<TITLE>$3</TITLE>"
+		echo "</HEAD>"
+		echo "<BODY>"
+		echo "<PRE>"
+	) > $2
+	sed -n '/smartctl:/,/df:/ p' $1 | grep -v -e '^smartctl:$' -e '^df:$' >> $2
+	(	echo "</PRE>"
+		echo "</BODY>"
+		echo "</HTML>"
+	) >> $2
+}
 
 # @note It slightly buggy, I don't care at acrossing 2099 to 2100.
 YearX100Part=`date +%Y | cut -c1-2`
@@ -152,12 +171,12 @@ do
 	if [[ ${f} == *-mw-bytes.tmp ]]
 	then
 		TotalWrittenBytes=$(( ${TotalWrittenBytes} + `cat ${f}` ))
-		echo "<!-- ${f} RandomWrites=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
+		# echo "<!-- ${f} RandomWrites=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
 	fi
 	if [[ ${f} == *-mr-bytes.tmp ]]
 	then
 		TotalReadBytes=$(( ${TotalReadBytes} + `cat ${f}` ))
-		echo "<!-- ${f} RandomReads=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
+		# echo "<!-- ${f} RandomReads=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
 	fi
 done
 
@@ -188,17 +207,25 @@ do
 			case ${ODirect} in
 				(N)
 					echo "<HR>"
-					echo "<H2 id=\"TestFlowWithoutODIRECT_${ODirect}_${SequenceNumber}\">TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write without O_DIRECT - Sequential read</H2>"
+					H2Title="TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write without O_DIRECT - Sequential read"
+					echo "<H2 id=\"TestFlowWithoutODIRECT_${ODirect}_${SequenceNumber}\">${H2Title}</H2>"
 				;;
 				(Y)
 					echo "<HR>"
-					echo "<H2 id=\"TestFlowWithODIRECT_${ODirect}_${SequenceNumber}\">TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write with O_DIRECT - Sequential</H2>"
+					H2Title="TestFlow: Try #${SequenceNumber} of Sequential write - Random read/write with O_DIRECT - Sequential read"
+					echo "<H2 id=\"TestFlowWithODIRECT_${ODirect}_${SequenceNumber}\">${H2Title}</H2>"
 				;;
 			esac
 			ParagraphIdSw="SequentialWritePlot_${ODirect}_${SequenceNumber}"
 			echo "<H3 id=\"SequentialWrite_${ODirect}_${SequenceNumber}\">Sequential write</H3>"
-			echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} TotalWrittenBytes=${TotalWrittenBytes} -->"
+			# echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} TotalWrittenBytes=${TotalWrittenBytes} -->"
+
+			TextLogFile=${p%-sw.png}.txt
+			SmartFile=${p%-sw.png}-smart.html
+			ExtractSmartctl ${TextLogFile} ${SmartFile} \
+				"S.M.A.R.T before sequential write - ${H2Title}"
 			echo "<P id=\"${ParagraphIdSw}\">Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T before sequential write</A><BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
@@ -208,8 +235,15 @@ do
 			TotalReadBytes=$(( ${TotalReadBytes} + ${FileSize} ))
 			ParagraphIdSr="SequentialReadPlot_${ODirect}_${SequenceNumber}"
 			echo "<H3 id=\"SequentialRead_${ODirect}_${SequenceNumber}\">Sequential read</H3>"
-			echo "<!-- ${p%-sr.png}.txt SequentialReads=${FileSize} TotalReadBytes=${TotalReadBytes} -->"
+			# echo "<!-- ${p%-sr.png}.txt SequentialReads=${FileSize} TotalReadBytes=${TotalReadBytes} -->"
+
+			TextLogFile=${p%-sr.png}.txt
+			SmartFile=${p%-sr.png}-smart.html
+			ExtractSmartctl ${TextLogFile} ${SmartFile} \
+				"S.M.A.R.T before sequential write - ${H2Title}"
+
 			echo "<P id=\"${ParagraphIdSr}\">Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T before sequential read</A><BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
@@ -302,14 +336,18 @@ done
 echo "<HR>"
 echo "<H2 id=\"Summary\">Summary</H2>"
 echo "<P id=\"SummaryStatistics\">"
-if (( ${TotalWrittenBytes} < 17179869184 ))
+
+Size16Gi=17179869184
+Size16Ti=17592186044416
+
+if (( ${TotalWrittenBytes} < ${Size16Gi} ))
 then
 	# Under 16GiBytes, show in Mi bytes.
 	TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
 	TotalWrittenBytesShow="${TotalWrittenBytesMi}Mi"
 else
 	# Equal to or more than 16GiBytes, show in Mi bytes.
-	if (( ${TotalWrittenBytes} < 17592186044416 ))
+	if (( ${TotalWrittenBytes} < ${Size16Ti} ))
 	then
 		# Under 16TiBytes, show in Gi bytes.
 		TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
@@ -322,14 +360,14 @@ else
 fi
 echo "Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes<BR>"
 
-if (( ${TotalReadBytes} < 17179869184 ))
+if (( ${TotalReadBytes} < ${Size16Gi} ))
 then
 	# Under 16GiBytes, show in Mi bytes.
 	TotalReadBytesMi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 ) ) }"`
 	TotalReadBytesShow="${TotalReadBytesMi}Mi"
 else
 	# Equal to or more than 16GiBytes, show in Mi bytes.
-	if (( ${TotalReadBytes} < 17592186044416 ))
+	if (( ${TotalReadBytes} < ${Size16Ti} ))
 	then
 		# Under 16TiBytes, show in Gi bytes.
 		TotalReadBytesGi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`

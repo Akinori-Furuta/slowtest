@@ -27,6 +27,18 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+function Help() {
+	echo "Test SSD performance."
+	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
+	echo "-L OptionalLabel : Jam string into log directory path"
+	echo "-h : Show this help"
+	echo "test_file_or_directory: "
+	echo "  Test file name to read and write, or test directory to create"
+	echo "  temporal test file to read and write."
+	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
+	exit 1
+}
+
 MyBase="`dirname $0`"
 
 if [[ -z ${TestBin} ]]
@@ -211,15 +223,6 @@ function signaled() {
 trap signaled HUP INT
 
 # Parse Argument
-
-function Help() {
-	echo "Test SSD performance."
-	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
-	echo "-L OptionalLabel Jam string into log directory path"
-	echo "-h Show this help"
-	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
-	exit 1
-}
 
 parsed_arg=( `getopt L:h $*` )
 if (( $? != 0 ))
