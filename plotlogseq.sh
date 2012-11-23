@@ -107,6 +107,23 @@ fi
 
 cd "${LogDirectory}"
 
+function UpdateFile() {
+	if [[ ! -e "$2" ]]
+	then
+		# 1st update
+		mv "$1" "$2"
+	else
+		if ( ! cmp -s "$1" "$2" )
+		then
+			# Not same file.
+			mv -f "$1" "$2"
+		else
+			# Same file.
+			rm "$1"
+		fi
+	fi
+}
+
 for f in *.txt
 do
 	header=${TempPath}/${uuid}-`basename ${f%.*}-hd.txt`
@@ -219,7 +236,8 @@ EOF
 		then
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
 				    load \"${my_dir}/sequential_tspeed_prog.gnuplot\"; quit" \
-				> ${sw_png}
+				>  ${sw_png}.new
+			UpdateFile ${sw_png}.new ${sw_png}
 		else
 			echo "${f}: Empty sequential write log."
 		fi
@@ -247,7 +265,8 @@ EOF
 		then
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
 				    load \"${my_dir}/sequential_tspeed_prog.gnuplot\"; quit" \
-				> ${sr_png}
+				>  ${sr_png}.new
+			UpdateFile ${sr_png}.new ${sr_png}
 		else
 			echo "${f}: Empty sequential read log."
 		fi

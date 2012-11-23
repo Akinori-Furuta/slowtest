@@ -104,6 +104,23 @@ fi
 
 cd "${LogDirectory}"
 
+function UpdateFile() {
+	if [[ ! -e "$2" ]]
+	then
+		# 1st update
+		mv "$1" "$2"
+	else
+		if ( ! cmp -s "$1" "$2" )
+		then
+			# Not same file.
+			mv -f "$1" "$2"
+		else
+			# Same file.
+			rm "$1"
+		fi
+	fi
+}
+
 ReadBytes=0
 WriteBytes=0
 
@@ -298,7 +315,8 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
 			load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
-			> ${ra_r_tspeed_at_png}
+			>   ${ra_r_tspeed_at_png}.new
+		UpdateFile "${ra_r_tspeed_at_png}.new" "${ra_r_tspeed_at_png}"
 
 		ra_r_tlength_at_png=${f%.*}-mr-tl_at.png
 		echo "${f}: ${ra_r_tlength_at_png}: Plot mixed random read transfer length - access time."
@@ -315,7 +333,8 @@ pointcolor="#00c000"
 EOF
 		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
-			> ${ra_r_tlength_at_png}
+			>   ${ra_r_tlength_at_png}.new
+		UpdateFile "${ra_r_tlength_at_png}.new" "${ra_r_tlength_at_png}"
 
 		ra_r_tspeed_tlength_png=${f%.*}-mr-ts_tl.png
 		echo "${f}: ${ra_r_tspeed_tlength_png}: Plot mixed random read transfer speed - transfer length."
@@ -333,7 +352,8 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
-			> ${ra_r_tspeed_tlength_png}
+			>   ${ra_r_tspeed_tlength_png}.new
+		UpdateFile "${ra_r_tspeed_tlength_png}.new" "${ra_r_tspeed_tlength_png}"
 
 		if (( ${Debug} == 0 ))
 		then
@@ -344,7 +364,8 @@ EOF
 	fi
 
 	ra_r_total_bytes_tmp=${f%.*}-mr-bytes.tmp
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}.new
+	mv -f ${ra_r_total_bytes_tmp}.new ${ra_r_total_bytes_tmp}
 
 	if (( ${Debug} == 0 ))
 	then
@@ -370,7 +391,8 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
-			> ${ra_w_tspeed_at_png}
+			>   ${ra_w_tspeed_at_png}.new
+		UpdateFile "${ra_w_tspeed_at_png}.new" "${ra_w_tspeed_at_png}"
 
 		ra_w_tlength_at_png=${f%.*}-mw-tl_at.png
 		echo "${f}: ${ra_w_tlength_at_png}: Plot mixed random write transfer length - access time."
@@ -387,7 +409,8 @@ pointcolor="#ff0000"
 EOF
 		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
-			> ${ra_w_tlength_at_png}
+			>   ${ra_w_tlength_at_png}.new
+		UpdateFile "${ra_w_tlength_at_png}.new" "${ra_w_tlength_at_png}"
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
 		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mixed random write transfer speed - transfer length."
@@ -405,7 +428,8 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
 			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
-			> ${ra_w_tspeed_tlength_png}
+			>   ${ra_w_tspeed_tlength_png}.new
+		UpdateFile "${ra_w_tspeed_tlength_png}.new" "${ra_w_tspeed_tlength_png}"
 
 		if (( ${Debug} == 0 ))
 		then
@@ -416,7 +440,8 @@ EOF
 	fi
 
 	ra_w_total_bytes_tmp=${f%.*}-mw-bytes.tmp
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}.new
+	mv -f ${ra_w_total_bytes_tmp}.new ${ra_w_total_bytes_tmp}
 
 	if (( ${Debug} == 0 ))
 	then

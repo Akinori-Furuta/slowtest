@@ -30,8 +30,8 @@
 function Help() {
 	echo "Test SSD performance."
 	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
-	echo "-L OptionalLabel : Jam string into log directory path"
-	echo "-h : Show this help"
+	echo "-L OptionalLabel : Jam string into log directory path."
+	echo "-h : Show this help."
 	echo "test_file_or_directory: "
 	echo "  Test file name to read and write, or test directory to create"
 	echo "  temporal test file to read and write."
@@ -560,6 +560,9 @@ do
 	done
 	yn_index=$(( ${yn_index} + 1 ))
 done
+
+DoneMark="${LOG_DIR}/.mark_ssdtest_done"
+touch "${DoneMark}"
 
 recover_queue_config
 recover_hung_task_to

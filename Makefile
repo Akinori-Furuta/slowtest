@@ -48,7 +48,7 @@ DIST_FILES=\
 	plotlogseq.sh plotlogseq_usbmems.sh \
 	ssdtest.sh ssdtest_light.sh \
 	ssdtest_usbmems.sh \
-	mt19937ar.c mt19937ar.h mtTest.c mtTestOut.txt \
+	mt19937ar.c mt19937ar.h mtTest.c mtTestOut.txt readme-mt.txt \
 	ssdstress.c Makefile
 
 DIST_DIR=ssdtest_0.7
