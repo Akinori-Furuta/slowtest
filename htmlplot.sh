@@ -61,7 +61,7 @@ do
 	case ${opt} in
 		(-C) # Loop Count.
 			i=$(( ${i} + 1 ))
-			LoopCount="${parsed_arg[${i}]}"
+			RoundCount="${parsed_arg[${i}]}"
 		;;
 		(-h) # Help.
 			Help
@@ -150,19 +150,19 @@ else
 	CapacityGBTitle="Unknown capacity (test file size ${FileSizeShow} bytes)"
 fi
 
-if [[ -n ${LoopCount} ]]
+if [[ -n ${RoundCount} ]]
 then
-	LoopCountShow=${LoopCount}
+	RoundCountShow=${RoundCount}
 else
-	LoopCountShow="Unknown"
+	RoundCountShow="Unknown"
 fi
 
 echo "<HTML>"
 echo "<HEAD>"
-echo "<TITLE>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</TITLE>"
+echo "<TITLE>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, Round: ${RoundCountShow}</TITLE>"
 echo "</HEAD>"
 echo "<BODY>"
-echo "<H1 id=\"TestRecord\">Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, LoopCount: ${LoopCountShow}</H1>"
+echo "<H1 id=\"TestRecord\">Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, Round: ${RoundCountShow}</H1>"
 
 TotalReadBytes=0
 TotalWrittenBytes=0
@@ -382,12 +382,25 @@ echo "Total Read Bytes: ${TotalReadBytes} (${TotalReadBytesShow}) bytes<BR>"
 echo "</P><!-- id=\"SummaryStatistics\" -->"
 
 echo "<HR>"
+
+pass_count_all=0
+fail_count_all=0
+
 echo "<H2 id=\"RawDataLink\">Raw data link</H2>"
 echo "<P id=\"RawDataLinkTxt\">"
+echo "<TABLE id=\"RawDataLinkTxtTable\">"
+echo "<TR><TH>File<TH>PASS<TH>FAIL</TR>"
 for f in *.txt
 do
-	echo "<A href=\"${f}\">${f}</A><BR>"
+	pass_count=`grep '[.]bin' ${f} | grep 'PASS' | wc -l`
+	fail_count=`grep '[.]bin' ${f} | grep 'FAIL' | wc -l`
+	echo "<TR><TD align="left"><A href=\"${f}\">${f}</A><TD align="center">${pass_count}<TD align="center">${fail_count}</TR>"
+	pass_count_all=$(( ${pass_count_all} + ${pass_count} ))
+	fail_count_all=$(( ${fail_count_all} + ${fail_count} ))
 done
+echo "</TABLE><!-- id=\"RawDataLinkTxtTable\" -->"
+echo ${pass_count_all} > pass_count_all.tmp
+echo ${fail_count_all} > fail_count_all.tmp
 echo "</P><!-- id=\"RawDataLinkTxt\" -->"
 echo "</BODY>"
 echo "</HTML>"
