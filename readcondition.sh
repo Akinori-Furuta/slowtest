@@ -27,14 +27,6 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-s_my_base=`basename "$0"`
-s_my_dir=`dirname "$0"`
-
-STempPath=/dev/shm
-s_uuid=`cat /proc/sys/kernel/random/uuid`
-
-# Parse Argument
-
 function SHelp() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
@@ -44,6 +36,15 @@ function SHelp() {
 	exit 1
 }
 
+s_my_base=`basename "$0"`
+s_my_dir=`dirname "$0"`
+s_my_dir=`readlink -f "${s_my_dir}"`
+
+
+STempPath=/dev/shm
+s_uuid=`cat /proc/sys/kernel/random/uuid`
+
+# Parse Argument
 s_parsed_arg=( `getopt h $*` )
 if (( $? != 0 ))
 then
@@ -87,6 +88,10 @@ SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${s_header} | cut -d ':' -f 2
 BlocksMin=`grep 'BlocksMin(-i):' ${s_header} | cut -d ':' -f 2`
 BlocksMax=`grep 'BlocksMax(-a):' ${s_header} | cut -d ':' -f 2`
 DoDirect=`grep 'DoDirect(-d):' ${s_header} | cut -d ':' -f 2 | tr -d [[:space:]]`
+FillFile=`grep 'FillFile(-p):' ${s_header} | cut -d ':' -f 2 | tr -d [[:space:]]`
+DoRandomAccess=`grep 'DoReadFile(-x):' ${s_header} | cut -d ':' -f 2 | tr -d [[:space:]]`
+DoReadFile=`grep 'DoReadFile(-r):' ${s_header} | cut -d ':' -f 2 | tr -d [[:space:]]`
+Repeats=`grep 'Repeats(-n):' ${s_header} | cut -d ':' -f 2`
 LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${s_header}`
 
 FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`

@@ -124,7 +124,7 @@ do
 		update_plot=1
 	fi
 	cd "${d}"
-	log_files=(`ls -t | grep -v [.]html$`)
+	log_files=(`ls -t`)
 	if [[ ${log_files[0]} == *.txt ]]
 	then
 		update_plot=1
@@ -146,8 +146,10 @@ do
 	fi
 done
 
-# @note It slightly buggy, I don't care at acrossing 2099 to 2100.
-YearX100Part=`date +%Y | cut -c1-2`
+Year4=`date +%Y`
+Year01Part=${Year4:0:2}
+Year23Part=${Year4:2:2}
+DateOffset=`date +%Z`
 
 first_log=""
 
@@ -177,23 +179,46 @@ echo "<BODY>"
 echo "<H1>Model: ${Model} ${CapacityGBTitle} - Continous access test</H1>"
 echo "<HR>"
 echo "<TABLE>"
+echo "<TR><TH>Test log</TR>"
+WriteBytesAll=0
+ReadBytesAll=0
 i=0
 for d in ${log_dirs[*]}
 do
 	i=$(( ${i} + 1 ))
 	DirectoryDate=`echo ${d} | cut -d - -f 3`
-	DateOffset=`date +%Z`
+	DirectoryDateY2=${DirectoryDate:0:2}
+	if (( ${DirectoryDateY2} > ${Year23Part} ))
+	then
+		Year01Part=$(( ${Year01Part} - 1 ))
+	fi
 
-	DirectoryDateFormed=`echo ${YearX100Part}${DirectoryDate} ${DateOffset} \
+	DirectoryDateFormed=`echo ${Year01Part}${DirectoryDate} ${DateOffset} \
 		| awk '{printf("%s/%s/%s %s:%s:%s %s", \
 		substr($1,1,4),  substr($1,5,2),  substr($1,7,2), \
 		substr($1,9,2), substr($1,11,2), substr($1,13,2), \
 		$2 \
 		);}'`
 
+	WriteBytesRound=0
+	write_bytes_round_file="${d}/total_written_bytes.tmp"
+	if [[ -f "${write_bytes_round_file}" ]]
+	then
+		WriteBytesRound=`cat "${write_bytes_round_file}"`
+	fi
+
+	ReadBytesRound=0
+	read_bytes_round_file="${d}/total_written_bytes.tmp"
+	if [[ -f "${read_bytes_round_file}" ]]
+	then
+		ReadBytesRound=`cat $"{read_bytes_round_file}"`
+	fi
+
 	echo "<TR>"
 	echo "<TD><A href=\"${d}/index.html\">TestDate: ${DirectoryDateFormed}, Round: ${i}</A>"
 	echo "</TR>"
+	WriteBytesAll=$(( ${WriteBytesAll} + ${WriteBytesRound} ))
+	ReadBytesAll=$(( ${ReadBytesAll} + ${ReadBytesRound} ))
 done
 echo "</TABLE>"
 echo "</BODY>"

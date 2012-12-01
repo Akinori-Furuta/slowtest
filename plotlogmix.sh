@@ -40,6 +40,7 @@ function Help() {
 
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
 
 TempPath=/dev/shm
 uuid=`cat /proc/sys/kernel/random/uuid`
@@ -153,26 +154,11 @@ do
 
 	for f in `ls *-${g}-*.txt | grep -v 'bytes.txt$'`
 	do
-		header=${TempPath}/${uuid}-`basename ${f%.*}-hd.txt`
-		sed -n '1,/Seed(-s):/ {p}' ${f} > ${header}
-
-		Model=`grep 'Model=' ${header} | cut -d ',' -f 1 | cut -d '=' -f 2`
-		FileSize=`grep 'FileSize(-f):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-		BlockSize=`grep 'BlockSize(-b):' ${header} | cut -d ':' -f 2`
-		SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${header} | cut -d ':' -f 2`
-		BlocksMin=`grep 'BlocksMin(-i):' ${header} | cut -d ':' -f 2`
-		BlocksMax=`grep 'BlocksMax(-a):' ${header} | cut -d ':' -f 2`
-		DoDirect=`grep 'DoDirect(-d):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-		FillFile=`grep 'FillFile(-p):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-		DoRandomAccess=`grep 'DoReadFile(-x):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-		DoReadFile=`grep 'DoReadFile(-r):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-		Repeats=`grep 'Repeats(-n):' ${header} | cut -d ':' -f 2`
-		LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${header}`
+		source ${my_dir}/readcondition.sh ${f}
 
 		if [[ -z "${FileSize}" || -z "${BlocksMin}" || -z "${BlocksMax}"  ]]
 		then
 			echo "${f}: Not access log, skip."
-			rm ${header}
 			break
 		fi
 
@@ -205,7 +191,6 @@ do
 				ModelPrev="${Model}"
 			else
 				echo "${f}: Model not match. Model=${Model}, ModelPrev=${ModelPrev}"
-				rm ${header}
 				break
 			fi
 		fi
@@ -217,39 +202,20 @@ do
 				FileSizePrev=${FileSize}
 			else
 				echo "${f}: FileSize not match. FileSize=${FileSize}, FileSizePrev=${FileSizePrev}"
-				rm ${header}
 				break
 			fi
 		fi
 
-		FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-		FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-
-		if (( ${FileSizeMi} < 20480 ))
-		then
-			FileSizeShow="${FileSizeMi}Mi"
-		else
-			FileSizeShow="${FileSizeGi}Gi"
-		fi
 
 		RWBytes=$(( ${BlockSize} * ${SequentialRWBlocks} ))
-		RWBytesKi=`awk "BEGIN { print  ${RWBytes} / 1024 }"`
-		RWBytesMi=`awk "BEGIN { print  ${RWBytesKi} / 1024 }"`
+		RWBytesKi=`awk "BEGIN { print  ${RWBytes} / 1024.0 }"`
+		RWBytesMi=`awk "BEGIN { print  ${RWBytesKi} / 1024.0 }"`
 
 		RandomRWMinBytes=$(( ${BlockSize} * ${BlocksMinMin} ))
 		RandomRWMaxBytes=$(( ${BlockSize} * ${BlocksMaxMax} ))
 
-		RandomRWMinBytesKi=`awk "BEGIN { print  ${RandomRWMinBytes} / 1024 }"`
-		RandomRWMaxBytesKi=`awk "BEGIN { print  ${RandomRWMaxBytes} / 1024 }"`
-
-		if [[ -n ${LBASectors} ]]
-		then
-			CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
-			CapacityGBTitle="${CapacityGB}G bytes(test file size ${FileSizeShow})"
-		else
-			CapacityGB=0
-			CapacityGBTitle="Unknown capacity (test file size ${FileSizeShow})"
-		fi
+		RandomRWMinBytesKi=`awk "BEGIN { print  ${RandomRWMinBytes} / 1024.0 }"`
+		RandomRWMaxBytesKi=`awk "BEGIN { print  ${RandomRWMaxBytes} / 1024.0 }"`
 
 		DoDirectSequential='with O_DIRECT'
 		if ( echo ${DoDirect} | grep -q 'n' )
@@ -270,12 +236,9 @@ do
 				DoDirectRandomPrev="${DoDirectRandom}"
 			else
 				echo "${f}: DoDirectRandom not match. ${DoDirectRandom}=\"${DoDirectRandom}\", ${DoDirectRandomPrev}=\"${DoDirectRandomPrev}\""
-				rm ${header}
 				break
 			fi
 		fi
-
-		rm ${header}
 
 		if (( ${Repeats} <= 0 ))
 		then

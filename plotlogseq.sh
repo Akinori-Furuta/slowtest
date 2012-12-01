@@ -38,6 +38,7 @@ function Help() {
 
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
 
 TempPath=/dev/shm
 uuid=`cat /proc/sys/kernel/random/uuid`
@@ -126,65 +127,36 @@ function UpdateFile() {
 
 for f in *.txt
 do
-	header=${TempPath}/${uuid}-`basename ${f%.*}-hd.txt`
-	sed -n '1,/Seed(-s):/ {p}' ${f} > ${header}
-
-	Model=`grep 'Model=' ${header} | cut -d ',' -f 1 | cut -d '=' -f 2`
-	FileSize=`grep 'FileSize(-f):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-	BlockSize=`grep 'BlockSize(-b):' ${header} | cut -d ':' -f 2`
-	SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${header} | cut -d ':' -f 2`
-	BlocksMin=`grep 'BlocksMin(-i):' ${header} | cut -d ':' -f 2`
-	BlocksMax=`grep 'BlocksMax(-a):' ${header} | cut -d ':' -f 2`
-	DoDirect=`grep 'DoDirect(-d):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-	FillFile=`grep 'FillFile(-p):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-	DoRandomAccess=`grep 'DoReadFile(-x):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-	DoReadFile=`grep 'DoReadFile(-r):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-	Repeats=`grep 'Repeats(-n):' ${header} | cut -d ':' -f 2`
-	LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${header}`
+	source ${my_dir}/readcondition.sh ${f}
 
 	if [[ -z ${FileSize} ]]
 	then
 		echo "${f}: Not access log, skip. FileSize not found."
-		rm ${header}
 		continue
 	fi
 
 	if [[ -z ${FillFile} ]]
 	then
 		echo "${f}: Not access log, skip. FillFile not found."
-		rm ${header}
 		continue
 	fi
 
 	if [[ -z ${Repeats} ]]
 	then
 		echo "${f}: Not access log, skip. Repeats not found."
-		rm ${header}
 		continue
 	fi
 
 	if [[ -z ${DoReadFile} ]]
 	then
 		echo "${f}: Not access log, skip. DoReadFile not found."
-		rm ${header}
 		continue
 	fi
 
 	if [[ ( "${FillFile}" != "y" ) && ( "${DoReadFile}" != "y" ) ]]
 	then
 		echo "${f}: Not contain sequential access log."
-		rm ${header}
 		continue
-	fi
-
-	FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-	FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-
-	if (( ${FileSizeMi} < 20480 ))
-	then
-		FileSizeShow="${FileSizeMi}Mi"
-	else
-		FileSizeShow="${FileSizeGi}Gi"
 	fi
 
 	RWBytes=$(( ${BlockSize} * ${SequentialRWBlocks} ))
@@ -209,8 +181,6 @@ do
 	then
 		DoDirectSequential='without O_DIRECT'
 	fi
-
-	rm ${header}
 
 	GnuplotVarFile=${TempPath}/${uuid}-`basename ${f%.*}-gp.txt`
 	part_data_file=${TempPath}/${uuid}-`basename ${f%.*}-pd.txt`

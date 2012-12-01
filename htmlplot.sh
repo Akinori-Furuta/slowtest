@@ -27,14 +27,6 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-my_base=`basename "$0"`
-my_dir=`dirname "$0"`
-
-TempPath=/dev/shm
-uuid=`cat /proc/sys/kernel/random/uuid`
-
-# Parse Argument
-
 function Help() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
@@ -43,6 +35,15 @@ function Help() {
 	echo "           logs and graph plots created by plotlohseq.sh and plotlogmix.sh."
 	exit 1
 }
+
+my_base=`basename "$0"`
+my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
+
+TempPath=/dev/shm
+uuid=`cat /proc/sys/kernel/random/uuid`
+
+# Parse Argument
 
 parsed_arg=( `getopt C:h $*` )
 if (( $? != 0 ))
@@ -104,13 +105,22 @@ function ExtractSmartctl() {
 	) >> $2
 }
 
-# @note It slightly buggy, I don't care at acrossing 2099 to 2100.
-YearX100Part=`date +%Y | cut -c1-2`
-
-DirectoryDate=`pwd | cut -d - -f 3`
+Year4=`date +%Y`
+Year01Part=${Year4:0:2}
+Year23Part=${Year4:2:2}
 DateOffset=`date +%Z`
 
-DirectoryDateFormed=`echo ${YearX100Part}${DirectoryDate} ${DateOffset} \
+LogDirectoryLast=`pwd`
+LogDirectoryLast=`basename "${LogDirectoryLast}"`
+
+DirectoryDate=`echo "${LogDirectoryLast}" | cut -d - -f 3`
+DirectoryDateY2=${DirectoryDate:0:2}
+if (( ${DirectoryDateY2} > ${Year23Part} ))
+then
+	Year01Part=$(( ${Year01Part} - 1 ))
+fi
+
+DirectoryDateFormed=`echo ${Year01Part}${DirectoryDate} ${DateOffset} \
 	| awk '{printf("%s/%s/%s %s:%s:%s %s", \
 	substr($1,1,4),  substr($1,5,2),  substr($1,7,2), \
 	substr($1,9,2), substr($1,11,2), substr($1,13,2), \
@@ -118,37 +128,10 @@ DirectoryDateFormed=`echo ${YearX100Part}${DirectoryDate} ${DateOffset} \
 	);}'`
 
 LogFiles=(`ls *.txt`)
+
 f=${LogFiles[0]}
-header=${TempPath}/${uuid}-`basename ${f%.*}-hd.txt`
-sed -n '1,/Seed(-s):/ {p}' ${f} > ${header}
 
-Model=`grep 'Model=' ${header} | cut -d ',' -f 1 | cut -d '=' -f 2`
-FileSize=`grep 'FileSize(-f):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-BlockSize=`grep 'BlockSize(-b):' ${header} | cut -d ':' -f 2`
-SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${header} | cut -d ':' -f 2`
-BlocksMin=`grep 'BlocksMin(-i):' ${header} | cut -d ':' -f 2`
-BlocksMax=`grep 'BlocksMax(-a):' ${header} | cut -d ':' -f 2`
-DoDirect=`grep 'DoDirect(-d):' ${header} | cut -d ':' -f 2 | tr -d [[:space:]]`
-LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${header}`
-
-FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-
-if (( ${FileSizeMi} < 20480 ))
-then
-	FileSizeShow="${FileSizeMi}Mi"
-else
-	FileSizeShow="${FileSizeGi}Gi"
-fi
-
-if [[ -n ${LBASectors} ]]
-then
-	CapacityGB=`awk "BEGIN { print int ( ( ${LBASectors} * 512.0 ) / ( 1000.0 * 1000.0 * 1000.0 ) ) }" `
-	CapacityGBTitle="${CapacityGB}G bytes(test file size ${FileSizeShow} bytes)"
-else
-	CapacityGB=0
-	CapacityGBTitle="Unknown capacity (test file size ${FileSizeShow} bytes)"
-fi
+source ${my_dir}/readcondition.sh "${f}"
 
 if [[ -n ${RoundCount} ]]
 then
@@ -340,45 +323,35 @@ echo "<P id=\"SummaryStatistics\">"
 Size16Gi=17179869184
 Size16Ti=17592186044416
 
-if (( ${TotalWrittenBytes} < ${Size16Gi} ))
-then
-	# Under 16GiBytes, show in Mi bytes.
-	TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
-	TotalWrittenBytesShow="${TotalWrittenBytesMi}Mi"
-else
-	# Equal to or more than 16GiBytes, show in Mi bytes.
-	if (( ${TotalWrittenBytes} < ${Size16Ti} ))
+function BytesToShowBytes() {
+	if (( $1 < ${Size16Gi} ))
 	then
-		# Under 16TiBytes, show in Gi bytes.
-		TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-		TotalWrittenBytesShow="${TotalWrittenBytesGi}Gi"
+		# Under 16GiBytes, show in Mi bytes.
+		TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
+		echo "${TotalWrittenBytesMi}Mi"
 	else
-		# Equal to or more than 16TiBytes, show in Gi bytes.
-		TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
-		TotalWrittenBytesShow="${TotalWrittenBytesTi}Ti"
+		# Equal to or more than 16GiBytes, show in Mi bytes.
+		if (( $1 < ${Size16Ti} ))
+		then
+			# Under 16TiBytes, show in Gi bytes.
+			TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+			echo "${TotalWrittenBytesGi}Gi"
+		else
+			# Equal to or more than 16TiBytes, show in Gi bytes.
+			TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
+			echo "${TotalWrittenBytesTi}Ti"
+		fi
 	fi
-fi
-echo "Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes<BR>"
+}
 
-if (( ${TotalReadBytes} < ${Size16Gi} ))
-then
-	# Under 16GiBytes, show in Mi bytes.
-	TotalReadBytesMi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 ) ) }"`
-	TotalReadBytesShow="${TotalReadBytesMi}Mi"
-else
-	# Equal to or more than 16GiBytes, show in Mi bytes.
-	if (( ${TotalReadBytes} < ${Size16Ti} ))
-	then
-		# Under 16TiBytes, show in Gi bytes.
-		TotalReadBytesGi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-		TotalReadBytesShow="${TotalReadBytesGi}Gi"
-	else
-		# Equal to or more than 16TiBytes, show in Gi bytes.
-		TotalReadBytesTi=`awk "BEGIN { print int ( ${TotalReadBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
-		TotalReadBytesShow="${TotalReadBytesTi}Ti"
-	fi
-fi
+TotalWrittenBytesShow=`BytesToShowBytes ${TotalWrittenBytes}`
+echo "Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes<BR>"
+echo ${TotalWrittenBytes} > total_written_bytes.tmp
+
+TotalReadBytesShow=`BytesToShowBytes ${TotalReadBytes}`
 echo "Total Read Bytes: ${TotalReadBytes} (${TotalReadBytesShow}) bytes<BR>"
+echo ${TotalReadBytes} > total_read_bytes.tmp
+
 echo "</P><!-- id=\"SummaryStatistics\" -->"
 
 echo "<HR>"
