@@ -269,6 +269,7 @@ do
 			GnuplotVarFile=${f%.*}-mr-ts_at-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file=\"${part_read_file}
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -276,9 +277,9 @@ ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
-			load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
-			>   ${ra_r_tspeed_at_png}.new
+		cat "${my_dir}/random_tspeed_at.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"; > ${ra_r_tspeed_at_png}.new
 		UpdateFile "${ra_r_tspeed_at_png}.new" "${ra_r_tspeed_at_png}"
 
 		ra_r_tlength_at_png=${f%.*}-mr-tl_at.png
