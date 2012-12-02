@@ -289,15 +289,16 @@ EOF
 			GnuplotVarFile=${f%.*}-mr-tl_at-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_read_file}"
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
 ${DoDirectRandom}\\ntransfer length - access time"
 pointcolor="#00c000"
 EOF
-		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
-			    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
-			>   ${ra_r_tlength_at_png}.new
+		cat "${my_dir}/random_tlength_at.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_tlength_at_png}.new
 		UpdateFile "${ra_r_tlength_at_png}.new" "${ra_r_tlength_at_png}"
 
 		ra_r_tspeed_tlength_png=${f%.*}-mr-ts_tl.png
@@ -307,6 +308,7 @@ EOF
 			GnuplotVarFile=${f%.*}-mr-ts_tl-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_read_file}"
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -314,9 +316,9 @@ ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		gnuplot -e "log_file=\"${part_read_file}\"; load \"${GnuplotVarFile}\"; \
-			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
-			>   ${ra_r_tspeed_tlength_png}.new
+		cat "${my_dir}/random_tspeed_tlength.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_tspeed_tlength_png}.new
 		UpdateFile "${ra_r_tspeed_tlength_png}.new" "${ra_r_tspeed_tlength_png}"
 
 		if (( ${Debug} == 0 ))
@@ -346,6 +348,7 @@ EOF
 			GnuplotVarFile=${f%.*}-mw-ts_at-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_write_file}"
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
@@ -353,9 +356,9 @@ ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
-			    load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
-			>   ${ra_w_tspeed_at_png}.new
+		cat "${my_dir}/random_tspeed_at.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tspeed_at_png}.new
 		UpdateFile "${ra_w_tspeed_at_png}.new" "${ra_w_tspeed_at_png}"
 
 		ra_w_tlength_at_png=${f%.*}-mw-tl_at.png
@@ -365,15 +368,16 @@ EOF
 			GnuplotVarFile=${f%.*}-mw-tl_at-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_write_file}"
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
 ${DoDirectRandom}\\ntransfer length - access time"
 pointcolor="#ff0000"
 EOF
-		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
-			    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
-			>   ${ra_w_tlength_at_png}.new
+		cat "${my_dir}/random_tlength_at.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tlength_at_png}.new
 		UpdateFile "${ra_w_tlength_at_png}.new" "${ra_w_tlength_at_png}"
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
@@ -383,6 +387,7 @@ EOF
 			GnuplotVarFile=${f%.*}-mw-ts_tl-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_write_file}"
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
@@ -390,9 +395,9 @@ ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		gnuplot -e "log_file=\"${part_write_file}\"; load \"${GnuplotVarFile}\"; \
-			    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
-			>   ${ra_w_tspeed_tlength_png}.new
+		cat "${my_dir}/random_tspeed_tlength.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tspeed_tlength_png}.new
 		UpdateFile "${ra_w_tspeed_tlength_png}.new" "${ra_w_tspeed_tlength_png}"
 
 		if (( ${Debug} == 0 ))

@@ -44,7 +44,7 @@ set terminal png size 1024,768 font "DejaVuSans,14"
 set noclip one
 set clip two
 set clip points
-set bar 1.000000 front
+# set bar 1.000000 front
 set border 31 front linetype -1 linewidth 1.000
 set xdata
 set ydata

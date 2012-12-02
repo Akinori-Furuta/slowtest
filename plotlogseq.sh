@@ -188,12 +188,15 @@ do
 	if [[ "${FillFile}" == "y" ]]
 	then
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_data_file}"
 set title "${Model} ${CapacityGB}G bytes, sequential write\\n\
 ${RWBytesMi}Mi bytes per one write() call, \
 up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#ff0000"
 set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
+		cat "${my_dir}/sequential_tspeed_prog.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
 		sw_png=${f%.*}-sw.png
 		echo "${f}: ${sw_png}: Plot sequential write."
 		sed -n '/Twrite/,/close/ {p}' ${f} \
@@ -204,9 +207,7 @@ EOF
 		part_data_file_size=`stat --format=%s ${part_data_file}`
 		if (( ${part_data_file_size} > 0 ))
 		then
-			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/sequential_tspeed_prog.gnuplot\"; quit" \
-				>  ${sw_png}.new
+			gnuplot -e "load \"${GnuplotVarFile}\"" > ${sw_png}.new
 			UpdateFile ${sw_png}.new ${sw_png}
 		else
 			echo "${f}: Empty sequential write log."
@@ -217,12 +218,15 @@ EOF
 	if [[ "${DoReadFile}" != "n" ]]
 	then
 		cat << EOF > ${GnuplotVarFile}
+log_file="${part_data_file}"
 set title "${Model} ${CapacityGB}G bytes, sequential read\\n\
 ${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, \
 ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#00c000"
 set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
+		cat "${my_dir}/sequential_tspeed_prog.gnuplot" >> ${GnuplotVarFile}
+		echo "quit" >> ${GnuplotVarFile}
 		sr_png=${f%.*}-sr.png
 		echo "${f}: ${sr_png}: Plot sequential read."
 		sed -n '/Tread/,/close/ {p}' ${f} \
@@ -233,9 +237,7 @@ EOF
 		part_data_file_size=`stat --format=%s ${part_data_file}`
 		if (( ${part_data_file_size} > 0 ))
 		then
-			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/sequential_tspeed_prog.gnuplot\"; quit" \
-				>  ${sr_png}.new
+			gnuplot -e "load \"${GnuplotVarFile}\"" >  ${sr_png}.new
 			UpdateFile ${sr_png}.new ${sr_png}
 		else
 			echo "${f}: Empty sequential read log."

@@ -45,7 +45,7 @@ set macro
 set noclip points
 set clip one
 set clip two
-set bar 1.000000 front
+# set bar 1.000000 front
 set border 31 front linetype -1 linewidth 1.000
 set xdata
 set ydata
