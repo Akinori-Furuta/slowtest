@@ -44,7 +44,7 @@ set macro
 set clip points
 set clip one
 set clip two
-set bar 1.000000 front
+# set bar 1.000000 front
 set border 31 front linetype -1 linewidth 1.000
 set xdata
 set ydata
@@ -59,7 +59,7 @@ set timefmt y2 "%d/%m/%y,%H:%M"
 set timefmt cb "%d/%m/%y,%H:%M"
 set boxwidth
 set style fill  empty border
-set style rectangle back fc lt -3 fillstyle   solid 1.00 border lt -1
+# set style rectangle back fc lt -3 fillstyle   solid 1.00 border lt -1
 set dummy x,y
 set format x "%.1e"
 set format y "%.1e"

@@ -59,7 +59,7 @@ set timefmt y2 "%d/%m/%y,%H:%M"
 set timefmt cb "%d/%m/%y,%H:%M"
 set boxwidth
 set style fill  empty border
-set style rectangle back fc lt -3 fillstyle   solid 1.00 border lt -1
+# set style rectangle back fc lt -3 fillstyle   solid 1.00 border lt -1
 set dummy x,y
 set format x "% g"
 set format y "%.2e"
