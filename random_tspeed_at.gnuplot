@@ -71,7 +71,7 @@ set angles radians
 set grid nopolar
 set grid xtics mxtics ytics mytics noztics nomztics \
  nox2tics nomx2tics noy2tics nomy2tics nocbtics nomcbtics
-set grid layerdefault linetype -1 linewidth 0.5, linetype 0 linewidth 0.5
+# set grid layerdefault linetype -1 linewidth 0.5, linetype 0 linewidth 0.5
 set key title ""
 set key inside right top vertical Right noreverse enhanced autotitles nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 

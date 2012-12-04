@@ -122,6 +122,22 @@ function UpdateFile() {
 	fi
 }
 
+# Test gnuplot.
+
+gnuplot_ver_x1000=`gnuplot --version | awk '{print $2 * 1000.0}'`
+
+if [[ -z ${gnuplot_ver_x1000} ]]
+then
+	gnuplot_ver_x1000=4200
+fi
+
+if (( ${gnuplot_ver_x1000} <= 4200 ))
+then
+	GridMinorLineType=0
+else
+	GridMinorLineType=0
+fi
+
 ReadBytes=0
 WriteBytes=0
 
@@ -270,6 +286,7 @@ do
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_read_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -290,6 +307,7 @@ EOF
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_read_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -309,6 +327,7 @@ EOF
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_read_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
@@ -349,6 +368,7 @@ EOF
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_write_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
@@ -369,6 +389,7 @@ EOF
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_write_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
@@ -388,6 +409,7 @@ EOF
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_write_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \

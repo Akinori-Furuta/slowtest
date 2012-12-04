@@ -106,6 +106,20 @@ else
 	LogDirectory="."
 fi
 
+gnuplot_ver_x1000=`gnuplot --version | awk '{print $2 * 1000.0}'`
+
+if [[ -z ${gnuplot_ver_x1000} ]]
+then
+	gnuplot_ver_x1000=4200
+fi
+
+if (( ${gnuplot_ver_x1000} <= 4200 ))
+then
+	GridMinorLineType=33
+else
+	GridMinorLineType=28
+fi
+
 cd "${LogDirectory}"
 
 function UpdateFile() {
@@ -189,6 +203,7 @@ do
 	then
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_data_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGB}G bytes, sequential write\\n\
 ${RWBytesMi}Mi bytes per one write() call, \
 up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
@@ -219,6 +234,7 @@ EOF
 	then
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_data_file}"
+set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGB}G bytes, sequential read\\n\
 ${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, \
 ${DoDirectSequential}\\ntransfer speed - progress"
