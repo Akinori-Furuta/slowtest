@@ -168,7 +168,76 @@ ODirectPrev='X'
 SequenceNumber=0
 PlotRandomAccess="n"
 
+png_list=()
+png_prev_tl_at=""
+png_prev_ts_at=""
+png_prev_ts_tl=""
+i=0
 for p in *.png
+do
+	Split=(`echo ${p%.png} | tr '-' ' '`)
+	FileNo="${Split[0]}"
+	ODirect="${Split[1]}"
+	SeqMain="${Split[2]}"
+	SeqSub="${Split[3]}"
+	Access="${Split[4]}"
+	PlotType="${Split[5]}"
+	case "${Access}" in
+		(sw|sr) # Sequential write or read.
+			if [[ -n ${png_prev_tl_at} ]]
+			then
+				png_list[${i}]="${png_prev_tl_at}"
+				i=$(( ${i} + 1 ))
+			fi
+			if [[ -n ${png_prev_ts_at} ]]
+			then
+				png_list[${i}]="${png_prev_ts_at}"
+				i=$(( ${i} + 1 ))
+			fi
+			if [[ -n ${png_prev_ts_tl} ]]
+			then
+				png_list[${i}]="${png_prev_ts_tl}"
+				i=$(( ${i} + 1 ))
+			fi
+			png_list[${i}]="${p}"
+			i=$(( ${i} + 1 ))
+			png_prev_tl_at=""
+			png_prev_ts_at=""
+			png_prev_ts_tl=""
+		;;
+	esac
+	case "${PlotType}" in
+		(tl_at) # Transfer length - access time
+			png_prev_tl_at="${p}"
+		;;
+		(ts_at) # Transfer speed - access time
+			png_prev_ts_at="${p}"
+		;;
+		(ts_tl) # Transfer speed - transfer length
+			png_prev_ts_tl="${p}"
+		;;
+	esac
+done
+if [[ -n ${png_prev_tl_at} ]]
+then
+	png_list[${i}]="${png_prev_tl_at}"
+	i=$(( ${i} + 1 ))
+fi
+if [[ -n ${png_prev_ts_at} ]]
+then
+	png_list[${i}]="${png_prev_ts_at}"
+	i=$(( ${i} + 1 ))
+fi
+if [[ -n ${png_prev_ts_tl} ]]
+then
+	png_list[${i}]="${png_prev_ts_tl}"
+	i=$(( ${i} + 1 ))
+fi
+png_prev_tl_at=""
+png_prev_ts_at=""
+png_prev_ts_tl=""
+
+for p in ${png_list[*]}
 do
 	Split=(`echo ${p%.png} | tr '-' ' '`)
 	FileNo="${Split[0]}"
@@ -234,13 +303,13 @@ do
 		;;
 	esac
 	case "${PlotType}" in
+		(tl_at) # Transfer length - access time
+			random_plot="y"
+		;;
 		(ts_at) # Transfer speed - access time
 			random_plot="y"
 		;;
 		(ts_tl) # Transfer speed - transfer length
-			random_plot="y"
-		;;
-		(tl_at) # Transfer length - access time
 			random_plot="y"
 		;;
 	esac
