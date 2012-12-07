@@ -332,15 +332,16 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			echo "</P><!-- id=\"${ParagraphIdMrTsAt}\" -->"
 			ra_r_over100_counts=""
 			ra_r_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-over100.tmp
 			if [[ -f "${ra_r_over100_tmp}" ]]
 			then
-				echo "<BR>"
+				echo "<P>"
 				ra_r_over100_counts=`cat "${ra_r_over100_tmp}"`
 				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+				echo "</P>"
 			fi
-			echo "</P><!-- id=\"${ParagraphIdMrTsAt}\" -->"
 			echo "</TD>"
 			echo "<TD>"
 			ParagraphIdMwTsAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tsat"
@@ -349,15 +350,16 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			echo "</P><!-- id=\"${ParagraphIdMwTsAt}\" -->"
 			ra_w_over100_counts=""
 			ra_w_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-over100.tmp
 			if [[ -f "${ra_w_over100_tmp}" ]]
 			then
-				echo "<BR>"
+				echo "<P>"
 				ra_w_over100_counts=`cat "${ra_w_over100_tmp}"`
 				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+				echo "</P>"
 			fi
-			echo "</P><!-- id=\"${ParagraphIdMwTsAt}\" -->"
 			echo "</TD>"
 			echo "</TR>"
 			echo "<TR>"
@@ -388,12 +390,13 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			echo "</P><!-- id=\"${ParagraphIdMrTlAt}\" -->"
 			if [[ -n "${ra_r_over100_counts}" ]]
 			then
-				echo "<BR>"
+				echo "<P>"
 				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+				echo "</P>"
 			fi
-			echo "</P><!-- id=\"${ParagraphIdMrTlAt}\" -->"
 			echo "</TD>"
 			echo "<TD>"
 			ParagraphIdMwTlAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tlat"
@@ -402,12 +405,13 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			echo "</P><!-- id=\"${ParagraphIdMwTlAt}\" -->"
 			if [[ -n "${ra_w_over100_counts}" ]]
 			then
-				echo "<BR>"
+				echo "<P>"
 				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+				echo "</P>"
 			fi
-			echo "</P><!-- id=\"${ParagraphIdMwTlAt}\" -->"
 			echo "</TD>"
 			echo "</TR>"
 			echo "</TABLE>"
