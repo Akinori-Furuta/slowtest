@@ -352,6 +352,10 @@ EOF
 	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}.new
 	mv -f ${ra_r_total_bytes_tmp}.new ${ra_r_total_bytes_tmp}
 
+	ra_r_over_100sec_tmp=${f%.*}-mr-over100.tmp
+	awk 'BEGIN{total=0;} ($6>100){total++;} END {printf("%d",total);}' ${part_read_file} > ${ra_r_over_100sec_tmp}.new
+	mv -f ${ra_r_over_100sec_tmp}.new ${ra_r_over_100sec_tmp}
+
 	if (( ${Debug} == 0 ))
 	then
 		rm "${part_read_file}"
@@ -433,6 +437,10 @@ EOF
 	ra_w_total_bytes_tmp=${f%.*}-mw-bytes.tmp
 	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}.new
 	mv -f ${ra_w_total_bytes_tmp}.new ${ra_w_total_bytes_tmp}
+
+	ra_w_over_100sec_tmp=${f%.*}-mw-over100.tmp
+	awk 'BEGIN{total=0;} ($6>100){total++;} END {printf("%d",total);}' ${part_write_file} > ${ra_w_over_100sec_tmp}.new
+	mv -f ${ra_w_over_100sec_tmp}.new ${ra_w_over_100sec_tmp}
 
 	if (( ${Debug} == 0 ))
 	then
