@@ -62,6 +62,11 @@ then
 	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
 fi
 
+if [[ -z "${ACCESS_TIME_SCALE_OVER}" ]]
+then
+	ACCESS_TIME_SCALE_OVER="1.0e+2"
+fi
+
 # Parse Argument
 
 
@@ -352,9 +357,9 @@ EOF
 	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}.new
 	mv -f ${ra_r_total_bytes_tmp}.new ${ra_r_total_bytes_tmp}
 
-	ra_r_over_100sec_tmp=${f%.*}-mr-over100.tmp
-	awk 'BEGIN{total=0;} ($6>100){total++;} END {printf("%d",total);}' ${part_read_file} > ${ra_r_over_100sec_tmp}.new
-	mv -f ${ra_r_over_100sec_tmp}.new ${ra_r_over_100sec_tmp}
+	ra_r_over100_tmp=${f%.*}-mr-over100.tmp
+	awk "BEGIN{total=0;} (\$6>${ACCESS_TIME_SCALE_OVER}){total++;} END {printf(\"%d\",total);}" ${part_read_file} > ${ra_r_over100_tmp}.new
+	mv -f ${ra_r_over100_tmp}.new ${ra_r_over100_tmp}
 
 	if (( ${Debug} == 0 ))
 	then
@@ -438,9 +443,9 @@ EOF
 	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}.new
 	mv -f ${ra_w_total_bytes_tmp}.new ${ra_w_total_bytes_tmp}
 
-	ra_w_over_100sec_tmp=${f%.*}-mw-over100.tmp
-	awk 'BEGIN{total=0;} ($6>100){total++;} END {printf("%d",total);}' ${part_write_file} > ${ra_w_over_100sec_tmp}.new
-	mv -f ${ra_w_over_100sec_tmp}.new ${ra_w_over_100sec_tmp}
+	ra_w_over100_tmp=${f%.*}-mw-over100.tmp
+	awk "BEGIN{total=0;} (\$6>${ACCESS_TIME_SCALE_OVER}){total++;} END {printf(\"%d\",total);}" ${part_write_file} > ${ra_w_over100_tmp}.new
+	mv -f ${ra_w_over100_tmp}.new ${ra_w_over100_tmp}
 
 	if (( ${Debug} == 0 ))
 	then

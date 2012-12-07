@@ -88,6 +88,11 @@ then
 	IMAGE_RESIZE="width=640 height=480"
 fi
 
+if [[ -z "${ACCESS_TIME_SCALE_OVER}" ]]
+then
+	ACCESS_TIME_SCALE_OVER="1.0e+2"
+fi
+
 cd "${LogDirectory}"
 
 function ExtractSmartctl() {
@@ -327,6 +332,14 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			ra_r_over100_counts=""
+			ra_r_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-over100.tmp
+			if [[ -f "${ra_r_over100_tmp}" ]]
+			then
+				echo "<BR>"
+				ra_r_over100_counts=`cat "${ra_r_over100_tmp}"`
+				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+			fi
 			echo "</P><!-- id=\"${ParagraphIdMrTsAt}\" -->"
 			echo "</TD>"
 			echo "<TD>"
@@ -336,6 +349,14 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			ra_w_over100_counts=""
+			ra_w_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-over100.tmp
+			if [[ -f "${ra_w_over100_tmp}" ]]
+			then
+				echo "<BR>"
+				ra_w_over100_counts=`cat "${ra_w_over100_tmp}"`
+				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+			fi
 			echo "</P><!-- id=\"${ParagraphIdMwTsAt}\" -->"
 			echo "</TD>"
 			echo "</TR>"
@@ -367,6 +388,11 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			if [[ -n "${ra_r_over100_counts}" ]]
+			then
+				echo "<BR>"
+				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+			fi
 			echo "</P><!-- id=\"${ParagraphIdMrTlAt}\" -->"
 			echo "</TD>"
 			echo "<TD>"
@@ -376,6 +402,11 @@ do
 			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\">"
 			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
+			if [[ -n "${ra_w_over100_counts}" ]]
+			then
+				echo "<BR>"
+				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+			fi
 			echo "</P><!-- id=\"${ParagraphIdMwTlAt}\" -->"
 			echo "</TD>"
 			echo "</TR>"
