@@ -174,9 +174,51 @@ SequenceNumber=0
 PlotRandomAccess="n"
 
 png_list=()
-png_prev_tl_at=""
-png_prev_ts_at=""
-png_prev_ts_tl=""
+
+function ClearRandomAccessPngPrev() {
+	png_prev_mw_tl_at=""
+	png_prev_mw_ts_at=""
+	png_prev_mw_ts_tl=""
+	png_prev_mr_tl_at=""
+	png_prev_mr_ts_at=""
+	png_prev_mr_ts_tl=""
+}
+
+
+function AddListRandomAccessPng() {
+	if [[ -n ${png_prev_mw_tl_at} ]]
+	then
+		png_list[${i}]="${png_prev_mw_tl_at}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mw_ts_at} ]]
+	then
+		png_list[${i}]="${png_prev_mw_ts_at}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mw_ts_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mw_ts_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mr_tl_at} ]]
+	then
+		png_list[${i}]="${png_prev_mr_tl_at}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mr_ts_at} ]]
+	then
+		png_list[${i}]="${png_prev_mr_ts_at}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mr_ts_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mr_ts_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+}
+
+ClearRandomAccessPngPrev
 i=0
 for p in *.png
 do
@@ -188,59 +230,48 @@ do
 	Access="${Split[4]}"
 	PlotType="${Split[5]}"
 	case "${Access}" in
-		(sw|sr) # Sequential write or read.
-			if [[ -n ${png_prev_tl_at} ]]
-			then
-				png_list[${i}]="${png_prev_tl_at}"
-				i=$(( ${i} + 1 ))
-			fi
-			if [[ -n ${png_prev_ts_at} ]]
-			then
-				png_list[${i}]="${png_prev_ts_at}"
-				i=$(( ${i} + 1 ))
-			fi
-			if [[ -n ${png_prev_ts_tl} ]]
-			then
-				png_list[${i}]="${png_prev_ts_tl}"
-				i=$(( ${i} + 1 ))
-			fi
+		(sw) # Sequential write.
+			AddListRandomAccessPng
+			ClearRandomAccessPngPrev
 			png_list[${i}]="${p}"
 			i=$(( ${i} + 1 ))
-			png_prev_tl_at=""
-			png_prev_ts_at=""
-			png_prev_ts_tl=""
+
 		;;
-	esac
-	case "${PlotType}" in
-		(tl_at) # Transfer length - access time
-			png_prev_tl_at="${p}"
+		(sr) # Sequential read.
+			AddListRandomAccessPng
+			ClearRandomAccessPngPrev
+			png_list[${i}]="${p}"
+			i=$(( ${i} + 1 ))
 		;;
-		(ts_at) # Transfer speed - access time
-			png_prev_ts_at="${p}"
+		(mw) # Random access write part.
+			case "${PlotType}" in
+				(tl_at) # Transfer length - access time
+					png_prev_mw_tl_at="${p}"
+				;;
+				(ts_at) # Transfer speed - access time
+					png_prev_mw_ts_at="${p}"
+				;;
+				(ts_tl) # Transfer speed - transfer length
+					png_prev_mw_ts_tl="${p}"
+				;;
+			esac
 		;;
-		(ts_tl) # Transfer speed - transfer length
-			png_prev_ts_tl="${p}"
+		(mr) # Random access read part.
+			case "${PlotType}" in
+				(tl_at) # Transfer length - access time
+					png_prev_mr_tl_at="${p}"
+				;;
+				(ts_at) # Transfer speed - access time
+					png_prev_mr_ts_at="${p}"
+				;;
+				(ts_tl) # Transfer speed - transfer length
+					png_prev_mr_ts_tl="${p}"
+				;;
+			esac
 		;;
 	esac
 done
-if [[ -n ${png_prev_tl_at} ]]
-then
-	png_list[${i}]="${png_prev_tl_at}"
-	i=$(( ${i} + 1 ))
-fi
-if [[ -n ${png_prev_ts_at} ]]
-then
-	png_list[${i}]="${png_prev_ts_at}"
-	i=$(( ${i} + 1 ))
-fi
-if [[ -n ${png_prev_ts_tl} ]]
-then
-	png_list[${i}]="${png_prev_ts_tl}"
-	i=$(( ${i} + 1 ))
-fi
-png_prev_tl_at=""
-png_prev_ts_at=""
-png_prev_ts_tl=""
+AddListRandomAccessPng
 
 for p in ${png_list[*]}
 do
@@ -337,10 +368,11 @@ do
 			ra_r_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-over100.tmp
 			if [[ -f "${ra_r_over100_tmp}" ]]
 			then
-				echo "<P>"
+				ParagraphIdMrTsAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tsat_so"
+				echo "<P id=\"${ParagraphIdMrTsAtSo}\">"
 				ra_r_over100_counts=`cat "${ra_r_over100_tmp}"`
-				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
-				echo "</P>"
+				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+				echo "</P><!-- id=\"${ParagraphIdMrTsAtSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "<TD>"
@@ -355,10 +387,11 @@ do
 			ra_w_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-over100.tmp
 			if [[ -f "${ra_w_over100_tmp}" ]]
 			then
-				echo "<P>"
+				ParagraphIdMwTsAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tsat_so"
+				echo "<P id=\"${ParagraphIdMwTsAtSo}\">"
 				ra_w_over100_counts=`cat "${ra_w_over100_tmp}"`
-				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
-				echo "</P>"
+				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+				echo "</P><!-- id=\"${ParagraphIdMwTsAtSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "</TR>"
@@ -393,9 +426,10 @@ do
 			echo "</P><!-- id=\"${ParagraphIdMrTlAt}\" -->"
 			if [[ -n "${ra_r_over100_counts}" ]]
 			then
-				echo "<P>"
-				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
-				echo "</P>"
+				ParagraphIdMrTlAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tlat_so"
+				echo "<P id=\"${ParagraphIdMrTlAtSo}\">"
+				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+				echo "</P><!-- id=\"${ParagraphIdMrTlAtSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "<TD>"
@@ -408,9 +442,10 @@ do
 			echo "</P><!-- id=\"${ParagraphIdMwTlAt}\" -->"
 			if [[ -n "${ra_w_over100_counts}" ]]
 			then
-				echo "<P>"
-				echo "The number of \"Access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
-				echo "</P>"
+				ParagraphIdMwTlAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tlat_so"
+				echo "<P id=\"${ParagraphIdMwTlAtSo}\">"
+				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+				echo "</P><!-- id=\"${ParagraphIdMwTlAtSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "</TR>"
@@ -464,7 +499,6 @@ pass_count_all=0
 fail_count_all=0
 
 echo "<H2 id=\"RawDataLink\">Raw data link</H2>"
-echo "<P id=\"RawDataLinkTxt\">"
 echo "<TABLE id=\"RawDataLinkTxtTable\">"
 echo "<TR><TH>File<TH>PASS<TH>FAIL</TR>"
 for f in *.txt
@@ -478,6 +512,5 @@ done
 echo "</TABLE><!-- id=\"RawDataLinkTxtTable\" -->"
 echo ${pass_count_all} > pass_count_all.tmp
 echo ${fail_count_all} > fail_count_all.tmp
-echo "</P><!-- id=\"RawDataLinkTxt\" -->"
 echo "</BODY>"
 echo "</HTML>"
