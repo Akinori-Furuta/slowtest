@@ -38,7 +38,7 @@ uuid=`cat /proc/sys/kernel/random/uuid`
 function Help() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
-	echo "Run test SSD performance loop."
+	echo "Run SSD performance test loop."
 	echo "$0 [-L OptionalLabel] [-h] [-C num] test_file_or_directory"
 	echo "-L OptionalLabel : Jam string into log directory path."
 	echo "-C num : Run test num times."
@@ -94,6 +94,12 @@ then
 fi
 
 TestFile="${parsed_arg[${i}]}"
+
+if [[ -z ${LoopCount} ]]
+then
+	echo "$0: No loop count (-C num) option. Specify loop count with -C num."
+	exit 1
+fi
 
 i=0
 while (( ${i} < ${LoopCount} ))
