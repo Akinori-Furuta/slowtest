@@ -101,10 +101,17 @@ then
 	exit 1
 fi
 
+L_OptionLabel=""
+
+if [[ -n ${OptionLabel} ]]
+then
+	L_OptionLabel="-L ${OptionLabel}"
+fi
+
 i=0
 while (( ${i} < ${LoopCount} ))
 do
-	${my_dir}/ssdtest.sh -L ${OptionalLabel} ${TestFile}
+	${my_dir}/ssdtest.sh ${L_OptionLabel} ${TestFile}
 
 	i=$(( ${i} + 1 ))
 done
