@@ -499,7 +499,7 @@ pass_count_all=0
 fail_count_all=0
 
 echo "<H2 id=\"RawDataLink\">Raw data link</H2>"
-echo "<TABLE id=\"RawDataLinkTxtTable\">"
+echo "<TABLE border=1 id=\"RawDataLinkTxtTable\">"
 echo "<TR><TH>File<TH>PASS<TH>FAIL</TR>"
 for f in *.txt
 do

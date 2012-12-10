@@ -102,6 +102,11 @@ function UpdateFile() {
 	fi
 }
 
+function BytesToShowBytes() {
+	echo $1 | awk 'BEGIN {u[0]="";u[1]="Ki";u[2]="Mi";u[3]="Gi";u[4]="Ti";u[5]="Pi";u[6]="Ei";}\
+	{a=$1;lk=log(a)/log(1024);m=int(lk);i=0;a=a/(exp(log(1024)*m));d=log(a)/log(10);f=3-d;printf("%4.*f%s\n",f,a,u[m]);}'
+}
+
 log_dirs=(`ls -d -F log-* | grep '/$' | sed -n 's!/$!!p'`)
 
 i=0
@@ -178,8 +183,8 @@ echo "</HEAD>"
 echo "<BODY>"
 echo "<H1>Model: ${Model} ${CapacityGBTitle} - Continous access test</H1>"
 echo "<HR>"
-echo "<TABLE>"
-echo "<TR><TH>Test log</TR>"
+echo "<TABLE border=1>"
+echo "<TR><TH>Test log<TH>Pass<TH>Fail<TH>Written bytes<TH>Read bytes<TH>Accumulated written bytes<TH>Accumulated read bytes</TR>"
 WriteBytesAll=0
 ReadBytesAll=0
 i=0
@@ -200,6 +205,20 @@ do
 		$2 \
 		);}'`
 
+	PassCount=0
+	pass_count_file="${d}/pass_count_all.tmp"
+	if [[ -f ${pass_count_file} ]]
+	then
+		PassCount=`cat ${pass_count_file}`
+	fi
+
+	FailCount=0
+	fail_count_file="${d}/fail_count_all.tmp"
+	if [[ -f ${fail_count_file} ]]
+	then
+		FailCount=`cat ${fail_count_file}`
+	fi
+
 	WriteBytesRound=0
 	write_bytes_round_file="${d}/total_written_bytes.tmp"
 	if [[ -f "${write_bytes_round_file}" ]]
@@ -208,17 +227,22 @@ do
 	fi
 
 	ReadBytesRound=0
-	read_bytes_round_file="${d}/total_written_bytes.tmp"
+	read_bytes_round_file="${d}/total_read_bytes.tmp"
 	if [[ -f "${read_bytes_round_file}" ]]
 	then
-		ReadBytesRound=`cat $"{read_bytes_round_file}"`
+		ReadBytesRound=`cat "${read_bytes_round_file}"`
 	fi
 
 	echo "<TR>"
-	echo "<TD><A href=\"${d}/index.html\">TestDate: ${DirectoryDateFormed}, Round: ${i}</A>"
-	echo "</TR>"
+	echo -n "<TD><A href=\"${d}/index.html\">TestDate: ${DirectoryDateFormed}, Round: ${i}</A>"
+	echo -n "<TD align="center">${PassCount}<TD align="center">${FailCount}"
+	echo -n "<TD>`BytesToShowBytes ${WriteBytesRound}`(${WriteBytesRound})"
+	echo -n "<TD>`BytesToShowBytes  ${ReadBytesRound}`(${ReadBytesRound})"
 	WriteBytesAll=$(( ${WriteBytesAll} + ${WriteBytesRound} ))
 	ReadBytesAll=$(( ${ReadBytesAll} + ${ReadBytesRound} ))
+	echo -n "<TD>`BytesToShowBytes ${WriteBytesAll}`(${WriteBytesAll})"
+	echo -n "<TD>`BytesToShowBytes ${ReadBytesAll}`(${ReadBytesAll})"
+	echo "</TR>"
 done
 echo "</TABLE>"
 echo "</BODY>"
