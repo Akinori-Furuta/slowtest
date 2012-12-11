@@ -110,6 +110,11 @@ function ExtractSmartctl() {
 	) >> $2
 }
 
+function BytesToShowBytes() {
+	echo $1 | awk 'BEGIN {u[0]="";u[1]="Ki";u[2]="Mi";u[3]="Gi";u[4]="Ti";u[5]="Pi";u[6]="Ei";}\
+	{a=$1;lk=log(a)/log(1024);m=int(lk);i=0;a=a/(exp(log(1024)*m));d=int(log(a)/log(10));f=3-d;printf("%5.*f%s\n",f,a,u[m]);}'
+}
+
 Year4=`date +%Y`
 Year01Part=${Year4:0:2}
 Year23Part=${Year4:2:2}
@@ -459,36 +464,12 @@ echo "<HR>"
 echo "<H2 id=\"Summary\">Summary</H2>"
 echo "<P id=\"SummaryStatistics\">"
 
-Size16Gi=17179869184
-Size16Ti=17592186044416
-
-function BytesToShowBytes() {
-	if (( $1 < ${Size16Gi} ))
-	then
-		# Under 16GiBytes, show in Mi bytes.
-		TotalWrittenBytesMi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 ) ) }"`
-		echo "${TotalWrittenBytesMi}Mi"
-	else
-		# Equal to or more than 16GiBytes, show in Mi bytes.
-		if (( $1 < ${Size16Ti} ))
-		then
-			# Under 16TiBytes, show in Gi bytes.
-			TotalWrittenBytesGi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
-			echo "${TotalWrittenBytesGi}Gi"
-		else
-			# Equal to or more than 16TiBytes, show in Gi bytes.
-			TotalWrittenBytesTi=`awk "BEGIN { print int ( ${TotalWrittenBytes} / ( 1024.0 * 1024.0 * 1024.0 * 1024.0 ) ) }"`
-			echo "${TotalWrittenBytesTi}Ti"
-		fi
-	fi
-}
-
 TotalWrittenBytesShow=`BytesToShowBytes ${TotalWrittenBytes}`
-echo "Total Written Bytes: ${TotalWrittenBytes} (${TotalWrittenBytesShow}) bytes<BR>"
+echo "Total Written Bytes: ${TotalWrittenBytesShow} (${TotalWrittenBytes}) bytes<BR>"
 echo ${TotalWrittenBytes} > total_written_bytes.tmp
 
 TotalReadBytesShow=`BytesToShowBytes ${TotalReadBytes}`
-echo "Total Read Bytes: ${TotalReadBytes} (${TotalReadBytesShow}) bytes<BR>"
+echo "Total Read Bytes: ${TotalReadBytesShow} (${TotalReadBytes}) bytes<BR>"
 echo ${TotalReadBytes} > total_read_bytes.tmp
 
 echo "</P><!-- id=\"SummaryStatistics\" -->"

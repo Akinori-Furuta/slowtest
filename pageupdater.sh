@@ -104,7 +104,7 @@ function UpdateFile() {
 
 function BytesToShowBytes() {
 	echo $1 | awk 'BEGIN {u[0]="";u[1]="Ki";u[2]="Mi";u[3]="Gi";u[4]="Ti";u[5]="Pi";u[6]="Ei";}\
-	{a=$1;lk=log(a)/log(1024);m=int(lk);i=0;a=a/(exp(log(1024)*m));d=log(a)/log(10);f=3-d;printf("%4.*f%s\n",f,a,u[m]);}'
+	{a=$1;lk=log(a)/log(1024);m=int(lk);i=0;a=a/(exp(log(1024)*m));d=int(log(a)/log(10));f=3-d;printf("%5.*f%s\n",f,a,u[m]);}'
 }
 
 log_dirs=(`ls -d -F log-* | grep '/$' | sed -n 's!/$!!p'`)
@@ -136,8 +136,9 @@ do
 	fi
 	if (( ${update_plot} != 0 ))
 	then
-		${my_dir}/plotlogseq.sh
-		${my_dir}/plotlogmix.sh
+		( ${my_dir}/plotlogseq.sh
+		  ${my_dir}/plotlogmix.sh
+		) 1>&2
 		${my_dir}/htmlplot.sh -C ${i} > index.html.new
 		UpdateFile index.html.new index.html
 	fi
@@ -236,12 +237,12 @@ do
 	echo "<TR>"
 	echo -n "<TD><A href=\"${d}/index.html\">TestDate: ${DirectoryDateFormed}, Round: ${i}</A>"
 	echo -n "<TD align="center">${PassCount}<TD align="center">${FailCount}"
-	echo -n "<TD>`BytesToShowBytes ${WriteBytesRound}`(${WriteBytesRound})"
-	echo -n "<TD>`BytesToShowBytes  ${ReadBytesRound}`(${ReadBytesRound})"
+	echo -n "<TD>`BytesToShowBytes ${WriteBytesRound}` (${WriteBytesRound})"
+	echo -n "<TD>`BytesToShowBytes  ${ReadBytesRound}` (${ReadBytesRound})"
 	WriteBytesAll=$(( ${WriteBytesAll} + ${WriteBytesRound} ))
 	ReadBytesAll=$(( ${ReadBytesAll} + ${ReadBytesRound} ))
-	echo -n "<TD>`BytesToShowBytes ${WriteBytesAll}`(${WriteBytesAll})"
-	echo -n "<TD>`BytesToShowBytes ${ReadBytesAll}`(${ReadBytesAll})"
+	echo -n "<TD>`BytesToShowBytes ${WriteBytesAll}` (${WriteBytesAll})"
+	echo -n "<TD>`BytesToShowBytes ${ReadBytesAll}` (${ReadBytesAll})"
 	echo "</TR>"
 done
 echo "</TABLE>"
