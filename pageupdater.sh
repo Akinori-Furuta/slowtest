@@ -185,7 +185,7 @@ echo "<BODY>"
 echo "<H1>Model: ${Model} ${CapacityGBTitle} - Continous access test</H1>"
 echo "<HR>"
 echo "<TABLE border=1>"
-echo "<TR><TH>Test log<TH>Pass<TH>Fail<TH>Written bytes<TH>Read bytes<TH>Accumulated written bytes<TH>Accumulated read bytes</TR>"
+echo "<TR><TH>Round<TH>Test log<TH>Pass<TH>Fail<TH>Written bytes<TH>Read bytes<TH>Accumulated written bytes<TH>Accumulated read bytes</TR>"
 WriteBytesAll=0
 ReadBytesAll=0
 i=0
@@ -235,14 +235,15 @@ do
 	fi
 
 	echo "<TR>"
-	echo -n "<TD><A href=\"${d}/index.html\">TestDate: ${DirectoryDateFormed}, Round: ${i}</A>"
-	echo -n "<TD align="center">${PassCount}<TD align="center">${FailCount}"
-	echo -n "<TD>`BytesToShowBytes ${WriteBytesRound}` (${WriteBytesRound})"
-	echo -n "<TD>`BytesToShowBytes  ${ReadBytesRound}` (${ReadBytesRound})"
+	echo -n "<TD align="right">${i}"
+	echo -n "<TD align="left"><A href=\"${d}/index.html\">${DirectoryDateFormed}</A>"
+	echo -n "<TD align="right">${PassCount}<TD align="right">${FailCount}"
+	echo -n "<TD align="right">`BytesToShowBytes ${WriteBytesRound}` (${WriteBytesRound})"
+	echo -n "<TD align="right">`BytesToShowBytes  ${ReadBytesRound}` (${ReadBytesRound})"
 	WriteBytesAll=$(( ${WriteBytesAll} + ${WriteBytesRound} ))
 	ReadBytesAll=$(( ${ReadBytesAll} + ${ReadBytesRound} ))
-	echo -n "<TD>`BytesToShowBytes ${WriteBytesAll}` (${WriteBytesAll})"
-	echo -n "<TD>`BytesToShowBytes ${ReadBytesAll}` (${ReadBytesAll})"
+	echo -n "<TD align="right">`BytesToShowBytes ${WriteBytesAll}` (${WriteBytesAll})"
+	echo -n "<TD align="right">`BytesToShowBytes ${ReadBytesAll}` (${ReadBytesAll})"
 	echo "</TR>"
 done
 echo "</TABLE>"

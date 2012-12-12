@@ -486,7 +486,9 @@ for f in *.txt
 do
 	pass_count=`grep '[.]bin' ${f} | grep 'PASS' | wc -l`
 	fail_count=`grep '[.]bin' ${f} | grep 'FAIL' | wc -l`
-	echo "<TR><TD align="left"><A href=\"${f}\">${f}</A><TD align="center">${pass_count}<TD align="center">${fail_count}</TR>"
+	echo -n "<TR>"
+	echo -n "<TD align="left"><A href=\"${f}\">${f}</A>"
+	echo -n "<TD align="right">${pass_count}<TD align="right">${fail_count}</TR>"
 	pass_count_all=$(( ${pass_count_all} + ${pass_count} ))
 	fail_count_all=$(( ${fail_count_all} + ${fail_count} ))
 done

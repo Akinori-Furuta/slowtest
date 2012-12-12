@@ -108,6 +108,9 @@ then
 	L_OptionLabel="-L ${OptionLabel}"
 fi
 
+done_flag=${my_base%.sh}_done.tmp
+
+rm "${done_flag}"
 i=0
 while (( ${i} < ${LoopCount} ))
 do
@@ -115,3 +118,4 @@ do
 
 	i=$(( ${i} + 1 ))
 done
+echo ${i} > "${done_flag}"
