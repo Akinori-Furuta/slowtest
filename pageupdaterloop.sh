@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run loop test.
+# Run page update loop.
 #
 #  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
@@ -29,6 +29,7 @@
 
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
 
 TempPath=/dev/shm
 uuid=`cat /proc/sys/kernel/random/uuid`
@@ -38,20 +39,16 @@ uuid=`cat /proc/sys/kernel/random/uuid`
 function Help() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
-	echo "Run SSD performance test loop."
-	echo "$0 [-L OptionalLabel] [-h] [-C num] test_file_or_directory"
-	echo "-L OptionalLabel : Jam string into log directory path."
-	echo "-C num : Run test num times."
-	echo "-h : Show this help."
-	echo "test_file_or_directory: "
-	echo "  Test file name to read and write, or test directory to create"
-	echo "  temporal test file to read and write."
-	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
+	echo "Repeat creating html pages from log directories."
+	echo "$0 [-T seconds] [update-directory]"
+	echo "update-directory: "
+	echo "  Contains log-* directories."
+	echo "-T seconds: Repeat interval time in seconds."
 	exit 1
 
 }
 
-parsed_arg=( `getopt C:h $*` )
+parsed_arg=( `getopt hT: $*` )
 if (( $? != 0 ))
 then
 	Help
@@ -66,13 +63,9 @@ while (( ${i} < ${parsed_arg_n} ))
 do
 	opt="${parsed_arg[${i}]}"
 	case ${opt} in
-		(-C) # Loop Count.
+		(-T) # Interval Time.
 			i=$(( ${i} + 1 ))
-			LoopCount="${parsed_arg[${i}]}"
-		;;
-		(-L) # OptionalLabel
-			i=$(( ${i} + 1 ))
-			OptionalLabel="${parsed_arg[${i}]}"
+			IntervalTime=${parsed_arg[${i}]}
 		;;
 		(-h) # Help.
 			Help
@@ -87,36 +80,42 @@ do
 done
 
 
-if [[ -z ${parsed_arg[${i}]} ]]
+if [[ -z "${parsed_arg[${i}]}" ]]
 then
 	Help
 	exit 1
 fi
 
-TestFile="${parsed_arg[${i}]}"
-
-if [[ -z ${LoopCount} ]]
+if [[ -z ${IntervalTime} ]]
 then
-	echo "$0: No loop count (-C num) option. Specify loop count with -C num."
-	exit 1
+	IntervalTime=60
 fi
 
-L_OptionLabel=""
+UpdateDirectory="${parsed_arg[${i}]}"
 
-if [[ -n ${OptionLabel} ]]
-then
-	L_OptionLabel="-L ${OptionLabel}"
-fi
+cd "${UpdateDirectory}"
 
-done_flag=${my_base%.sh}_done.tmp
+function UpdateFile() {
+	if [[ ! -e "$2" ]]
+	then
+		# 1st update
+		mv "$1" "$2"
+	else
+		if ( ! cmp -s "$1" "$2" )
+		then
+			# Not same file.
+			mv -f "$1" "$2"
+		else
+			# Same file.
+			rm "$1"
+		fi
+	fi
+}
 
-rm "${done_flag}"
-i=0
-while (( ${i} < ${LoopCount} ))
+while [[ ! -f "ssdtestloop_done.tmp" ]]
 do
-	${my_dir}/ssdtest.sh ${L_OptionLabel} ${TestFile}
-
-	i=$(( ${i} + 1 ))
+	${my_dir}/pageupdater.sh . > index.html.new
+	UpdateFile index.html.new index.html
+	sleep ${IntervalTime}
 done
-echo ${i} > "${done_flag}"
-echo "$0: Done loop test."
+echo "$0: Terminated loop."

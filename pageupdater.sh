@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run test loop.
+# Update loop test log pages.
 #
 #  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
