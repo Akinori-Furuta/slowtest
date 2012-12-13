@@ -94,8 +94,14 @@ DoReadFile=`grep 'DoReadFile(-r):' ${s_header} | cut -d ':' -f 2 | tr -d [[:spac
 Repeats=`grep 'Repeats(-n):' ${s_header} | cut -d ':' -f 2`
 LBASectors=`sed -n '/LBAsects/ s/.*LBAsects=\([0-9][0-9]*\)/\1/p' ${s_header}`
 
-FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
-FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+if [[ -n ${FileSize} ]]
+then
+	FileSizeMi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 ) ) }"`
+	FileSizeGi=`awk "BEGIN { print int ( ${FileSize} / ( 1024.0 * 1024.0 * 1024.0 ) ) }"`
+else
+	FileSizeMi=0
+	FileSizeGi=0
+fi
 
 if (( ${FileSizeMi} < 20480 ))
 then

@@ -40,7 +40,8 @@ my_base=`basename "$0"`
 my_dir=`dirname "$0"`
 my_dir=`readlink -f "${my_dir}"`
 
-TempPath=/dev/shm
+source "${my_dir}/ssdtestcommon.sh"
+
 uuid=`cat /proc/sys/kernel/random/uuid`
 
 
@@ -122,26 +123,9 @@ fi
 
 cd "${LogDirectory}"
 
-function UpdateFile() {
-	if [[ ! -e "$2" ]]
-	then
-		# 1st update
-		mv "$1" "$2"
-	else
-		if ( ! cmp -s "$1" "$2" )
-		then
-			# Not same file.
-			mv -f "$1" "$2"
-		else
-			# Same file.
-			rm "$1"
-		fi
-	fi
-}
-
 for f in *.txt
 do
-	source ${my_dir}/readcondition.sh ${f}
+	ReadCondition "${f}"
 
 	if [[ -z ${FileSize} ]]
 	then

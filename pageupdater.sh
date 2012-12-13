@@ -31,7 +31,8 @@ my_base=`basename "$0"`
 my_dir=`dirname "$0"`
 my_dir=`readlink -f "${my_dir}"`
 
-TempPath=/dev/shm
+source "${my_dir}/ssdtestcommon.sh"
+
 uuid=`cat /proc/sys/kernel/random/uuid`
 
 # Parse Argument
@@ -85,28 +86,6 @@ UpdateDirectory="${parsed_arg[${i}]}"
 
 cd "${UpdateDirectory}"
 
-function UpdateFile() {
-	if [[ ! -e "$2" ]]
-	then
-		# 1st update
-		mv "$1" "$2"
-	else
-		if ( ! cmp -s "$1" "$2" )
-		then
-			# Not same file.
-			mv -f "$1" "$2"
-		else
-			# Same file.
-			rm "$1"
-		fi
-	fi
-}
-
-function BytesToShowBytes() {
-	echo $1 | awk 'BEGIN {u[0]="";u[1]="Ki";u[2]="Mi";u[3]="Gi";u[4]="Ti";u[5]="Pi";u[6]="Ei";}\
-	{a=$1;lk=log(a)/log(1024);m=int(lk);i=0;a=a/(exp(log(1024)*m));d=int(log(a)/log(10));f=3-d;printf("%5.*f%s\n",f,a,u[m]);}'
-}
-
 log_dirs=(`ls -d -F log-* | grep '/$' | sed -n 's!/$!!p'`)
 
 i=0
@@ -152,11 +131,6 @@ do
 	fi
 done
 
-Year4=`date +%Y`
-Year01Part=${Year4:0:2}
-Year23Part=${Year4:2:2}
-DateOffset=`date +%Z`
-
 first_log=""
 
 d=${log_dirs[0]}
@@ -174,7 +148,7 @@ fi
 
 if [[ -n "${first_log}" ]]
 then
-	source ${my_dir}/readcondition.sh ${first_log}
+	ReadCondition ${first_log}
 fi
 
 echo "<HTML>"
@@ -199,12 +173,7 @@ do
 		Year01Part=$(( ${Year01Part} - 1 ))
 	fi
 
-	DirectoryDateFormed=`echo ${Year01Part}${DirectoryDate} ${DateOffset} \
-		| awk '{printf("%s/%s/%s %s:%s:%s %s", \
-		substr($1,1,4),  substr($1,5,2),  substr($1,7,2), \
-		substr($1,9,2), substr($1,11,2), substr($1,13,2), \
-		$2 \
-		);}'`
+	DirectoryDateFormed=`FormatDirectoryDate ${d}`
 
 	PassCount=0
 	pass_count_file="${d}/pass_count_all.tmp"
