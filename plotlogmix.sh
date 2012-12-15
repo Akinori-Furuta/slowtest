@@ -127,10 +127,24 @@ else
 	GridMinorLineType=0
 fi
 
+function SumTotalTransferedBytes() {
+	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' "$1"
+}
+
+function SumTimeScaleOver() {
+	awk "BEGIN{total=0;} (\$6>${ACCESS_TIME_SCALE_OVER}){total++;} END {printf(\"%d\",total);}" "$1"
+}
+
 ReadBytes=0
 WriteBytes=0
 
 FileGroups=(`ls *.txt | grep -v 'bytes.txt$' | awk 'BEGIN{FS="-"} {printf("%s-%s\n", $2, $3);}' | uniq`)
+
+# delete total transfered bytes.
+rm -f *-mw-bytes.tmp
+rm -f *-mr-bytes.tmp
+rm -f *-mr-over100.tmp
+rm -f *-mw-over100.tmp
 
 for g in ${FileGroups[*]}
 do
@@ -338,12 +352,10 @@ EOF
 	fi
 
 	ra_r_total_bytes_tmp=${f%.*}-mr-bytes.tmp
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_read_file} > ${ra_r_total_bytes_tmp}.new
-	mv -f ${ra_r_total_bytes_tmp}.new ${ra_r_total_bytes_tmp}
+	SumTotalTransferedBytes ${part_read_file} > ${ra_r_total_bytes_tmp}
 
 	ra_r_over100_tmp=${f%.*}-mr-over100.tmp
-	awk "BEGIN{total=0;} (\$6>${ACCESS_TIME_SCALE_OVER}){total++;} END {printf(\"%d\",total);}" ${part_read_file} > ${ra_r_over100_tmp}.new
-	mv -f ${ra_r_over100_tmp}.new ${ra_r_over100_tmp}
+	SumTimeScaleOver ${part_read_file} > ${ra_r_over100_tmp}
 
 	if (( ${Debug} == 0 ))
 	then
@@ -424,12 +436,10 @@ EOF
 	fi
 
 	ra_w_total_bytes_tmp=${f%.*}-mw-bytes.tmp
-	awk 'BEGIN{total=0;} {total+=strtonum($5);} END{printf("%d",total);}' ${part_write_file} > ${ra_w_total_bytes_tmp}.new
-	mv -f ${ra_w_total_bytes_tmp}.new ${ra_w_total_bytes_tmp}
+	SumTotalTransferedBytes ${part_write_file} > ${ra_w_total_bytes_tmp}
 
 	ra_w_over100_tmp=${f%.*}-mw-over100.tmp
-	awk "BEGIN{total=0;} (\$6>${ACCESS_TIME_SCALE_OVER}){total++;} END {printf(\"%d\",total);}" ${part_write_file} > ${ra_w_over100_tmp}.new
-	mv -f ${ra_w_over100_tmp}.new ${ra_w_over100_tmp}
+	SumTimeScaleOver ${part_write_file} > ${ra_w_over100_tmp}
 
 	if (( ${Debug} == 0 ))
 	then
