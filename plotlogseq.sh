@@ -123,6 +123,14 @@ fi
 
 cd "${LogDirectory}"
 
+function SequentialTransferBytes() {
+	awk '{filepos=$5;} END{printf("%d\n",filepos);}' $1
+}
+
+# delete total transfered bytes.
+rm -f *-sw-bytes.tmp
+rm -f *-sr-bytes.tmp
+
 for f in *.txt
 do
 	ReadCondition "${f}"
@@ -208,6 +216,8 @@ EOF
 		then
 			gnuplot -e "load \"${GnuplotVarFile}\"" > ${sw_png}.new
 			UpdateFile ${sw_png}.new ${sw_png}
+			sw_total_bytes_tmp=${f%.*}-sw-bytes.tmp
+			SequentialTransferBytes ${part_data_file} > ${sw_total_bytes_tmp}
 		else
 			echo "${f}: Empty sequential write log."
 		fi
@@ -220,8 +230,8 @@ EOF
 log_file="${part_data_file}"
 set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
 set title "${Model} ${CapacityGB}G bytes, sequential read\\n\
-${RWBytesMi}Mi bytes per one read() call, up to ${FileSizeShow} bytes, \
-${DoDirectSequential}\\ntransfer speed - progress"
+${RWBytesMi}Mi bytes per one read() call, \
+up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#00c000"
 set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
@@ -239,6 +249,8 @@ EOF
 		then
 			gnuplot -e "load \"${GnuplotVarFile}\"" >  ${sr_png}.new
 			UpdateFile ${sr_png}.new ${sr_png}
+			sr_total_bytes_tmp=${f%.*}-sr-bytes.tmp
+			SequentialTransferBytes ${part_data_file} > ${sr_total_bytes_tmp}
 		else
 			echo "${f}: Empty sequential read log."
 		fi

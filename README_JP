@@ -1,13 +1,31 @@
+ssdtest マニュアル
 
+1. 動作条件
 
-1. 実行環境
-
+1.1. 実行環境
 OS: Linux kernel 2.6.34 or later, 64bit addressing
 Memory: 8GiBytes or more main memory.
 Disk Space: 1MiBytes to store test programs, 1GiBytes to store test output logs and plots.
-Packages: gcc (It's better that it can compile your linux kernel source code), gnuplot 4.2 or later.
+Packages: gcc, gnuplot 4.2 or later.
+
+1.2. テスト対象
+
+種別: SSD
+接続形態: SATA (途中に USB 等の変換アダプタがないこと)
+容量: 60GByte 以上の空きが有ること (100GBytes 以上が望ましい)
+ボリューム構成: シングルパーティション (RAID, Volume Group 不可)
+ファイルシステム形式: ext3, ext4 など (ボリュームサイズに対し 90% のサイズのファイルを保持できること)
+
+1.3. テスト時間
+SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SSD で 12 ～ 48 時間掛かります。
+
+1.4. 寿命負荷
+1 回のテストに付き SSD に対して 約 空き容量 x 3.6 + 5.4Ti Byte 書き込みます。
+
 
 2. 展開とコンパイル
+
+2.1. 展開・ビルド
 次の様にして、ダウンロードしたファイル ssdtest_x.x.tar.gz を展開、コンパイルしてください。
 
 % tar zxvf ssdtest_x.x.tar.gz
@@ -44,12 +62,37 @@ count, elapsed_time, rw, seek_position, length, read_time, bps, memory_access_ti
 Output format: sequential read.
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total
 
+システム(/bin, /usr/bin, /usr/local/bin 等)にインストールせ
+
+2.2. 生成ファイルを削除する
+次のコマンドで生成ファイルを削除します。測定結果はそのまま残ります。
+
+% make clean
+
 
 3. ツール
 実行プログラムは、「テスト実行ツール」、「結果プロット、ページ作成ツール」、
 「連続実行用ツール」、「デバック・診断ツール」の 4 群から構成されています。
 
 3.1. テスト実行ツール
+テスト実行ツールは root 権限もしくは block device に対して直接アクセスできる権限をもつ
+ユーザーで実行します。一般ユーザーでも実行は可能です。しかし、S.M.A.R.T. 情報、kernel
+チューニング等が行われずテスト結果から一部の情報が欠落したり、十分な性能が発揮できない
+テストになります。
+
+
+3.1.1. ssdtest.sh
+ssdtest.sh はテスト実行スクリプトです。スクリプト内で ssdstress を呼び出します。
+テスト内容は次の順番で行います。
+
+・sequential write wthout O_DIRECT
+・random read/write without O_DIRECT
+・sequential read wthout O_DIRECT
+
+3.1.2. ssdstress
+
+3.1.1. ssdtest_usbmems.sh
+3.1.2.
 
 3.2. 結果プロット、ページ作成ツール
 
@@ -57,5 +100,11 @@ cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tre
 
 3.4. デバック・診断ツール
 
+4. 技術ノート
+
+4.1. O_DIRECT
+4.2. カーネルパラメータチューニング
+4.3. swap 設定
+4.4. テスト間の休止時間
 
 

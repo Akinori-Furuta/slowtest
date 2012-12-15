@@ -140,15 +140,15 @@ TotalReadBytes=0
 TotalWrittenBytes=0
 for f in *-bytes.tmp
 do
-	if [[ ${f} == *-mw-bytes.tmp ]]
+	if [[ ( ${f} == *-mw-bytes.tmp ) || ( ${f} == *-sw-bytes.tmp ) ]]
 	then
 		TotalWrittenBytes=$(( ${TotalWrittenBytes} + `cat ${f}` ))
-		# echo "<!-- ${f} RandomWrites=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
+		# echo "<!-- ${f}=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
 	fi
-	if [[ ${f} == *-mr-bytes.tmp ]]
+	if [[ ( ${f} == *-mr-bytes.tmp ) || ( ${f} == *-sr-bytes.tmp ) ]]
 	then
 		TotalReadBytes=$(( ${TotalReadBytes} + `cat ${f}` ))
-		# echo "<!-- ${f} RandomReads=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
+		# echo "<!-- ${f}=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
 	fi
 done
 
@@ -273,7 +273,6 @@ do
 	random_plot="n"
 	case "${Access}" in
 		(sw) # Sequential write.
-			TotalWrittenBytes=$(( ${TotalWrittenBytes} + ${FileSize} ))
 			SequenceNumber=$(( ${SequenceNumber} + 1 ))
 			PlotRandomAccess="n"
 			case ${ODirect} in
@@ -290,7 +289,6 @@ do
 			esac
 			ParagraphIdSw="SequentialWritePlot_${ODirect}_${SequenceNumber}"
 			echo "<H3 id=\"SequentialWrite_${ODirect}_${SequenceNumber}\">Sequential write</H3>"
-			# echo "<!-- ${p%-sw.png}.txt SequentialWrites=${FileSize} TotalWrittenBytes=${TotalWrittenBytes} -->"
 
 			TextLogFile=${p%-sw.png}.txt
 			SmartFile=${p%-sw.png}-smart.html
@@ -304,10 +302,8 @@ do
 			echo "</P><!-- id=\"${ParagraphIdSw}\" -->"
 		;;
 		(sr) # Sequential read.
-			TotalReadBytes=$(( ${TotalReadBytes} + ${FileSize} ))
 			ParagraphIdSr="SequentialReadPlot_${ODirect}_${SequenceNumber}"
 			echo "<H3 id=\"SequentialRead_${ODirect}_${SequenceNumber}\">Sequential read</H3>"
-			# echo "<!-- ${p%-sr.png}.txt SequentialReads=${FileSize} TotalReadBytes=${TotalReadBytes} -->"
 
 			TextLogFile=${p%-sr.png}.txt
 			SmartFile=${p%-sr.png}-smart.html
