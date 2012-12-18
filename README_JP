@@ -3,21 +3,24 @@ ssdtest マニュアル
 1. 動作条件
 
 1.1. 実行環境
-OS: Linux kernel 2.6.34 or later, 64bit addressing
-Memory: 8GiBytes or more main memory.
-Disk Space: 1MiBytes to store test programs, 1GiBytes to store test output logs and plots.
-Packages: gcc, gnuplot 4.2 or later.
+OS:         Linux kernel 2.6.34 or later, 64bit addressing
+Memory:     8GiBytes or more main memory.
+Disk Space: 1MiBytes to store test programs, 
+            1GiBytes to store test output logs and plots.
+Packages:   gcc, gnuplot 4.2 or later.
 
 1.2. テスト対象
 
-種別: SSD
-接続形態: SATA (途中に USB 等の変換アダプタがないこと)
-容量: 60GByte 以上の空きが有ること (100GBytes 以上が望ましい)
-ボリューム構成: シングルパーティション (RAID, Volume Group 不可)
-ファイルシステム形式: ext3, ext4 など (ボリュームサイズに対し 90% のサイズのファイルを保持できること)
+種別:                 SSD
+接続形態:             SATA (途中に USB 等の変換アダプタがないこと)
+容量:                 60GByte 以上の空きが有ること (100GBytes 以上が望ましい)
+ボリューム構成:       シングルパーティション (RAID, Volume Group 不可)
+ファイルシステム形式: ext3, ext4 など (ボリュームサイズに対し 90% のサイズの
+                      ファイルを保持できること)
 
 1.3. テスト時間
-SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SSD で 12 ～ 48 時間掛かります。
+SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SSD で 12 ～ 48 時間
+掛かります。
 
 1.4. 寿命負荷
 1 回のテストに付き SSD に対して 約 空き容量 x 3.6 + 5.4Ti Byte 書き込みます。
@@ -26,14 +29,15 @@ SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SS
 2. 展開とコンパイル
 
 2.1. 展開・ビルド
-次の様にして、ダウンロードしたファイル ssdtest_x.x.tar.gz を展開、コンパイルしてください。
+次の様にして、ダウンロードしたファイル ssdtest_x.x.tar.gz を展開、コンパイルし
+てください。
 
 % tar zxvf ssdtest_x.x.tar.gz
 % cd ssdtest_x.x
 % make
 
-どのコマンドもエラーや警告は出ないはずです。make に成功していれば、次の様に ssdstress 
-コマンドのヘルプメッセージを出力することができます。
+どのコマンドもエラーや警告は出ないはずです。make に成功していれば、次の様に 
+ssdstress コマンドのヘルプメッセージを出力することができます。
 
 % ssdstress
 ssdstress: SSD stress test tool. Copyright (C) 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
@@ -62,9 +66,12 @@ count, elapsed_time, rw, seek_position, length, read_time, bps, memory_access_ti
 Output format: sequential read.
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total
 
-システム(/bin, /usr/bin, /usr/local/bin 等)にインストールせ
+2.2. インストール
+インストール機能はありません。システム(/bin, /usr/bin, /usr/local/bin 等)に
+インストールせずに使用するツールです。起動は、フルパスまたは、カレントディレク
+トリから辿れる相対パスで実行ファイルを指定します。
 
-2.2. 生成ファイルを削除する
+2.3. 生成ファイルを削除する
 次のコマンドで生成ファイルを削除します。測定結果はそのまま残ります。
 
 % make clean
@@ -75,36 +82,176 @@ cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tre
 「連続実行用ツール」、「デバック・診断ツール」の 4 群から構成されています。
 
 3.1. テスト実行ツール
-テスト実行ツールは root 権限もしくは block device に対して直接アクセスできる権限をもつ
-ユーザーで実行します。一般ユーザーでも実行は可能です。しかし、S.M.A.R.T. 情報、kernel
-チューニング等が行われずテスト結果から一部の情報が欠落したり、十分な性能が発揮できない
-テストになります。
+テスト実行ツールは root 権限もしくは block device に対して直接アクセスできる
+権限をもつユーザーで実行します。一般ユーザーでも実行は可能です。しかし、
+S.M.A.R.T. 情報、kernel チューニング等が行われずテスト結果から一部の情報が欠落
+したり、十分な性能が発揮できないテストになります。
 
 
 3.1.1. ssdtest.sh
 ssdtest.sh はテスト実行スクリプトです。スクリプト内で ssdstress を呼び出します。
-テスト内容は次の順番で行います。
 
-・sequential write wthout O_DIRECT
-・random read/write without O_DIRECT
-・sequential read wthout O_DIRECT
+# ssdtest.sh [-L ModelNameLabel] /path/to/test
+
+/path/to/test はテストしようとする SSD をマウントしたパス、またはそれより深い
+階層のパスを指定します。ディレクトリを指定すれば、そのディレクトリに UUID 形式
+の名前が付いたファイルを生成してテストをします。ファイル名を指定すれば、その名
+前でファイルを生成してテストをします。
+
+-L ModelNameLabel は任意で指定できます。SSD のモデル名に付加したい文字列を
+ModelNameLabel で指定します。モデル名の接尾辞として扱われます。
+
+テスト内容は次の (a1) から (a4) を 2 回、(b1) から (b4) を 2 回実施します。
+
+(a1)  sequential write wthout O_DIRECT
+     空き容量の 90% まで OS のキャッシュを有効にして書き込みます。
+     1 回のアクセス単位は 256Mi バイトです。
+     以下このファイルを使用します。
+
+     ※ 既にテスト用のファイルが存在する場合は、一旦削除して再生成しています。
+        通常の使用方法であれば、既にファイルが存在することは無いので、削除する
+        処理は起きないはずです。
+
+(a2) random read/write without O_DIRECT
+     以下の 8 つのサイズ条件で OS のキャッシュを有効にしてランダムな読み出しと
+     書き込みを行います。ブロックサイズ(最小単位)は 512 バイトです。
+
+     (##) 最小サイズ  最大サイズ
+          (バイト)    (バイト)
+      -------------------------
+      01         512        2Gi
+      02         512      512Mi
+      03         512      128Mi
+      04         512       32Mi
+      05         512        8Mi
+      06         512        2Mi
+      07         512      512Ki
+      08         512      128Ki
+
+(a3) sequential read wthout O_DIRECT
+     OS のキャッシュを有効にしてテスト用ファイルを最初から最後まで読みます。
+     1 回のアクセス単位は 256Mi バイトです。
+
+(a4) (a1) で作成したファイルを削除します。
+
+(b1) sequential write wthout O_DIRECT
+     (a1) と同様です。
+
+(b2) random read/write with O_DIRECT
+     (a2) と同じ 8 つのサイズ条件で OS のキャッシュを無効にしてランダムな読み
+     出しと書き込みを行います。
+
+(b3) sequential read wthout O_DIRECT
+     (a3) と同様です。
+
+(b4) (b1) で作成したファイルを削除します。
+
 
 3.1.2. ssdstress
+ssdtest.sh から呼ばれるバイナリプログラムです。テストの核になる処理です。直接
+起動することもできます。パラメータの与え方は ssdtest.sh 内の記述を参考にして下
+さい。
+
 
 3.1.1. ssdtest_usbmems.sh
-3.1.2.
+USB メモリ向けに規模を縮小したテストを実施するツールです。どんな USB メモリにも
+適合する様(有意義なデータが取れるよう)にパラメータを調整しきれていません。あるが
+ままに提供されるツールです。
+
+テスト内容は次の通りです。
+
+
 
 3.2. 結果プロット、ページ作成ツール
 
+3.2.1. plotlogseq.sh
+3.2.2. plotlogmix.sh
+3.2.3. htmlplot.sh
+
+
 3.3. 連続実行用ツール
 
+3.3.1. ssdtestloop.sh
+3.3.2. pageupdaterloop.sh
+3.3.3. pageupdater.sh
+
+
 3.4. デバック・診断ツール
+
+
 
 4. 技術ノート
 
 4.1. O_DIRECT
-4.2. カーネルパラメータチューニング
-4.3. swap 設定
-4.4. テスト間の休止時間
+O_DIRECT はファイルを open する際のフラグです。
 
+4.1.1. "with O_DIRECT" 
+O_DIRECT が付いているテストは、OS のキャッシュを使わないアクセスをします。SSD
+の性能をそのまま測定します。
+
+4.1.2. "without O_DIRECT"
+O_DIRECT が付いていないテストは、OS のキャッシュを使うアクセスをします。実際の
+使用感に近い測定結果となります。SSD の機種によってはアクセス時間が長くなる傾向
+が出てきます。例えば 1～2MiBytes のアクセスにも関わらず 1 ～ 10 秒程掛かる場合
+が出てきます。
+
+4.1.3. シーケンシャル・ランダムアクセスと O_DIRECT
+シーケンシャルアクセスでは OS のキャッシュを使用してテストをしています。
+ランダムアクセスでは、OS のキャッシュを使用するテストと、使用しないテストの
+両方を実施します。
+
+4.2. カーネルパラメータチューニング
+カーネルパラメータを調整して SSD の性能が出やすいようにしています。
+
+4.2.1. /sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
+シーケンシャルアクセステストでは Linux の既定値と同じ 128KiByte に設定していま
+す。環境変数 SEQUENTIAL_READ_AHEAD_KB で設定できます。
+ランダムアクセステストでは、0KiByte に設定しています。環境変数 
+RANDOM_READ_AHEAD_KB で設定できます。Linux の既定値と違うので、実使用状態で出る
+性能と違う測定結果が得られる可能性が有ります。測定の方が転送速度が高めに出る
+傾向が有ると考えられます。
+
+4.2.2. /sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
+標準的な Linux の環境では、シーケンシャルアクセステスト、ランダムアクセステスト
+双方で 30MiByte を設定しています。Linux の既定値は 512KiByte です。既定値に対し
+て大きな値にして性能向上を狙っています。
+
+4.2.3. /proc/sys/kernel/hung_task_timeout_secs
+hung_task_timeout_secs が存在する場合、テスト中は 0 に設定し、長時間処理が滞っ
+た場合でも強制 kill しない様にています。テスト中 1 回の system call による 
+read/write 時間が 100 秒を超えることが有り、さらに既定値の 120 秒 を超えた場合
+テストが中断してしまう場合が有りました。
+
+4.2.4. テスト終了後のカーネルパラメータ
+テスト終了後、カーネルパラメータはテスト実行前に設定されていた値に戻ります。
+
+4.3. swap 設定
+swap の設定は変更していません。外乱を少なくするため、メモリが 8GiByte 以上ある
+場合は swap を off にするとよりよい結果になると考えられます。
+
+4.4. テスト間の休止時間
+シーケンシャルアクセステストとランダムアクセステストの間、パラメータを変えた
+ランダムアクセステストの間、一定のテスト休止時間を設けています。OS の cache
+に残留したアクセスの消化、遅延されているファイルシステムを構成している管理情
+報の更新、SSD 内の処理収束を待つ時間です。休止期間が無い場合、シーケンシャル
+アクセスに於いて、転送速度が大きく乱れる現象を確認しています。
+
+SSD 内の処理については推定するしかないのですが、wear leveling, 保留していた
+エラー訂正後の書き戻し処理が行われている可能性が有ります。
+
+4.5. 書き込みデータ
+書き込みデータは MT19937 アルゴリズムを使用した疑似乱数で生成しています。書き
+込みデータの破損が無いか検査用の符号を付加しています。検査用の符号はブロック
+位置とチェックサムで構成されています。
+
+圧縮手法を使用して高速化している SSD ではその効果が出ずに、結果が低い転送速度
+を示すことがあります。
+
+ランダムアクセステスト、シーケンシャルアクセステストの read にて破損が発見され
+た場合、テストは Fail します。破損チェックは、転送速度に影響が出ない程度で軽く
+行っています。
+
+万が一、テスト対象の SSD が書き込みデータパターン照合等により、テスト用の特殊
+な挙動をしていると考えられる場合は環境変数 SEED に乱数の種値を設定してくださ
+い。SEED 値を変更するとランダムアクセスパターンも変化します。
 
