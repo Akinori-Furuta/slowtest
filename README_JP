@@ -152,6 +152,8 @@ ssdtest.sh から呼ばれるバイナリプログラムです。テストの核
 起動することもできます。パラメータの与え方は ssdtest.sh 内の記述を参考にして下
 さい。
 
+3.1.2.1 コマンドライン
+
 コマンドライン書式: 
 	[-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}]
 	[-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name
@@ -247,43 +249,90 @@ path_name テストに使うファイル名を指定します。
 数値 n は接尾辞 k, m, g, t, p を付加出来ます。其々 n に k: 1024, m: 1024^2,
 g: 1024^4, t: 1024^4, p: 1024^5 を掛ける指定です。
 
+3.1.2.2. 結果出力形式
+
 シーケンシャル write アクセスの出力形式
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total
 
-cur b/s        直近の転送速度 (bytes/seconds)
+cur b/s           直近の転送速度 (bytes/seconds)
 
-total b/s      Write に掛かった時間だけから計算した
-               書き始めからの転送速度 (bytes/seconds)
+total b/s         Write に掛かった時間だけから計算した
+                  書き始めからの転送速度 (bytes/seconds)
 
-cur_el b/s     Write とそれ以外の検査処理も全て含んだ時間で計算した
-               直近の転送速度 (bytes/seconds)
+cur_el b/s        Write とそれ以外の検査符号生成も全て含んだ時間で計算した
+                  直近の転送速度 (bytes/seconds)
 
-elp b/s        Write 以外の検査処理も全て含んだ時間で計算した
-               書き始めからの転送速度 (bytes/seconds)
+elp b/s           Write 以外に掛かった時間(主に検査符号生成)を全て含めても全て
+                  含んだ時間で計算した書き始めからの転送速度 (bytes/seconds)
 
-cur_pos        次に書き込みを行うバイト位置
-               テスト終了時はファイルサイズと一致します (byte)
+cur_pos           次に書き込みを行うバイト位置
+                  テスト終了時はファイルサイズと一致します (byte)
 
-progs          進捗度を百分率で表しています。0 から 100 の値になります。(%)
+progs             進捗度を百分率で表しています。0 から 100 の値になります。(%)
 
-Twrite         Write に掛かった時間 (seconds)
+Twrite            Write に掛かった時間 (seconds)
 
-Twrite_total   書き始めから Write に掛かった時間の合計 (seconds)
+Twrite_total      書き始めから Write に掛かった時間の合計 (seconds)
 
-Twrite_elapsed 書き始めから Write とそれ以外の
-               検査処理も全て含めた経過時間 (seconds)
+Twrite_elapsed    書き始めから Write とそれ以外の処理時間
+                  (主に検査符号生成処理)も全て含めた経過時間 (seconds)
 
-
+Tmem_access_total 書き込み以外、主に検査処理に掛かった時間 (seconds)
 
 シーケンシャル read アクセスの出力形式
-
-Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3, t: x1024^4, p: x1024^5
-Output format: sequential write.
-cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total
-Output format: random access.
-count, elapsed_time, rw, seek_position, length, read_time, bps, memory_access_time
-Output format: sequential read.
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total
+
+cur b/s           直近の転送速度 (bytes/seconds)
+
+total b/s         Read に掛かった時間だけから計算した
+                  書き始めからの転送速度 (bytes/seconds)
+
+cur_el b/s        Read とそれ以外の符号検査処理も全て含んだ時間で計算した
+                  直近の転送速度 (bytes/seconds)
+
+elp b/s           Read 以外に掛かった時間(主に符号検査処理)を全て含めても全て
+                  含んだ時間で計算した読み始めからの転送速度 (bytes/seconds)
+
+cur_pos           次に読み込みを行うバイト位置
+                  テスト終了時はファイルサイズと一致します (byte)
+
+progs             進捗度を百分率で表しています。0 から 100 の値になります。(%)
+
+Tread             Read に掛かった時間 (seconds)
+
+Tread_total       読み始めから Read に掛かった時間の合計 (seconds)
+
+Tread_elapsed     読み始めから Read とそれ以外の処理時間
+                  (主に符号検査処理)も全て含めた経過時間 (seconds)
+
+Tmem_access_total 読み込み以外、主に符号検査処理に掛かった時間 (seconds)
+
+
+ランダムアクセスの出力形式
+count, elapsed_time, rw, seek_position, length, read_time, bps, memory_access_time
+
+count             
+
+total b/s         Read に掛かった時間だけから計算した
+                  書き始めからの転送速度 (bytes/seconds)
+
+cur_el b/s        Read とそれ以外の符号検査処理も全て含んだ時間で計算した
+                  直近の転送速度 (bytes/seconds)
+
+elp b/s           Read 以外に掛かった時間(主に符号検査処理)を全て含めても全て
+                  含んだ時間で計算した読み始めからの転送速度 (bytes/seconds)
+
+cur_pos           次に読み込みを行うバイト位置
+                  テスト終了時はファイルサイズと一致します (byte)
+
+progs             進捗度を百分率で表しています。0 から 100 の値になります。(%)
+
+Tread             Read に掛かった時間 (seconds)
+
+Tread_total       読み始めから Read に掛かった時間の合計 (seconds)
+
+Tread_elapsed     読み始めから Read とそれ以外の処理時間
+                  (主に符号検査処理)も全て含めた経過時間 (seconds)
 
 
 
