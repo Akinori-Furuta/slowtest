@@ -1109,9 +1109,7 @@ off64_t CheckLightFileImage(unsigned char *b, long len, off64_t block_number, lo
 void MarkFileImage(unsigned char *b, long len, off64_t block_number, off64_t block_size)
 {	off64_t		a;
 	uint64_t	r;
-	off64_t		m;
 
-	m=0xffff;
 	while (len>0) {
 		r =((uint64_t)genrand_uint32())<<(uint64_t) 0;
 		r|=((uint64_t)genrand_uint32())<<(uint64_t)32;
@@ -1509,7 +1507,6 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 	while ((i<repeats) && (result!=0)) {
 		off64_t		seek_to_block;
 		off64_t		seek_to;
-		off64_t		seek_to_delta;
 		off64_t		seek_result;
 		size_t		length;
 		int		ioresult;
@@ -1653,11 +1650,6 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			TTimeSpecSub(&ts_mem_delta,&ts_rw_start,&ts_mem);
 			ts_op_done=ts_rw_done;
 			read_write='w';
-		}
-		if (seek_to_prev>=0) {
-			seek_to_delta=seek_to-seek_to_prev;
-		} else {
-			seek_to_delta=0;
 		}
 
 		rw_time=TTimeSpecToDouble(&ts_rw_delta);
