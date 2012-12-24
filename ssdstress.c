@@ -1501,7 +1501,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 		printf("%s(): Error: clock_gettime failed. %s\n",__func__,strerror(errno));
 		return 0; /* failed */
 	}
-	printf("index, elp, rw, pos, len, rtime, bps, touchtime\n");
+	printf("index, elp, rw, pos, len, access_time, bps, memory_access_time\n");
 	repeats=opt->Repeats;
 	i=0;
 	while ((i<repeats) && (result!=0)) {
@@ -2055,7 +2055,7 @@ void ShowHelp(void)
 	printf(
 	"Output format: random access.\n"
 	"index, elapsed_time, rw, seek_position, length, "
-	"read_time, bps, memory_access_time\n"
+	"access_time, bps, memory_access_time\n"
 	);
 	printf(
 	"Output format: sequential read.\n"

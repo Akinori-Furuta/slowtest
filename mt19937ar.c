@@ -164,10 +164,6 @@ int32_t genrand_int31(void)
 
 /*! generates a random number on [0,1]-real-interval 
     @return double generated random number.
-    @note be careful not same probability
-          returns "1.0" or "All return value except 1.0".
-          use genrand_uint32(void) and use desirable
-          rounding function.
 */
 double genrand_real1(void)
 {

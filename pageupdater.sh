@@ -84,6 +84,11 @@ fi
 
 UpdateDirectory="${parsed_arg[${i}]}"
 
+if [[ -z ${UpdateDirectory} ]]
+then
+	UpdateDirectory="."
+fi
+
 cd "${UpdateDirectory}"
 
 log_dirs=(`ls -d -F log-* | grep '/$' | sed -n 's!/$!!p'`)

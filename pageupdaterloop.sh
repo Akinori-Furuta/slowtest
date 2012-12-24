@@ -40,10 +40,10 @@ function Help() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
 	echo "Repeat creating html pages from log directories."
-	echo "$0 [-T seconds] [update-directory]"
+	echo "$0 [-T IntervalTime] [update-directory]"
 	echo "update-directory: "
 	echo "  Contains log-* directories."
-	echo "-T seconds: Repeat interval time in seconds."
+	echo "-T IntervalTime: Repeat interval time in seconds."
 	exit 1
 
 }
@@ -92,6 +92,11 @@ then
 fi
 
 UpdateDirectory="${parsed_arg[${i}]}"
+
+if [[ -z ${UpdateDirectory} ]]
+then
+	UpdateDirectory="."
+fi
 
 cd "${UpdateDirectory}"
 
