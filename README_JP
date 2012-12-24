@@ -11,20 +11,7 @@ Disk Space: 1MiBytes to store test programs,
             1GiBytes to store test output logs and plots.
 Packages:   gcc, smartctl(smartmontools), hdparm, gnuplot 4.2 or later
 
-1.2. ライセンス
----------------
-
-1.2.1. SSD テストプログラム群
-- - - - - - - - - - - - - - -
-次のファイル群は 2 条項 BSD ライセンスです。
-
-
-1.2.2. MT19937 アルゴリズム
-- - - - - - - - - - - - - -
-次の MT19937 アルゴリズムソースは 3 条項 BSD ライセンスです。
-
-
-1.3. テスト対象
+1.2. テスト対象
 ---------------
 種別:		      SSD
 接続形態:	      SATA (途中に USB 等の変換アダプタがないこと)
@@ -33,7 +20,7 @@ Packages:   gcc, smartctl(smartmontools), hdparm, gnuplot 4.2 or later
 ファイルシステム形式: ext3, ext4 など (ボリュームサイズに対し 90% のサイズの
                       ファイルを保持できること)
 
-1.4. テスト時間
+1.3. テスト時間
 ---------------
 SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SSD で 12 ～ 48 時間
 掛かります。
@@ -490,6 +477,31 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
 
 3.3.1. 連続実行と同時プロットをするための環境
 - - - - - - - - - - - - - - - - - - - - - - -
+テストを連続実行をする環境で同時プロットをするとテスト結果に影響を与える可能性
+が有ります。テスト環境とプロット環境を分離することをお勧めします。
+
+NFS を使用して分離する環境例を次に示します。
+
+テスト実行マシン                          プロット実行マシン
++---------------------------+             +-------------------------------+
+| ssdtestloop.sh 実行マシン |-- Network --| pageupdaterloop.sh 実行マシン |
+| NFS client                |             | NFS server                    |
+|                           |             |                               |
++---------------------------+             +-------------------------------+
+
+・テスト(ssdtestloop.sh) 実行マシン
+NFS client として設定し、NFS マウントポイント以下にテスト結果を格納する様にし
+ます。マウントオプションは -o rw です。これ以外のオプションは環境に合わせて
+設定してください。
+
+・プロット(pageupdaterloop.sh) 実行マシン
+NFS server として設定し、NFS export ディレクトリ以下のテスト結果をプロットする
+様にします。export オプションは rw,async,anonuid=UserId,anongid=GroupId です。
+UserId, GroupId はプロットを行うプログラムを走らせる user ID と group ID
+です。普通は自分自身の User ID, Group ID を指定することになります。これ以外の
+オプションは環境に合わせて設定してください。
+anonuid, anongid は ssdtestloop.sh (およびこれから起動されるプログラム群) が
+root 権限で書き込むファイルに付与される uid, gid となります。
 
 
 3.3.2. ssdtestloop.sh - ssdtest.sh を連続実行するスクリプト
@@ -521,6 +533,11 @@ ssdtestloop.sh で連続実行して生成した複数のログ(ディレクト�
 
 $ ${tool_path}/pageupdater.sh [update-directory]
 
+update-directory は ssdtestloop.sh を実行した(実行している)カレントディレクト
+リを指定します。update-directory 以下にテスト結果を格納した log-* ディレクトリ
+が ssdtestloop.sh によって作られた(作られている)ディレクトリです。省略した場合
+は update-directory はカレントディレクトリになります。 
+
 3.3.4. pageupdaterloop.sh - 連続実行結果を逐一 HTML ページに変換する
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ssdtestloop.sh で逐一生成されるログを一定間隔でプロット、HTML ページ更新をする
@@ -531,7 +548,8 @@ $ ${tool_path}/pageupdaterloop.sh \
 
 update-directory は ssdtestloop.sh を実行した(実行している)カレントディレクト
 リを指定します。update-directory 以下にテスト結果を格納した log-* ディレクトリ
-が ssdtestloop.sh によって作られているディレクトリです。
+が ssdtestloop.sh によって作られた(作られている)ディレクトリです。省略した場合
+は update-directory はカレントディレクトリになります。 
 
 html_page_file.html は各 log-* ディレクトリ以下に作られたページにリンクを貼っ
 たインデックスページを格納するファイルです。リダイレクトで保存してください。
@@ -553,33 +571,47 @@ $ make mtTest
 4. 技術ノート
 =============
 
-4.1. O_DIRECT
+4.1. SSD をマウントする際のヒント
+---------------------------------
+
+4.1.1. TRIM (discard) 対応
+- - - - - - - - - - - - - -
+SSD をマウントする際に -o discard を付けると、ファイルシステムが対応していれば
+TRIM コマンドが使われます。ssdtest の場合、ファイルの削除は殆どしないため、効果
+が薄いかもしれません。
+
+4.1.2. パーティション・アラインメント
+- - - - - - - - - - - - - - - - - - -
+パーティションアラインメントを確認するには /sbin/fdisk に -u オプションを指定し
+て起動しパーティションテーブルを LBA 単位で表示して下さい。
+
+4.2. O_DIRECT
 -------------
 O_DIRECT はファイルを open する際のフラグです。
 
-4.1.1. "with O_DIRECT"
+4.2.1. "with O_DIRECT"
 - - - - - - - - - - - 
 O_DIRECT が付いているテストは、OS のキャッシュを使わないアクセスをします。SSD
 の性能をそのまま測定します。
 
-4.1.2. "without O_DIRECT"
+4.2.2. "without O_DIRECT"
 - - - - - - - - - - - - -
 O_DIRECT が付いていないテストは、OS のキャッシュを使うアクセスをします。実際の
 使用感に近い測定結果となります。SSD の機種によってはアクセス時間が長くなる傾向
 が出てきます。例えば 1～2MiBytes のアクセスにも関わらず 1 ～ 10 秒程掛かる場合
 が出てきます。
 
-4.1.3. シーケンシャル・ランダムアクセスと O_DIRECT
+4.2.3. シーケンシャル・ランダムアクセスと O_DIRECT
 - - - - - - -  - - - - - - - - - - - - - - - - - -
 シーケンシャルアクセスでは OS のキャッシュを使用してテストをしています。
 ランダムアクセスでは、OS のキャッシュを使用するテストと、使用しないテストの
 両方を実施します。
 
-4.2. カーネルパラメータチューニング
+4.3. カーネルパラメータチューニング
 -----------------------------------
 カーネルパラメータを調整して SSD の性能が出やすいようにしています。
 
-4.2.1. /sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
+4.3.1. /sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 シーケンシャルアクセステストでは Linux の既定値と同じ 128KiByte に設定していま
 す。環境変数 SEQUENTIAL_READ_AHEAD_KB で設定できます。
@@ -588,29 +620,29 @@ RANDOM_READ_AHEAD_KB で設定できます。Linux の既定値と違うので�
 性能と違う測定結果が得られる可能性が有ります。測定の方が転送速度が高めに出る
 傾向が有ると考えられます。
 
-4.2.2. /sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
+4.3.2. /sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 標準的な Linux の環境では、シーケンシャルアクセステスト、ランダムアクセステスト
 双方で 30MiByte を設定しています。Linux の既定値は 512KiByte です。既定値に対し
 て大きな値にして性能向上を狙っています。
 
-4.2.3. /proc/sys/kernel/hung_task_timeout_secs
+4.3.3. /proc/sys/kernel/hung_task_timeout_secs
 - - - - - - - - - - - - - - - - - - - - - - - -
 hung_task_timeout_secs が存在する場合、テスト中は 0 に設定し、長時間処理が滞っ
 た場合でも強制 kill しない様にしています。テスト中 1 回の system call による 
 read/write 時間が 100 秒を超えることが有り、さらに既定値の 120 秒 を超えた場合
 テストが中断してしまう場合が有りました。
 
-4.2.4. テスト終了後のカーネルパラメータ
+4.3.4. テスト終了後のカーネルパラメータ
 - - - - - - - - - - - - - - - - - - - -
 テスト終了後、カーネルパラメータはテスト実行前に設定されていた値に戻ります。
 
-4.3. swap 設定
+4.4. swap 設定
 --------------
 swap の設定は変更していません。外乱を少なくするため、メモリが 8GiByte 以上ある
 場合は swap を off にするとよりよい結果になると考えられます。
 
-4.4. テスト間の休止時間
+4.5. テスト間の休止時間
 -----------------------
 シーケンシャルアクセステストとランダムアクセステストの間、パラメータを変えた
 ランダムアクセステストの間、一定のテスト休止時間を設けています。OS の cache
@@ -621,7 +653,7 @@ swap の設定は変更していません。外乱を少なくするため、メ
 SSD 内の処理については推定するしかないのですが、wear leveling, 保留していた
 エラー訂正後の書き戻し処理が行われている可能性が有ります。
 
-4.5. 書き込みデータ
+4.6. 書き込みデータ
 -------------------
 書き込みデータは MT19937 アルゴリズムを使用した疑似乱数で生成しています。書き
 込みデータの破損が無いか検査用の符号を付加しています。検査用の符号はブロック
@@ -638,7 +670,7 @@ SSD 内の処理については推定するしかないのですが、wear level
 な挙動をしていると考えられる場合は環境変数 SEED に乱数の種値を設定してくださ
 い。SEED 値を変更するとランダムアクセスパターンも変化します。
 
-4.6. 検査符号生成、符号検査と OS のページ管理の関係
+4.7. 検査符号生成、符号検査と OS のページ管理の関係
 ---------------------------------------------------
 検査符号生成と符号検査するもう一つの目的は OS のページ管理による影響を減らす
 ことを狙っています。Linux ではまだ積極的に取り入れていないはずですが、read()
@@ -650,4 +682,59 @@ SSD 内の処理については推定するしかないのですが、wear level
 (O_DIRECT を付けた場合)確かにデバイスから読み込んだ、(O_DIRECT を付けない場合)
 確かにキャッシュ領域から(領域へ)コピーした、と言う事を確実にするため、書き込む
 データに「新鮮な」検査符号を付け、読み出したデータは必ず符号検査をしています。
+
+5. ライセンス
+=============
+
+5.1. SSD テストプログラム群
+---------------------------
+次のファイル群は 2 条項 BSD ライセンスです。
+
+htmlplot.sh, pageupdater.sh, pageupdaterloop.sh, plotlogmix.sh, 
+plotlogmix_usbmems.sh, plotlogseq.sh, plotlogseq_usbmems.sh, 
+ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtestcommon.sh,
+ssdtestloop.sh, 
+random_tlength_at.gnuplot, random_tspeed_at.gnuplot,
+random_tspeed_tlength.gnuplot, sequential_tspeed_prog.gnuplot,
+ssdstress.c, Makefile, README_JP
+
+
+5.2. MT19937 アルゴリズム
+-------------------------
+次の MT19937 アルゴリズムソースと文書は Takuji Nishimura と 
+Makoto Matsumoto 氏が作成したプログラムであり、3 条項 BSD ライセンスです。
+
+mt19937ar.c, mt19937ar.h, mtTestOut.txt, mtTest.c, readme-mt.txt
+
+公開に感謝します。プログラム間の整合性と 64bit 環境でコンパイルできる様に
+するための修正、コメント部分を doxygen スタイルにする修正を施しています。
+
+Licence Notice
+==============
+
+Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
