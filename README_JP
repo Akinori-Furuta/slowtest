@@ -702,7 +702,7 @@ ssdstress.c, Makefile, README_JP
 5.2. MT19937 アルゴリズム
 -------------------------
 次の MT19937 アルゴリズムソースと文書は Takuji Nishimura と 
-Makoto Matsumoto 氏が作成したプログラムであり、3 条項 BSD ライセンスです。
+Makoto Matsumoto 氏が作成したソフトウエアであり、3 条項 BSD ライセンスです。
 
 mt19937ar.c, mt19937ar.h, mtTestOut.txt, mtTest.c, readme-mt.txt
 

@@ -307,10 +307,13 @@ for mount_point in `awk '{print $2}' /proc/mounts | sort -r`
 do
 	if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
 	then
-		Volume=`grep "${mount_point}" /proc/mounts | awk '{print $1}'`
+		VolumeFs=(`grep "${mount_point}" /proc/mounts | awk '{printf("%s %s", $1, $3);}'`)
 		break
 	fi
 done
+
+Volume=${VolumeFs[0]}
+FileSystem=${VolumeFs[1]}
 
 if [[ -z ${Volume} ]]
 then
@@ -318,6 +321,7 @@ then
 else
 	echo "${TestFile}: Info: Resolved volume device. Volume=${Volume}"
 fi
+
 
 if [[ -z ${SSD_DEVICE_NAME} ]]
 then
@@ -395,6 +399,16 @@ then
 		echo "${TestFile}: Can not resolv volume free space."
 		exit 2
 	fi
+
+	case ${FileSystem} in
+		(vfat|fat)
+			Space4095M=$(( 4095 * 1024 ))
+			if (( ${VolumeFreeSpace} > ${Space4095M} ))
+			then
+				VolumeFreeSpace = ${Space4095M}
+			fi
+		;;
+	esac
 
 	VolumeFreeSpaceMiB=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
 	if (( ${VolumeFreeSpaceMiB} <= 20480 ))
@@ -476,7 +490,10 @@ LOG_DIR="log-${ModelName}${OptionalLabel}-${now_date}-${FILE_SIZE}"
 if [[ ! -d "${LOG_DIR}" ]]
 then
 	echo "${LOG_DIR}: Create log directory."
+	CurDirUG=`stat -c '%u:%g' . `
 	mkdir -p "${LOG_DIR}"
+	chmod u+rw ${LOG_DIR}
+	chown ${CurDirUG} ${LOG_DIR}
 fi
 
 yn_index=0
