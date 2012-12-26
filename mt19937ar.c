@@ -120,7 +120,10 @@ void init_by_array(uint32_t init_key[], int key_length)
 uint32_t genrand_uint32(void)
 {
     uint32_t y;
+
+#if (!defined(CONFIG_2SCOMP))
     static const uint32_t mag01[2]={0x0UL, MATRIX_A};
+#endif /* (!defined(CONFIG_2SCOMP)) */
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
     if (mti >= N) { /* generate N words at one time */
@@ -131,14 +134,26 @@ uint32_t genrand_uint32(void)
 
         for (kk=0;kk<N-M;kk++) {
             y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+#if (defined(CONFIG_2SCOMP))
+            mt[kk] = mt[kk+M] ^ ((uint32_t)(0-(y & 0x1UL)) & MATRIX_A) ^ (y >> 1);
+#else /* (defined(CONFIG_2SCOMP)) */
             mt[kk] = mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+#endif /* (defined(CONFIG_2SCOMP)) */
         }
         for (;kk<N-1;kk++) {
             y = (mt[kk]&UPPER_MASK)|(mt[kk+1]&LOWER_MASK);
+#if (defined(CONFIG_2SCOMP))
+            mt[kk] = mt[kk+(M-N)] ^ ((uint32_t)(0-(y & 0x1UL)) & MATRIX_A) ^ (y >> 1);
+#else /* (defined(CONFIG_2SCOMP)) */
             mt[kk] = mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+#endif /* (defined(CONFIG_2SCOMP)) */
         }
         y = (mt[N-1]&UPPER_MASK)|(mt[0]&LOWER_MASK);
+#if (defined(CONFIG_2SCOMP))
+        mt[N-1] = mt[M-1] ^ ((uint32_t)(0-(y & 0x1UL)) & MATRIX_A) ^ (y >> 1);
+#else /* (defined(CONFIG_2SCOMP)) */
         mt[N-1] = mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+#endif /* (defined(CONFIG_2SCOMP)) */
 
         mti = 0;
     }

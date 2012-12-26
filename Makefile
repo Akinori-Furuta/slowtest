@@ -39,7 +39,7 @@
 # $ make mtTest
 #
 
-CFLAGS=-O3 -Wall -Wunused -Wuninitialized
+CFLAGS=-O3 -Wall -Wunused -Wuninitialized -march=native -mtune=native
 CLIBS=-lrt
 
 DIST_FILES=\
@@ -60,6 +60,17 @@ DIST_DIR=ssdtest_1.0
 TARGET=ssdstress
 
 MTTEST_TEMP=mtTestOutUnderTest.txt
+
+Test2SComp=$(shell printf '%x' -1 | awk 'BEGIN{r=1;} /^[f][f]*$$/{r=0;} END{print r;}')
+
+
+DEF_CONFIG_2SCOMP=
+
+ifeq ($(Test2SComp), 0)
+	DEF_CONFIG_2SCOMP=-DCONFIG_2SCOMP
+endif
+
+CFLAGS+=$(DEF_CONFIG_2SCOMP)
 
 $(TARGET): $(TARGET).o mt19937ar.o
 	$(CC) $(CFLAGS) -o $@ $^ $(CLIBS)
