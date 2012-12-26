@@ -265,7 +265,7 @@ do
 			continue
 		fi
 
-		sed -n '/^index,[[:space:]]/,/close/ {p}' ${f} \
+		sed -n '/^i[ndex]*,[[:space:]]/,/close/ {p}' ${f} \
 			| grep '^[[:space:]]*[0-9]' \
 			| sed -n 's/,//gp' >> ${part_rand_file}
 	done
