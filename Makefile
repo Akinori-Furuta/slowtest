@@ -61,16 +61,13 @@ TARGET=ssdstress
 
 MTTEST_TEMP=mtTestOutUnderTest.txt
 
-Test2SComp=$(shell printf '%x' -1 | awk 'BEGIN{r=1;} /^[f][f]*$$/{r=0;} END{print r;}')
+Test2SComp=$(shell echo -n $$'\xff\xff\xff\xff\xff\xff\xff\xff' | od -t d4 | grep -e '[-]1' | awk '{print $$2}' )
 
-
-DEF_CONFIG_2SCOMP=
-
-ifeq ($(Test2SComp), 0)
-	DEF_CONFIG_2SCOMP=-DCONFIG_2SCOMP
+ifeq ($(Test2SComp), -1)
+	CFLAGS_CONFIG_2SCOMP?=-DCONFIG_2SCOMP
 endif
 
-CFLAGS+=$(DEF_CONFIG_2SCOMP)
+CFLAGS+=$(CFLAGS_CONFIG_2SCOMP)
 
 $(TARGET): $(TARGET).o mt19937ar.o
 	$(CC) $(CFLAGS) -o $@ $^ $(CLIBS)
@@ -95,5 +92,5 @@ dist: $(TARGET) $(DIST_FILES)
 	tar zcvf $(DIST_DIR).tar.gz $(DIST_DIR)
 
 clean:
-	rm $(TARGET) $(TARGET).o mt19937ar.o mtTest $(MTTEST_TEMP)
+	rm -rf $(TARGET) $(TARGET).o mt19937ar.o mtTest $(MTTEST_TEMP)
 	rm -rf $(DIST_DIR)
