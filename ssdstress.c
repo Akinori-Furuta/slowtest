@@ -1475,7 +1475,6 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 {	off64_t		seek_size;
 	off64_t		end_next_pos;
 	off64_t		area_blocks;
-	off64_t		seek_to_prev;
 	long		repeats;
 	long		i;
 	int		result;
@@ -1491,7 +1490,6 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 	seek_size=GetFileSizeFd(fd);
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 	area_blocks=opt->BlockEnd-opt->BlockStart+1;
-	seek_to_prev=-1;
 	printf("%s: Info: Random access working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
 		opt->BlockStart*opt->BlockSize, end_next_pos-(opt->BlockSize)
 	);
@@ -1669,7 +1667,6 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 			/* Update max random access time. */
 			rw_time_max=rw_time;
 		}
-		seek_to_prev=seek_to;
 		i++;
 	}
 	/* Estimate sleep time before start next test. */
