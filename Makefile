@@ -61,7 +61,7 @@ TARGET=ssdstress
 
 MTTEST_TEMP=mtTestOutUnderTest.txt
 
-Test2SComp=$(shell echo -n $$'\xff\xff\xff\xff\xff\xff\xff\xff' | od -t d4 | grep -e '[-]1' | awk '{print $$2}' )
+Test2SComp=$(shell echo -n '        ' | tr ' ' '\377' | od -t d4 | grep -e '[-]1' | awk '{print $$2}' )
 
 ifeq ($(Test2SComp), -1)
 	CFLAGS_CONFIG_2SCOMP?=-DCONFIG_2SCOMP
