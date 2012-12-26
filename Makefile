@@ -52,7 +52,7 @@ DIST_FILES=\
 	ssdtest.sh ssdtest_light.sh \
 	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \
-	mt19937ar.c mt19937ar.h mtTest.c mtTestOut.txt readme-mt.txt \
+	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
 	ssdstress.c Makefile README_JP
 
 DIST_DIR=ssdtest_1.0
@@ -75,7 +75,7 @@ $(TARGET): $(TARGET).o mt19937ar.o
 mtTest: mtTest.o mt19937ar.o
 	$(CC) $(CFLAGS) -o $@ $^ $(CLIBS)
 	./mtTest > $(MTTEST_TEMP)
-	diff $(MTTEST_TEMP) mtTestOut.txt
+	diff $(MTTEST_TEMP) mt19937ar.out
 
 $(TARGET).o: $(TARGET).c mt19937ar.h
 	$(CC) -c $(CFLAGS) -o $@ $< $(CLIBS)
