@@ -910,15 +910,38 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 */
 uint64_t ReadMemoryStepByPage(const unsigned char *b, long len)
 {	uint64_t	a;
+	long		ps;
 
 	a=0;
+	ps=ScPageSize;
+
 	while (len>0) {
-		/* Read some bytes in buffer. Stepping by ScPageSize.*/
+		/* Read some bytes from buffer. Stepping by ScPageSize.*/
 		a+=*(uint64_t*)b;
-		b+=ScPageSize;
-		len-=ScPageSize;
+		b+=ps;
+		len-=ps;
 	}
 	return(a);
+}
+
+/*! Write memory stepping by page size, to make sure buffer area is placed \
+    on main memory and invalidate block number mark.
+    @param b points buffer.
+    @param len buffer length pointed by b.
+    @return unsigned long summing up value.
+*/
+void WriteMemoryStepByPage(unsigned char *b, long len)
+{	uint64_t	a;
+	long		ps;
+
+	a=0;
+	ps=ScPageSize;
+	while (len>0) {
+		/* Write bytes to buffer. Stepping by ScPageSize.*/
+		*(uint64_t*)b=0;
+		b+=ps;
+		len-=ps;
+	}
 }
 
 /*! Get file size using lseek64.
@@ -1334,6 +1357,9 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		return(0 /* false */);
 	}
 
+	/* Write memory to place buffer on main memory. */
+	WriteMemoryStepByPage(img,img_size);
+
 	TTimeSpecZero(&ts_read_ap);
 	TTimeSpecZero(&ts_read_aa);
 	TTimeSpecZero(&ts_mem_a);
@@ -1365,7 +1391,6 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 			/* last chunk. */
 			chunk=(long)(tmp);
 		}
-
 		done=0;
 		TTimeSpecGetRealTime(&ts_read_s);
 		rresult=TryRead(fd,img,chunk,&done);
@@ -1579,6 +1604,8 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 				);
 				return 0; /* failed */
 			}
+			/* Write memory to place buffer on main memory. */
+			WriteMemoryStepByPage(mem,length);
 			done=0;
 			/* Record time at read. */
 			TTimeSpecGetRealTime(&ts_rw_start);
