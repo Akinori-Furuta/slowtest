@@ -1490,13 +1490,18 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
     @param fd file descriptor.
     @param img point file image memory to write.
     @param img_size buffer byte length pointed by img.
+    @param img_locked 0: write buffer without lock, 1: write buffer with lock.
     @param mem point file image memory to read.
     @param mem_size buffer byte length pointed by mem.
+    @param mem_locked 0: read buffer without lock, 1: read buffer with lock.
     @param opt Command Line option.
     @return int ==0 failed, !=0 success.
 
 */
-int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, long mem_size, TCommandLineOption *opt)
+int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
+		,unsigned char *mem, long mem_size, char mem_locked
+		,TCommandLineOption *opt
+	)
 {	off64_t		seek_size;
 	off64_t		end_next_pos;
 	off64_t		area_blocks;
@@ -1604,8 +1609,11 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 				);
 				return 0; /* failed */
 			}
-			/* Write memory to place buffer on main memory. */
-			WriteMemoryStepByPage(mem,length);
+			if (mem_locked==0) {
+				/* Read buffer is unlocked. */
+				/* Write memory to place buffer on main memory. */
+				WriteMemoryStepByPage(mem,length);
+			}
 			done=0;
 			/* Record time at read. */
 			TTimeSpecGetRealTime(&ts_rw_start);
@@ -1708,14 +1716,19 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, unsigned char *mem, 
 #define	LARGE_FILE_SIZE	(1024L*1024L*2)
 
 /*! Test main read/write part.
-    @param mem      points read buffer.
-    @param mem_size byte size of buffer pointed by mem.
-    @param img      points read buffer.
-    @param img_size byte size of buffer pointed by img.
-    @param opt      command line option.
-    @return int     !=0: Success, ==0: Failed.
+    @param img        points random write buffer and sequential read/write buffer.
+    @param img_size   byte size of buffer pointed by img.
+    @param img_locked 0: unlocked write buffer, 1: locked write buffer.
+    @param mem        points random read buffer.
+    @param mem_size   byte size of buffer pointed by mem.
+    @param mem_locked 0: unlocked read buffer, 1: locked read buffer.
+    @param opt        command line option.
+    @return int       !=0: Success, ==0: Failed.
 */
-int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_size, TCommandLineOption *opt)
+int MainTestRW(unsigned char *img, long img_size, char img_locked
+	      ,unsigned char *mem, long mem_size, char mem_locked
+	      ,TCommandLineOption *opt
+	)
 {	int		result;
 	int		fd;
 	int		flags;
@@ -1877,7 +1890,7 @@ int MainTestRW(unsigned char *mem, long mem_size, unsigned char *img, long img_s
 	}
 	printf("%s: Info: open. fd=%d, flags=0x%x, time=%" PRId64 "\n",opt->PathName, fd, flags, (int64_t)(time(0)));
 
-	if (!RandomRWFile(fd,img,img_size,mem,mem_size,opt)) {
+	if (!RandomRWFile(fd,img,img_size,img_locked,mem,mem_size,mem_locked,opt)) {
 		/* Random read/write failed. */
 		printf("%s: Error: random read/write failed. %s\n",opt->PathName,strerror(errno));
 		result=0;
@@ -1964,24 +1977,49 @@ int MainB(TCommandLineOption *opt)
 
 	unsigned char	*mem;
 	long		mem_size;
+	char		mem_locked; /*!< Map random read memory with lock. */
 
 	unsigned char	*img;
 	long		img_size;
+	char		img_locked; /*!< Map random write and sequential read/write memory with lock. */
 	off64_t		img_blocks;
 
 	result=1 /* true */;
 	/* Initialize random seed. */
 	init_genrand(opt->Seed);
 
+	mem_locked=0;
+	img_locked=0;
 	/* allocate random read buffer mem. */
 	mem_size=RoundUpBy((opt->BlockSize*opt->BlocksMax),ScPageSize);
 	mem=mmap(NULL,mem_size
-		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
-		,-1,0);
+		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_LOCKED
+		,-1,0
+	);
 
 	if (mem==MAP_FAILED) {
-		printf("%s(): Error: mmap() failed(mem). %s(%d). mem_size=0x%lx\n",__func__,strerror(errno), errno, mem_size);
-		return 0 /* false */;
+		printf("%s(): Notice: Failed mmap() random read buffer with lock. %s(%d). mem_size=0x%lx\n"
+			,__func__
+			,strerror(errno), errno, mem_size
+		);
+		mem=mmap(NULL,mem_size
+			,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
+			,-1,0
+		);
+		if (mem==MAP_FAILED) {
+			printf("%s(): Error: Failed mmap() random read buffer without lock. %s(%d). mem_size=0x%lx\n"
+				,__func__
+				,strerror(errno), errno, mem_size
+			);
+			return 0;
+		} else {/* Map read memory without lock. */
+			printf("%s(): Notice: mmap random read buffer without lock. %s(%d). mem_size=0x%lx\n"
+				,__func__
+				,strerror(errno), errno, mem_size
+			);
+		}
+	} else {/* Map read memory with lock. */
+		mem_locked=1;
 	}
 
 	/* allocate random write buffer img. */
@@ -1992,13 +2030,33 @@ int MainB(TCommandLineOption *opt)
 	}
 	img_size=RoundUpBy(opt->BlockSize*img_blocks, ScPageSize);
 	img=mmap(NULL,img_size
-		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
+		,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_LOCKED
 		,-1,0);
 
 	if (img==MAP_FAILED) {
-		printf("%s(): Error: mmap() failed(img). %s(%d). img_size=0x%lx\n",__func__,strerror(errno), errno, img_size);
-		result=0 /* false */;
-		goto EXIT_UNMAP_MEM;
+		printf("%s(): Notice: Failed mmap() random write and sequential read/write buffer with lock. %s(%d). img_size=0x%lx\n"
+			,__func__
+			,strerror(errno), errno, img_size
+		);
+		img=mmap(NULL,img_size
+			,PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE
+			,-1,0
+		);
+		if (img==MAP_FAILED) {
+			printf("%s(): Error: Failed random write and sequential read/write buffer without lock. %s(%d). img_size=0x%lx\n"
+				,__func__
+				,strerror(errno), errno, img_size
+			);
+			result=0 /* false */;
+			goto EXIT_UNMAP_MEM;
+		} else {/* Map write memory without lock. */
+			printf("%s(): Notice: mmap() random write and sequential read/write buffer without lock. %s(%d). mem_size=0x%lx\n"
+				,__func__
+				,strerror(errno), errno, mem_size
+			);
+		}
+	} else {/* Map write buffer memory with lock */
+		img_locked=1;
 	}
 	FillRandomFileImage(img, img_size);
 	if (opt->DoMark!=0) {
@@ -2006,19 +2064,33 @@ int MainB(TCommandLineOption *opt)
 	}
 
 	/* Do read / write part. */
-	if (!MainTestRW(mem, mem_size, img, img_size, opt)) {
+	if (!MainTestRW(img, img_size, img_locked, mem, mem_size, mem_locked, opt)) {
 		/* Read / write test failed. */
 		result=0;
 	}
 
+	if (img_locked) {
+		/* Maped write buffer memory with lock. */
+		if (munlock(img,img_size)!=0) {
+			printf("%s(): Error: Failed munlock() random write and sequential read/write buffer %s(%d)\n",__func__,strerror(errno), errno);
+			result=0;
+		}
+	}
 	if (munmap(img,img_size)!=0) {
-		printf("%s(): Error: munmap() failed(img). %s(%d)\n",__func__,strerror(errno), errno);
+		printf("%s(): Error: Failed munmap() random write and sequential read/write buffer. %s(%d)\n",__func__,strerror(errno), errno);
 		result=0;
 	}
 
 EXIT_UNMAP_MEM:;
+	if (mem_locked) {
+		/* Maped write buffer memory with lock. */
+		if (munlock(mem,mem_size)!=0) {
+			printf("%s(): Error: Failed munlock() random read buffer. %s(%d)\n",__func__,strerror(errno), errno);
+			result=0;
+		}
+	}
 	if (munmap(mem,mem_size)!=0) {
-		printf("%s(): Error: munmap() failed(mem). %s(%d)\n",__func__,strerror(errno),errno);
+		printf("%s(): Error: Failed munmap() random read buffer. %s(%d)\n",__func__,strerror(errno),errno);
 		result=0;
 	}
 	if (opt->DoMark==0) {
