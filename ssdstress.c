@@ -938,7 +938,7 @@ void WriteMemoryStepByPage(unsigned char *b, long len)
 	ps=ScPageSize;
 	while (len>0) {
 		/* Write bytes to buffer. Stepping by ScPageSize.*/
-		*(uint64_t*)b=0;
+		*(uint64_t*)b=a;
 		b+=ps;
 		len-=ps;
 	}
