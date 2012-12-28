@@ -49,7 +49,7 @@ DIST_FILES=\
 	plotlogseq.sh plotlogseq_usbmems.sh \
 	sequential_tspeed_prog.gnuplot \
 	random_tspeed_tlength.gnuplot random_tspeed_at.gnuplot random_tlength_at.gnuplot \
-	ssdtest.sh ssdtest_light.sh \
+	ssdtest.sh ssdtestloop.sh ssdtest_light.sh \
 	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
