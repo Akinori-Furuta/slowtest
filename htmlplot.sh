@@ -142,13 +142,21 @@ for f in *-bytes.tmp
 do
 	if [[ ( ${f} == *-mw-bytes.tmp ) || ( ${f} == *-sw-bytes.tmp ) ]]
 	then
-		TotalWrittenBytes=$(( ${TotalWrittenBytes} + `cat ${f}` ))
-		# echo "<!-- ${f}=`cat ${f}` TotalWrittenBytes=${TotalWrittenBytes} -->"
+		w_bytes=`cat ${f}`
+		if [[ -n ${w_bytes} ]]
+		then
+			TotalWrittenBytes=$(( ${TotalWrittenBytes} + ${w_bytes} ))
+			# echo "<!-- ${f}=${w_bytes} TotalWrittenBytes=${TotalWrittenBytes} -->"
+		fi
 	fi
 	if [[ ( ${f} == *-mr-bytes.tmp ) || ( ${f} == *-sr-bytes.tmp ) ]]
 	then
-		TotalReadBytes=$(( ${TotalReadBytes} + `cat ${f}` ))
-		# echo "<!-- ${f}=`cat ${f}` TotalReadBytes=${TotalReadBytes} -->"
+		r_bytes=`cat ${f}`
+		if [[ -n ${r_bytes} ]]
+		then
+			TotalReadBytes=$(( ${TotalReadBytes} + ${r_bytes} ))
+			# echo "<!-- ${f}=${r_bytes} TotalReadBytes=${TotalReadBytes} -->"
+		fi
 	fi
 done
 

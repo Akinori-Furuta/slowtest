@@ -9,7 +9,8 @@ OS:         Linux kernel 2.6.34 or later, 64bit addressing
 Memory:     8GiBytes or more main memory.
 Disk Space: 1MiBytes to store test programs, 
             1GiBytes to store test output logs and plots.
-Packages:   gcc, smartctl(smartmontools), hdparm, gnuplot 4.2 or later
+Packages:   gcc, gawk(ubuntu の場合、awk では動作しません), 
+            smartctl(smartmontools), hdparm, gnuplot 4.2 or later
 
 1.2. テスト対象
 ---------------
@@ -91,7 +92,9 @@ cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tre
 「連続実行用ツール」、「デバック・診断ツール」の 4 群から構成されています。
 
 以下 ${tool_path} は ssdtest ツール群を展開したディレクトリ ssdtest_x.x を指す
-相対または絶対パスに置き換えて読んでください。
+相対または絶対パスに置き換えて読んでください。# プロンプトは root 権限で実行
+することを意味します。ディストリビューションによっては sudo を付けて起動する
+ことと解釈してください。$ プロンプトは一般ユーザーで実行することを意味します。
 
 3.1. テスト実行ツール
 ---------------------
@@ -100,7 +103,25 @@ cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tre
 S.M.A.R.T. 情報、kernel チューニング等が行われずテスト結果から一部の情報が欠落
 したり、十分な性能が発揮できないテストになります。
 
-3.1.1. ssdtest.sh - SSD テストスクリプト
+3.2. テスト実行手順
+-------------------
+テスト手順は次の通りです。テスト実行、テスト結果をプロット、プロットしたグラフ
+から HTML ページ作成という順です。
+
+テスト実行
+# ${tool_path}/ssdtest.sh [-L ModelNameLabel] /path/to/test
+
+プロット
+$ ${tool_path}/plotlogseq.sh log_directory
+$ ${tool_path}/plotlogmix.sh log_directory
+
+ページ作成
+$ ${tool_path}/htmlplot.sh log_directory > html_page_file.html
+
+3.3. 各ツール詳細
+-----------------
+
+3.3.1. ssdtest.sh - SSD テストスクリプト
 - - - - - - - - - - - - - - - - - - - - -
 ssdtest.sh はテスト実行スクリプトです。スクリプト内で ssdstress を呼び出します。
 
@@ -165,7 +186,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 (b4) (b1) で作成したファイルを削除します。
 
 
-3.1.2. ssdstress - アクセステスト核プログラム
+3.3.2. ssdstress - アクセステスト核プログラム
 - - - - - - - - - - - - - - - - - - - - - - -
 ssdtest.sh から呼ばれるバイナリプログラムです。テストの核になる処理です。直接
 起動することもできます。パラメータの与え方は ssdtest.sh 内の記述を参考にして下
@@ -173,7 +194,7 @@ ssdtest.sh から呼ばれるバイナリプログラムです。テストの核
 
 # ${tool_path}/ssdstress コマンドラインオプション テストファイル名
 
-3.1.2.1 コマンドライン
+3.3.2.1 コマンドライン
 -  -  -  -  -  -  -  -
 コマンドライン書式: 
 	[-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}]
@@ -285,7 +306,7 @@ path_name テストに使うファイル名を指定します。
 数値 n は接尾辞 k, m, g, t, p を付加出来ます。其々 n に k: 1024, m: 1024^2,
 g: 1024^4, t: 1024^4, p: 1024^5 を掛ける指定です。
 
-3.1.2.2. 結果出力形式
+3.3.2.2. 結果出力形式
 -  -  -  -  -  -  -  -
 ・シーケンシャル write アクセスの出力形式
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total
@@ -365,7 +386,7 @@ bps               アクセス長 / アクセス時間 (bytes/seconds)
 memory_access_time  符号検査、検査符号生成に掛かった時間 (seconds)
 
 
-3.1.1. ssdtest_usbmems.sh
+3.3.3. ssdtest_usbmems.sh
 - - - - - - - - - - - - -
 USB メモリ向けに規模を縮小したテストを実施するツールです。コマンドラインは次の
 様になります。ssdtest.sh と同様です。
@@ -424,17 +445,17 @@ USB メモリ、USB カードリーダーから Model 名を得る処理は実�
 (b4) (b1) で作成したファイルを削除します。
 
 
-3.2. 結果プロット、ページ作成ツール
+3.4. 結果プロット、ページ作成ツール
 -----------------------------------
 結果をプロットする機能は bash スクリプトと gnuplot で構成されています。出力形
 式は PNG です。gnuplot のバージョンによって若干グラフの出来上がりが違います。
 
-3.2.1. plotlogseq.sh - シーケンシャルアクセステストプロットスクリプト
+3.4.1. plotlogseq.sh - シーケンシャルアクセステストプロットスクリプト
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 シーケンシャルアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。
 
-$ ${tool_path}/plotlogseg.sh log_directory
+$ ${tool_path}/plotlogseq.sh log_directory
 
 log_directory  ssdtest.sh が生成したログ結果を保存したディレクトリです。
                省略するとカレントディレクトリを指定した事になります。
@@ -442,7 +463,7 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
                ディレクトリ名は次の様な書式です。
                  log-${Model}-${テスト日時}-${テストファイルサイズ}
 
-3.2.2. plotlogmix.sh - ランダムアクセステストプロットスクリプト
+3.4.2. plotlogmix.sh - ランダムアクセステストプロットスクリプト
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ランダムアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。
@@ -456,7 +477,7 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
                  log-${Model}-${テスト日時}-${テストファイルサイズ}
 
 
-3.2.3. htmlplot.sh - HTML ページ作成スクリプト
+3.4.3. htmlplot.sh - HTML ページ作成スクリプト
 - - - - - - - - - - - - - - - - - - - - - - - -
 プロットした図を HTML ページにまとめます。次の様にコンソール出力結果をリダイレ
 クトしてページファイルに格納してください。
@@ -472,27 +493,30 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
                  log-${Model}-${テスト日時}-${テストファイルサイズ}
 
 
-3.3. 連続実行用ツール
+3.5. 連続実行用ツール
 ---------------------
 
-3.3.1. 連続実行と同時プロットをするための環境
+3.5.1. 連続実行と同時プロットをするための環境
 - - - - - - - - - - - - - - - - - - - - - - -
 テストを連続実行をする環境で同時プロットをするとテスト結果に影響を与える可能性
 が有ります。テスト環境とプロット環境を分離することをお勧めします。
 
 NFS を使用して分離する環境例を次に示します。
 
-テスト実行マシン                          プロット実行マシン
+テスト実行マシン(test)                    プロット実行マシン(plot)
 +---------------------------+             +-------------------------------+
 | ssdtestloop.sh 実行マシン |-- Network --| pageupdaterloop.sh 実行マシン |
 | NFS client                |             | NFS server                    |
 |                           |             |                               |
 +---------------------------+             +-------------------------------+
 
+
 ・テスト(ssdtestloop.sh) 実行マシン
 NFS client として設定し、NFS マウントポイント以下にテスト結果を格納する様にし
 ます。マウントオプションは -o rw です。これ以外のオプションは環境に合わせて
 設定してください。
+
+
 
 ・プロット(pageupdaterloop.sh) 実行マシン
 NFS server として設定し、NFS export ディレクトリ以下のテスト結果をプロットする
@@ -503,8 +527,35 @@ UserId, GroupId はプロットを行うプログラムを走らせる user ID �
 anonuid, anongid は ssdtestloop.sh (およびこれから起動されるプログラム群) が
 root 権限で書き込むファイルに付与される uid, gid となります。
 
+3.5.2. 環境構築例
+- - - - - - - - -
+以下に NFS 設定、SDD マウントが済んだ後の操作例を示します。plot# はプロット
+実行マシン (plot) 上での操作、test# はテスト実行マシン (test) での操作です。
+plot 上でプロットを実行する userid, groupid は 1000, 1000 としています。
 
-3.3.2. ssdtestloop.sh - ssdtest.sh を連続実行するスクリプト
+plot# mkdir -p /export/share1
+plot# chmod a+rw /export/share1
+plot# chmod +t /export/share1
+plot# cd /export/share1
+plot# mkdir loop_test
+plot# chown 1000:1000 loop_test
+
+plot# vi /etc/exports
+/export/share1 test(rw,async,anonuid=1000,anongid=1000) この行を追加
+plot# exportfs -a
+
+test# mkdir -p /mnt/shared1
+test# mount -o rw plot:/export/share1 /mnt/share1
+test# cd /mnt/shared1
+test# cd loop_test
+test# ${tool_path}/ssdtestloop.sh -C 20 /ssd/mount/point
+
+Note: /ssd/mount/point は SSD をマウントしたポイントです。
+
+plot$ cd /export/share1/loop_test
+plot$ ${tool_path}/pageupdaterloop.sh .
+
+3.5.2. ssdtestloop.sh - ssdtest.sh を連続実行するスクリプト
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ssdtest.sh を連続実行します。
 
@@ -526,10 +577,11 @@ ModelNameLabel で指定します。モデル名の接尾辞として扱われ�
 
 log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサイズ}
 
-3.3.3. pageupdater.sh - 連続実行して生成した複数のログを HTML ページにする
+3.5.3. pageupdater.sh - 連続実行して生成した複数のログを HTML ページにする
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ssdtestloop.sh で連続実行して生成した複数のログ(ディレクトリ)の HTML ページを
-生成し、連続実行結果をまとめたページを生成します。
+生成し、連続実行結果をまとめたページを生成します。pageupdaterloop.sh から呼び出
+されるスクリプトです。
 
 $ ${tool_path}/pageupdater.sh [update-directory]
 
@@ -538,7 +590,7 @@ update-directory は ssdtestloop.sh を実行した(実行している)カレン
 が ssdtestloop.sh によって作られた(作られている)ディレクトリです。省略した場合
 は update-directory はカレントディレクトリになります。 
 
-3.3.4. pageupdaterloop.sh - 連続実行結果を逐一 HTML ページに変換する
+3.5.4. pageupdaterloop.sh - 連続実行結果を逐一 HTML ページに変換する
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ssdtestloop.sh で逐一生成されるログを一定間隔でプロット、HTML ページ更新をする
 ツールです。
@@ -556,10 +608,10 @@ html_page_file.html は各 log-* ディレクトリ以下に作られたペー�
 
 -T IntervalTime  更新周期を指定します。(既定 60)
 
-3.4. デバック・診断ツール
+3.6. デバック・診断ツール
 -------------------------
 
-3.4.1. Make mtTest - MT19937 アルゴリズム検証
+3.6.1. Make mtTest - MT19937 アルゴリズム検証
 - - - - - - - - - - - - - - - - - - - - - - -
 乱数生成アルゴリズム MT19937 が正しく動作するか検査する機能です。検証用の既知
 結果と照合します。
@@ -578,7 +630,11 @@ $ make mtTest
 - - - - - - - - - - - - - -
 SSD をマウントする際に -o discard を付けると、ファイルシステムが対応していれば
 TRIM コマンドが使われます。ssdtest の場合、ファイルの削除は殆どしないため、効果
-が薄いかもしれません。
+が薄いかもしれません。次のコマンドライン入力例は SSD の /dev/sdb1 パーティショ
+ンを discard オプションを付けてマウントする例です。
+
+# mkdir /mnt/sdb1
+# mount -o discard /dev/sdb1 /mnt/sdb1
 
 4.1.2. パーティション・アラインメント
 - - - - - - - - - - - - - - - - - - -
@@ -639,9 +695,9 @@ read/write 時間が 100 秒を超えることが有り、さらに既定値の 
 
 4.4. 専有メモリと swap 設定
 ---------------------------
-ssdstress プロセスで約 6.5GiByte 使用します。常に 6.5GiByte を主記憶に保持でき
-る環境が理想です。他のプロセスでメモリを多く使用しない様にして下さい。例えば、
-runlevel 3 にして GUI を停止してください。
+ssdstress プロセスで約 6.5GiByte 使用します。page lock を試みます。常に
+6.5GiByte を主記憶に保持できる環境が理想です。他のプロセスでメモリを多く使用
+しない様にして下さい。例えば、runlevel 3 にして GUI を停止してください。
 
 swap の設定は変更していません。外乱を少なくするため、メモリが 8GiByte 以上ある
 場合は、メモリを多く専有するプロセスを停止し swap を off にするとよりよい結果に
@@ -678,15 +734,26 @@ SSD 内の処理については推定するしかないのですが、wear level
 4.7. 検査符号生成、符号検査と OS のページ管理の関係
 ---------------------------------------------------
 検査符号生成と符号検査するもう一つの目的は OS のページ管理による影響を減らす
-ことを狙っています。Linux ではまだ積極的に取り入れていないはずですが、read()
-システムコールで読みだしたデータをプログラムから memory read するまで主記憶に
-配置しない場合がある OS が存在します。memory read をしなければ read() システム
-コールはデバイスから何も読みだしません。アクセスエラー等の例外的な事象の正確
-性は犠牲になりますが、多くの場合、支障をきたすことはありません。
+ことを狙っています。
 
-(O_DIRECT を付けた場合)確かにデバイスから読み込んだ、(O_DIRECT を付けない場合)
-確かにキャッシュ領域から(領域へ)コピーした、と言う事を確実にするため、書き込む
-データに「新鮮な」検査符号を付け、読み出したデータは必ず符号検査をしています。
+4.7.1. 確実な read() 実行
+-------------------------
+Linux ではまだ積極的に取り入れていないはずですが、read() システムコールで読み
+出したデータをプログラムから memory read するまで主記憶に配置しない場合がある
+OS が存在します。memory read をしなければ read() システムコールはデバイスから
+何も読みだしません。アクセスエラー等の例外的な事象の正確性は犠牲になりますが、
+多くの場合、支障をきたすことはありません。
+
+この様な OS の最適化の影響を減らすため符号検査を実施しています。
+memory_access_time, Tmem_access_total の異様な増加が認められる場合、read() 
+システムコールに何らかの最適化が施されている可能性が有ります。
+
+4.7.2. 主記憶上へ page を配置する
+---------------------------------
+ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock をして
+常に主記憶上に read と write バッファを確保します。page lock が出来なかった
+場合は、read 前は 0x0 を, write 前は検査符号をバッファに書き込み、バッファを
+出来る限り主記憶に配置されている状態にします。
 
 5. ライセンス
 =============
