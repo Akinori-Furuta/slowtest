@@ -29,8 +29,10 @@
 
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
 
-TempPath=/dev/shm
+source "${my_dir}/ssdtestcommon.sh"
+
 uuid=`cat /proc/sys/kernel/random/uuid`
 
 # Parse Argument
@@ -101,6 +103,9 @@ then
 	exit 1
 fi
 
+LoopCountFile="${my_base%.*}_$$_loop.txt"
+echo ${LoopCount} > "${LoopCountFile}"
+echo "${LoopCountFile}: To up or down test times, edit number in this file."
 L_OptionLabel=""
 
 if [[ -n ${OptionLabel} ]]
@@ -117,6 +122,16 @@ do
 	${my_dir}/ssdtest.sh ${L_OptionLabel} ${TestFile}
 
 	i=$(( ${i} + 1 ))
+
+	if [[ -f "${LoopCountFile}" ]]
+	then
+		loop_count=`cat "${LoopCountFile}"`
+		if ( echo ${loop_count} | grep -q '^[0-9][0-9]*$' )
+		then
+			LoopCount=${loop_count}
+		fi
+	fi
 done
 echo ${i} > "${done_flag}"
 echo "$0: Done loop test."
+rm "${LoopCountFile}"
