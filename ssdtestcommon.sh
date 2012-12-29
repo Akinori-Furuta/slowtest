@@ -28,6 +28,7 @@
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 TempPath=/dev/shm
+CharDollar='$'
 
 function CommonHelp() {
 	echo "Common defines for test SSD performance scripts."

@@ -41,6 +41,11 @@ function Help() {
 
 MyBase="`dirname $0`"
 
+my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
+
+source "${my_dir}/ssdtestcommon.sh"
+
 if [[ -z ${TestBin} ]]
 then
 	TestBin=ssdstress
@@ -303,17 +308,43 @@ echo "${TestFile}: Info: Canonical path. TestFileCanon=${TestFileCanon}"
 # resolv volume name (mounted block device or partiton).
 # Note: This program can resolv volume not using volume group.
 
-for mount_point in `awk '{print $2}' /proc/mounts | sort -r`
+MountList=${TempPath}/${uuid}_mount.txt
+
+cat /proc/mounts | sort -r -k 2 > ${MountList}
+
+i=1
+for mount_point in `awk '{print $2}' ${MountList}`
 do
 	if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
 	then
-		VolumeFs=(`grep "${mount_point}" /proc/mounts | awk '{printf("%s %s", $1, $3);}'`)
+		VolumeFs=(`awk "NR==${i} {printf(\"%s %s\", ${CharDollar}1, ${CharDollar}3);}" "${MountList}"`)
 		break
 	fi
+	i=$(( ${i} + 1 ))
 done
 
 Volume=${VolumeFs[0]}
 FileSystem=${VolumeFs[1]}
+
+if ( ! ( echo ${Volume} | grep -q "^/dev/" ) )
+then
+	mount | sort -r -k 3 > ${MountList}
+	i=1
+	for mount_point in `awk '{print $3}' ${MountList}`
+	do
+		if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
+		then
+			VolumeFs=(`awk "NR==${i} {printf(\"%s %s\", ${CharDollar}1, ${CharDollar}5);}" "${MountList}"`)
+			break
+		fi
+		i=$(( ${i} + 1 ))
+	done
+fi
+
+Volume=${VolumeFs[0]}
+FileSystem=${VolumeFs[1]}
+
+rm "${MountList}"
 
 if [[ -z ${Volume} ]]
 then

@@ -533,17 +533,23 @@ root 権限で書き込むファイルに付与される uid, gid となりま�
 実行マシン (plot) 上での操作、test# はテスト実行マシン (test) での操作です。
 plot 上でプロットを実行する userid, groupid は 1000, 1000 としています。
 
+Note: ${tool_path} は plot, test 両マシンでそれぞれ、適したパスに置き換えてく
+      ださい。
+
+NFS 共有するディレクトリ作成
 plot# mkdir -p /export/share1
-plot# chmod a+rw /export/share1
-plot# chmod +t /export/share1
 plot# cd /export/share1
+plot# chmod a+rw .
+plot# chmod +t .
 plot# mkdir loop_test
 plot# chown 1000:1000 loop_test
 
+NFS 共有する
 plot# vi /etc/exports
 /export/share1 test(rw,async,anonuid=1000,anongid=1000) この行を追加
 plot# exportfs -a
 
+NFS 共有したディレクトリをマウント
 test# mkdir -p /mnt/shared1
 test# mount -o rw plot:/export/share1 /mnt/share1
 test# cd /mnt/shared1
@@ -554,6 +560,7 @@ Note: /ssd/mount/point は SSD をマウントしたポイントです。
 
 plot$ cd /export/share1/loop_test
 plot$ ${tool_path}/pageupdaterloop.sh .
+
 
 3.5.2. ssdtestloop.sh - ssdtest.sh を連続実行するスクリプト
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
