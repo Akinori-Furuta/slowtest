@@ -226,7 +226,7 @@ ssdtest.sh から呼ばれるバイナリプログラムです。テストの核
 	      (ブロックアドレスを検査する)
 	-r n  シーケンシャルリードは実施しない
 
--d{y|n}{Y|N} O_DIRECT (OS のキャッシュ使用しない) 指定 (既定 yY)
+-d{y|n}{Y|N} O_DIRECT (OS のキャッシュを使用しない) 指定 (既定 yY)
 	小文字 yn はシーケンシャルアクセステストに対する指定
 	大文字 YN はランダムアクセステストに対する指定
 	-d y  シーケンシャルアクセステストは OS のキャッシュを使用しない
@@ -311,7 +311,7 @@ ssdtest.sh から呼ばれるバイナリプログラムです。テストの核
 path_name テストに使うファイル名を指定します。
 
 数値 n は接尾辞 k, m, g, t, p を付加出来ます。其々 n に k: 1024, m: 1024^2,
-g: 1024^4, t: 1024^4, p: 1024^5 を掛ける指定です。
+g: 1024^3, t: 1024^4, p: 1024^5 を掛ける指定です。
 
 3.3.2.2. 結果出力形式
 -  -  -  -  -  -  -  -
@@ -341,7 +341,7 @@ Twrite_total      書き始めから Write に掛かった時間の合計 (secon
 Twrite_elapsed    書き始めから Write とそれ以外の処理時間
                   (主に検査符号生成処理)も全て含めた経過時間 (seconds)
 
-Tmem_access_total 書き込み以外、主に検査処理に掛かった時間 (seconds)
+Tmem_access_total 書き込み以外、主に検査符号生成処理に掛かった時間 (seconds)
 
 ・シーケンシャル read アクセスの出力形式
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total
@@ -349,7 +349,7 @@ cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tre
 cur b/s           直近の転送速度 (bytes/seconds)
 
 total b/s         Read に掛かった時間だけから計算した
-                  書き始めからの転送速度 (bytes/seconds)
+                  読み始めからの転送速度 (bytes/seconds)
 
 cur_el b/s        Read とそれ以外の符号検査処理も全て含んだ時間で計算した
                   直近の転送速度 (bytes/seconds)
@@ -431,7 +431,7 @@ USB メモリ、USB カードリーダーから Model 名を得る処理は実�
       03         512      512Ki
       04         512       64Ki
 
-(a3) sequential read without O_DIRECT
+(a3) sequential read with O_DIRECT
      OS のキャッシュを 無効* にしてテスト用ファイルを最初から最後まで読みます。
      * SSD のテストでは "有効" です。
 
@@ -523,8 +523,6 @@ NFS client として設定し、NFS マウントポイント以下にテスト�
 ます。マウントオプションは -o rw です。これ以外のオプションは環境に合わせて
 設定してください。
 
-
-
 ・プロット(pageupdaterloop.sh) 実行マシン
 NFS server として設定し、NFS export ディレクトリ以下のテスト結果をプロットする
 様にします。export オプションは rw,async,anonuid=UserId,anongid=GroupId です。
@@ -573,7 +571,7 @@ plot$ ${tool_path}/pageupdaterloop.sh .
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ssdtest.sh を連続実行します。
 
-# ${tool_path}/ssdtestloop.sh [-C LoopCount] [-L ModelNameLabel] /path/to/test
+# ${tool_path}/ssdtestloop.sh -C LoopCount [-L ModelNameLabel] /path/to/test
 
 /path/to/test はテストしようとする SSD をマウントしたパス、またはそれより深い
 階層のパスを指定します。ディレクトリを指定すれば、そのディレクトリに UUID 形式
@@ -767,8 +765,8 @@ OS が存在します。memory read をしなければ read() システムコー
 memory_access_time, Tmem_access_total の異様な増加が認められる場合、read() 
 システムコールに何らかの最適化が施されている可能性が有ります。
 
-4.7.2. 主記憶上へ page を配置する
----------------------------------
+4.7.2. 主記憶上へ page を配置
+-----------------------------
 ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock をして
 常に主記憶上に read と write バッファを確保します。page lock が出来なかった
 場合は、read 前は 0x0 を, write 前は検査符号をバッファに書き込み、バッファを
