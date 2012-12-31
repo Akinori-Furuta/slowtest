@@ -53,7 +53,7 @@ DIST_FILES=\
 	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
-	ssdstress.c Makefile README_JP
+	ssdstress.c Makefile README_JP readme.html
 
 DIST_DIR=ssdtest_1.0
 
