@@ -158,10 +158,10 @@ fi
 
 echo "<HTML>"
 echo "<HEAD>"
-echo "<TITLE>Model: ${Model} ${CapacityGBTitle} - Continous access test</TITLE>"
+echo "<TITLE>Model: ${Model} ${CapacityGBTitle} - Continuous access test</TITLE>"
 echo "</HEAD>"
 echo "<BODY>"
-echo "<H1>Model: ${Model} ${CapacityGBTitle} - Continous access test</H1>"
+echo "<H1>Model: ${Model} ${CapacityGBTitle} - Continuous access test</H1>"
 echo "<HR>"
 echo "<TABLE border=1>"
 echo "<TR><TH>Round<TH>Test log<TH>Pass<TH>Fail<TH>Written bytes<TH>Read bytes<TH>Accumulated written bytes<TH>Accumulated read bytes</TR>"
