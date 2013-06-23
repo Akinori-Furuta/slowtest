@@ -33,6 +33,17 @@ do
 	sed -n '1,/Seed(-s):/ {p}' ${f} > ${header}
 
 	Model=`grep 'Model=' ${header} | cut -d ',' -f 1 | cut -d '=' -f 2`
+	ModelSmart="`grep 'Device[[:space:]]*Model' ${header} \
+		| awk 'BEGIN {FS=\":\";} {print $2;}' \
+		| sed -e 's/^[[:space:]]*//' \
+		| sed -e 's/[[:space:]]*$//' \
+		| tr ' ' '_'`"
+	ModelLen=${#Model}
+	ModelSmartLen=${#ModelSmart}
+	if (( ${ModelLen} < ${ModelSmartLen} ))
+	then
+		Model="${ModelSmart}"
+	fi
 	FileSize=`grep 'FileSize(-f):' ${header} | cut -d ':' -f 2`
 	BlockSize=`grep 'BlockSize(-b):' ${header} | cut -d ':' -f 2`
 	SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${header} | cut -d ':' -f 2`

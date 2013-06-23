@@ -82,6 +82,17 @@ s_header=${STempPath}/${s_uuid}-`basename ${SLogFile%.*}-hd.txt`
 sed -n '1,/Seed(-s):/ {p}' ${SLogFile} > ${s_header}
 
 Model=`grep 'Model=' ${s_header} | cut -d ',' -f 1 | cut -d '=' -f 2`
+ModelSmart="`grep 'Device[[:space:]]*Model' ${s_header} \
+	| awk 'BEGIN {FS=\":\";} {print $2;}' \
+	| sed -e 's/^[[:space:]]*//' \
+	| sed -e 's/[[:space:]]*$//' \
+	| tr ' ' '_'`"
+ModelLen=${#Model}
+ModelSmartLen=${#ModelSmart}
+if (( ${ModelLen} < ${ModelSmartLen} ))
+then
+	Model="${ModelSmart}"
+fi
 FileSize=`grep 'FileSize(-f):' ${s_header} | cut -d ':' -f 2 | tr -d [[:space:]]`
 BlockSize=`grep 'BlockSize(-b):' ${s_header} | cut -d ':' -f 2`
 SequentialRWBlocks=`grep 'SequentialRWBlocks(-u):' ${s_header} | cut -d ':' -f 2`
