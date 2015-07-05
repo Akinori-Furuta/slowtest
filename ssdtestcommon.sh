@@ -119,7 +119,10 @@ function ReadCondition() {
 		s_fdisk_sector_size=`grep '^[sS]ector[[:space:]]*[sS]ize[[:space:]].*logical' ${s_header} \
 			| sed -n 's/^.*[:][[:space:]]*// p' \
 			| cut -f 1 -d ' '`
-		LBASectors=$(( ${s_fdisk_sectors} * ( ${s_fdisk_sector_size} / 512 ) ))
+		if [[ -n ${s_fdisk_sectors} && -n ${s_fdisk_sector_size} ]]
+		then
+			LBASectors=$(( ${s_fdisk_sectors} * ( ${s_fdisk_sector_size} / 512 ) ))
+		fi
 	fi
 
 	if [[ -n ${LBASectors} ]]
