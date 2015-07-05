@@ -111,6 +111,16 @@ function ReadCondition() {
 	else
 		FileSizeShow="${FileSizeGi}Gi"
 	fi
+	if [[ -z ${LBASectors} ]]
+	then
+		s_fdisk_sectors=`grep '^[0-9][0-9]*[[:space:]]*heads,[[:space:]]*[0-9][0-9]*[[:space:]]*sectors' ${s_header} \
+			| sed -n 's/^.*total[[:space:]]*// p' \
+			| cut -f 1 -d ' '`
+		s_fdisk_sector_size=`grep '^[sS]ector[[:space:]]*[sS]ize[[:space:]].*logical' ${s_header} \
+			| sed -n 's/^.*[:][[:space:]]*// p' \
+			| cut -f 1 -d ' '`
+		LBASectors=$(( ${s_fdisk_sectors} * ( ${s_fdisk_sector_size} / 512 ) ))
+	fi
 
 	if [[ -n ${LBASectors} ]]
 	then

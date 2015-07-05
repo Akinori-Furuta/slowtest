@@ -196,7 +196,7 @@ do
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_data_file}"
 set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
-set title "${Model} ${CapacityGB}G bytes, sequential write\\n\
+set title "${Model} ${CapacityGBTitle}, sequential write\\n\
 ${RWBytesMi}Mi bytes per one write() call, \
 up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#ff0000"
