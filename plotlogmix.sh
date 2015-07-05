@@ -105,8 +105,10 @@ done
 if [[ -n ${parsed_arg[${i}]} ]]
 then
 	LogDirectory="${parsed_arg[${i}]}"
+	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
 else
 	LogDirectory="."
+	LogLabel=`basename `pwd` | cut -f 2 -d '-'`
 fi
 
 cd "${LogDirectory}"
@@ -174,6 +176,11 @@ do
 	for f in `ls *-${g}-*.txt | grep -v 'bytes.txt$'`
 	do
 		ReadCondition "${f}"
+
+		if [[ -z "${Model}" ]]
+		then
+			Model="${LogLabel}"
+		fi
 
 		if [[ -z "${FileSize}" || -z "${BlocksMin}" || -z "${BlocksMax}"  ]]
 		then
