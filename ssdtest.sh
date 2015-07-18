@@ -436,7 +436,7 @@ then
 			Space4095M=$(( 4095 * 1024 ))
 			if (( ${VolumeFreeSpace} > ${Space4095M} ))
 			then
-				VolumeFreeSpace = ${Space4095M}
+				VolumeFreeSpace=${Space4095M}
 			fi
 		;;
 	esac
@@ -478,6 +478,17 @@ then
 	then
 		echo "${TestFile}: Resolved model name. ModelName=${ModelName}"
 	fi
+fi
+
+if [[ ' -z "${OptinalLabel}" )  &&  ( -z "${ModelName}" ) ]]
+then
+	case ${FileSystem} in
+		(vfat|fat)
+			OptionalLabel=`dosfslabel "${Volume}" | tail -1 \
+				| sed -n 's/^[[:space:]]*// p' | sed -n 's/[[:space:]]*$// p' \
+				| tr ' :' '_.' `
+		;;
+	esac
 fi
 
 # Show config function.
