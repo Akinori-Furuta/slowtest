@@ -103,8 +103,10 @@ done
 if [[ -n ${parsed_arg[${i}]} ]]
 then
 	LogDirectory="${parsed_arg[${i}]}"
+	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
 else
 	LogDirectory="."
+	LogLabel=`basename `pwd` | cut -f 2 -d '-'`
 fi
 
 gnuplot_ver_x1000=`gnuplot --version | awk '{print $2 * 1000.0}'`
@@ -134,6 +136,11 @@ rm -f *-sr-bytes.tmp
 for f in *.txt
 do
 	ReadCondition "${f}"
+
+	if [[ -z "${Model}" ]]
+	then
+		Model="${LogLabel}"
+	fi
 
 	if [[ -z ${FileSize} ]]
 	then
@@ -196,7 +203,7 @@ do
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_data_file}"
 set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} linewidth 0.2
-set title "${Model} ${CapacityGB}G bytes, sequential write\\n\
+set title "${Model} ${CapacityGBTitle}, sequential write\\n\
 ${RWBytesMi}Mi bytes per one write() call, \
 up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#ff0000"
