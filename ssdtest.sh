@@ -545,7 +545,9 @@ do
 		-py -xb -rn -my \
 		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
 		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+		${SEQUENTIAL_WRITE_EXTRA_OPTIONS} \
+		${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
@@ -569,7 +571,9 @@ do
 			-pn -xb -rn -my \
 			-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n ${RANDOM_REPEATS} \
 			-u ${SEQUENTIAL_BLOCKS} \
-			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+			${RANDOM_EXTRA_OPTIONS} \
+			${TestFile} \
 			)
 
 			echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
@@ -591,7 +595,9 @@ do
 		-pn -xb -ry -my \
 		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
 		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} ${TestFile} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+		-${SEQUENTIAL_READ_EXTRA_OPTIONS} \
+		${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
