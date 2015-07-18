@@ -607,7 +607,7 @@ do
 		-b ${BLOCK_SIZE} -i 1 -a ${RandomMaxBlocks} -n 0 \
 		-u ${SEQUENTIAL_BLOCKS} \
 		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
-		-${SEQUENTIAL_READ_EXTRA_OPTIONS} \
+		${SEQUENTIAL_READ_EXTRA_OPTIONS} \
 		${TestFile} \
 		)
 
