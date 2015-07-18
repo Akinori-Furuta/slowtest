@@ -480,7 +480,7 @@ then
 	fi
 fi
 
-if [[ ' -z "${OptinalLabel}" )  &&  ( -z "${ModelName}" ) ]]
+if [[ ( -z "${OptinalLabel}" )  &&  ( -z "${ModelName}" ) ]]
 then
 	case ${FileSystem} in
 		(vfat|fat)
