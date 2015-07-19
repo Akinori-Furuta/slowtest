@@ -40,7 +40,7 @@
 #
 
 CFLAGS=-O3 -Wall -Wunused -Wuninitialized -march=native -mtune=native
-CLIBS=-lrt
+CLIBS=-lrt -lm
 
 DIST_FILES=\
 	ssdtestcommon.sh \

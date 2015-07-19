@@ -44,6 +44,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -73,6 +74,9 @@ long	ScPageSize=4096;
 #define	DO_OPTION_NO	(0) /* should be 0 */
 #define	DO_OPTION_YES	(1)
 
+#define	BLOCK_SIZE_DIST_UNIFORM		(0)
+#define	BLOCK_SIZE_DIST_EXPONENTIAL	(1)
+
 #define	DEF_FillFile		(DO_OPTION_NO)
 #define	DEF_DoReadFile		(DO_READ_FILE_NO)
 #define	DEF_FileSize		(0)
@@ -88,12 +92,13 @@ long	ScPageSize=4096;
 #define	DEF_DoDirect		(DO_OPTION_YES)
 #define	DEF_DoDirectRandomRW	(DO_OPTION_YES)
 #define	DEF_DoMark		(DO_OPTION_YES)
+#define	DEF_BlockSizeDist	(BLOCK_SIZE_DIST_UNIFORM)
 #define	DEF_TestToTestSleeps	(10)
 
 /*! Copyright notice. */
 const char copyright_notice[]=
 	"ssdstress: SSD stress test tool. "
-	"Copyright (C) 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
+	"Copyright (C) 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
 
 /*! Command line argument holder. */
 typedef struct {
@@ -102,6 +107,8 @@ typedef struct {
 	off64_t		SequentialRWBlocks; /*!< -u n Sequential Read/Write blocks per one IO. */
 	off64_t		BlocksMin;	/*!< -i n Minimum blocks to read/write. */
 	off64_t		BlocksMax;	/*!< -a n Maximum blocks to read/write. */
+	double		BlocksMaxMinRatio;	/*!< (internal) BlocksMax/BlockMin ratio */
+	double		BlocksMaxMinRatioL2;	/*!< (internal) log2(BlocksMax/BlocksMin) */
 	off64_t		BlockStart;	/*!< -o n Origin block number to test. */
 	off64_t		BlockEnd;	/*!< -e n End block number to test.  */
 	long		Repeats;	/*!< -n n the number of repeat random access. */
@@ -114,6 +121,7 @@ typedef struct {
 	int		DoDirect;	/*!< -d {y|n} Do O_DIRECT io */
 	int		DoDirectRandomRW; /*!< -d {Y|N} Do O_DIRECT io at random read/write. */
 	int		DoMark;		  /*!< -m {y|n} Do Block Marking. */
+	int		BlockSizeDist;	/*!< -i u, -i p Block size distribution. */
 	unsigned int	TestToTestSleeps; /*!< -t n Sleep seconds between test to test. */
 } TCommandLineOption;
 
@@ -136,6 +144,7 @@ TCommandLineOption	CommandLine={
 	.DoDirect=DEF_DoDirect,
 	.DoDirectRandomRW=DEF_DoDirectRandomRW,
 	.DoMark=DEF_DoMark,
+	.BlockSizeDist=DEF_BlockSizeDist,
 	.TestToTestSleeps=DEF_TestToTestSleeps
 };
 
@@ -709,11 +718,26 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 				}
 				break;
 			}
-			case 'i': { /* -i blocks min. */
+			case 'i': { /* -i "blocks_min" or "exponential" or "uniform" */
 				const char error_message[]="-i: Error: Need random read/write blocks min by number[k|m|g|t|]\n";
+				const char invalid_format_message[]="-i: Error: Invalid format. p=%s\n";
 				p=optarg;
 				if (p) {
-					opt->BlocksMin=StrToULLKmg(p,&p2,0);
+					switch (*p) {
+						case 'e': /* exponential */
+							opt->BlockSizeDist=BLOCK_SIZE_DIST_EXPONENTIAL;
+							break;
+						case 'u': /* uniform */
+							opt->BlockSizeDist=BLOCK_SIZE_DIST_UNIFORM;
+							break;
+						default:
+							opt->BlocksMin=StrToULLKmg(p,&p2,0);
+							if (p==p2) {
+								printf(invalid_format_message, p);
+								result=0;
+							}
+							break;
+					}
 				} else {
 					printf(error_message);
 					result=0;
@@ -822,6 +846,13 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 		opt->BlocksMin=opt->BlocksMax;
 		opt->BlocksMax=tmp;
 	}
+
+	opt->BlocksMaxMinRatio=1.0;
+	if (opt->BlocksMin>0) {
+		double t;
+		opt->BlocksMaxMinRatio=t=(double)(opt->BlocksMax)/(double)(opt->BlocksMin);
+		opt->BlocksMaxMinRatioL2=log2(t);
+	}
 	if (opt_e==0) {
 		/* default BlockEnd */
 		opt->BlockEnd=(opt->FileSize/opt->BlockSize)-1;
@@ -855,8 +886,22 @@ int TCommandLineOptionGetopt(TCommandLineOption *opt, char argc, char **argv0)
 	return(result /* true */);
 }
 
-const char	*do_only_options[]={"b","r","w"};
-const char	*do_read_file_options[]={"n","y","s"};
+const char *do_only_options[]={
+	 [DO_RANDOM_ACCESS_BOTH]="b"
+	,[DO_RANDOM_ACCESS_READ]="r"
+	,[DO_RANDOM_ACCESS_WRITE]="w"
+	};
+
+const char *do_read_file_options[]={
+	 [DO_READ_FILE_NO]="n"
+	,[DO_READ_FILE_LIGHT]="y"
+	,[DO_READ_FILE_STRICT]="s"
+	};
+
+const char *block_size_dist_options[]={
+	 [BLOCK_SIZE_DIST_UNIFORM]="uniform"
+	,[BLOCK_SIZE_DIST_EXPONENTIAL]="exponential"
+	};
 
 /*! Show command line arguments.
     @param p points TCommandLineOption structure to show.
@@ -878,6 +923,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 "SequentialRWBlocks(-u): %" PRId64 "\n"
 		 "BlocksMin(-i): %" PRId64 "\n"
 		 "BlocksMax(-a): %" PRId64 "\n"
+		 "BlockSizeDist(-i): %s\n"
 		 "BlockStart(-o): %" PRId64 "\n"
 		 "BlockEnd(-e): %" PRId64 "\n"
 		 "Repeats(-n): %ld\n"
@@ -895,6 +941,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,(int64_t)(opt->SequentialRWBlocks)
 		 ,(int64_t)(opt->BlocksMin)
 		 ,(int64_t)(opt->BlocksMax)
+		 ,block_size_dist_options[opt->BlockSizeDist]
 		 ,(int64_t)(opt->BlockStart)
 		 ,(int64_t)(opt->BlockEnd)
 		 ,opt->Repeats
@@ -1486,6 +1533,37 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 	return(1 /* true */);
 }
 
+size_t RandomRWFileGenLength(TCommandLineOption *opt)
+{	size_t	length;
+
+	switch (opt->BlockSizeDist) {
+		case BLOCK_SIZE_DIST_EXPONENTIAL:
+			/* always do */ {
+				double	ratio;
+				double	blocks;
+				double	t;
+
+				/* generate random 1.0 .. BlocksMaxMinRatio */
+				ratio=exp2(opt->BlocksMaxMinRatioL2*genrand_real1());
+				blocks=(0.5+ratio*opt->BlocksMin);
+				t=opt->BlocksMin;
+				if (blocks<t) {
+					blocks=t;
+				}
+				t=opt->BlocksMax;
+				if (blocks>t) {
+					blocks=t;
+				}
+				length=(size_t)(trunc(blocks)*(double)(opt->BlockSize));
+			}
+			break;
+		default:
+			length= (opt->BlockSize)*
+				((long)(genrand_real2()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
+	}
+	return length;
+}
+
 /*! Random read/write working file.
     @param fd file descriptor.
     @param img point file image memory to write.
@@ -1553,7 +1631,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 		/* Calc random seek position and size. */
 		seek_to_block=(off64_t)(genrand_real2()*(double)area_blocks)+opt->BlockStart;
 		seek_to=(opt->BlockSize)*seek_to_block;
-		length=(opt->BlockSize)*((long)(genrand_real2()*(double)(opt->BlocksMax-opt->BlocksMin+1))+opt->BlocksMin);
+		length=RandomRWFileGenLength(opt);
 		if ((length+seek_to)>end_next_pos) {
 			/* over runs at block end. */
 			length=end_next_pos-seek_to;
@@ -2103,7 +2181,7 @@ EXIT_UNMAP_MEM:;
 void ShowHelp(void)
 {	printf(copyright_notice);
 	printf(
-	"Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name\n"
+	"Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-i {u|e}] [-a n] [-e n] [-n n] [-s n] path_name\n"
 	"-f n work file size.\n"
 
 	"-p{y|n} Fill file with initial image(y: fill, n: truncate)(%c).\n"
@@ -2117,6 +2195,7 @@ void ShowHelp(void)
 	"-u n Sequential read/write blocks per one IO (if zero or not set, same as \"-a n\" * 2)(%d).\n"
 	"-i n Random read/write minimum blocks(%d).\n"
 	"-a n Random read/write maximum blocks(%d).\n"
+	"-i {uniform | exponential} Random read/write blocks distribution as uniform or exponential (%s).\n"
 	"-o n Start block number to read/write(%d).\n"
 	"-e n End block number to read/write(%d).\n"
 	"-n n number of random read/write access(%d).\n"
@@ -2137,6 +2216,7 @@ void ShowHelp(void)
 	,DEF_SequentialRWBlocks
 	,DEF_BlocksMin
 	,DEF_BlocksMax
+	,block_size_dist_options[DEF_BlockSizeDist]
 	,0
 	,0
 	,DEF_Repeats
