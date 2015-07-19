@@ -166,7 +166,7 @@ do
 		continue
 	fi
 
-	if [[ ( "${FillFile}" != "y" ) && ( "${DoReadFile}" != "y" ) ]]
+	if [[ ( "${FillFile}" != "y" ) && ( "${DoReadFile}" != "y" ) && ( "${DoReadFile}" != "s" ) ]]
 	then
 		echo "${f}: Not contain sequential access log."
 		continue
