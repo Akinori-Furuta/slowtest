@@ -1,6 +1,6 @@
 #!/bin/bash
-# plot for USB / Card memories.
-# this script wraps plotlogmix.sh
+# Test USB / Card memories performance.
+# This script wraps ssdtest.sh
 #
 #  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
@@ -31,10 +31,14 @@
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
 
-export	SEQUENTIAL_TRANSFER_SPEED_MIN="0.0"
-export	SEQUENTIAL_TRANSFER_SPEED_MAX="1.0e+8"
+export SEQUENTIAL_DIRECT=y
+export SEQUENTIAL_BLOCKS=16384
+export RANDOM_MAX_BLOCKS_MAG=8
+export RANDOM_MAX_BLOCKS_BASE=128
+export RANDOM_MAX_BLOCKS_LEVEL=4
 
-export	RANDOM_TRANSFER_SPEED_MIN="1.0e+3"
-export	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
+export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-my -i exp"
+export RANDOM_EXTRA_OPTIONS="-my -i exp"
+export SEQUENTIAL_READ_EXTRA_OPTIONS="-rs -my -i exp"
 
-${my_dir}/plotlogmix.sh $*
+${my_dir}/ssdtest.sh $*

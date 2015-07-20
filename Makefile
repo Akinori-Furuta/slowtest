@@ -1,6 +1,6 @@
 # Make tar.gz package, ssdstress binary, clean, and test.
 #
-#  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without

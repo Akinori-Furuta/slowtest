@@ -1,7 +1,7 @@
 #!/bin/bash
 # plot sequential-write, and sequential-read performance from log files.
 #
-#  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without

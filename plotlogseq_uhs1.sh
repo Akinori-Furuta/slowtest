@@ -2,7 +2,7 @@
 # Plot for USB / Card memory plot settings.
 # this script wraps plotlogseq.sh
 #
-#  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
