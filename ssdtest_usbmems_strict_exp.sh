@@ -1,5 +1,6 @@
 #!/bin/bash
-# Test USB / Card memories performance.
+# Test USB / Card memories performance
+# with "strict check" and "exponential distribution".
 # This script wraps ssdtest.sh
 #
 #  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
