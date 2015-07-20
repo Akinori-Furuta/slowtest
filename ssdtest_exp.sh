@@ -1,6 +1,5 @@
 #!/bin/bash
-# Test SSD performance with exponential distribution.
-# This script wraps ssdtest.sh
+# Test SSD performance script.
 #
 #  Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
@@ -28,9 +27,6 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-my_base=`basename "$0"`
-my_dir=`dirname "$0"`
-
 function Help() {
 	echo "Test SSD performance."
 	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
@@ -42,6 +38,176 @@ function Help() {
 	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
 	exit 1
 }
+
+MyBase="`dirname $0`"
+
+my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
+
+source "${my_dir}/ssdtestcommon.sh"
+
+if [[ -z ${TestBin} ]]
+then
+	TestBin=ssdstress
+fi
+
+if [[ -z ${MAX_SECTORS_KB_UNIT} ]]
+then
+	# kernel parameter max IO KiBytes per one request to block device driver.
+	MAX_SECTORS_KB_UNIT=2048
+fi
+
+if [[ -z ${SEQUENTIAL_READ_AHEAD_KB} ]]
+then
+	SEQUENTIAL_READ_AHEAD_KB=128
+fi
+
+if [[ -z ${RANDOM_READ_AHEAD_KB} ]]
+then
+	RANDOM_READ_AHEAD_KB=0
+fi
+
+
+if [[ -z ${TEST_USAGE_RATIO} ]]
+then
+	# Test file size ratio at free space in volume.
+	TEST_USAGE_RATIO=0.9
+fi
+
+if [[ -z ${LOOP_MAX} ]]
+then
+	# Test loops per "at with direct" and "at without direct".
+	LOOP_MAX=2
+fi
+
+if [[ -z ${SEQUENTIAL_DIRECT} ]]
+then
+	SEQUENTIAL_DIRECT=n
+fi
+
+if [[ -z ${SEED} ]]
+then
+	# random seed.
+	SEED=1000
+fi
+
+if [[ -z ${SEED_SPAN_DIRECT} ]]
+then
+	# random seed span O_DIRECT loop.
+	SEED_SPAN_DIRECT=0
+fi
+
+if [[ -z ${BLOCK_SIZE} ]]
+then
+	BLOCK_SIZE=512
+fi
+
+if [[ -z ${RANDOM_BLOCKS_MAX} ]]
+then
+	# 16 Mi blocks, 8 Mibytes.
+	RANDOM_BLOCKS_MAX=$(( 16 * 1024 * 1024 ))
+fi
+
+if [[ -z ${RANDOM_REPEATS} ]]
+then
+	RANDOM_REPEATS=8192
+fi
+
+if [[ -z ${SEQUENTIAL_BLOCKS} ]]
+then
+	SEQUENTIAL_BLOCKS=$(( ${RANDOM_BLOCKS_MAX} / 2 ))
+fi
+
+if ( awk "BEGIN { if ( ( 1.0 * ${SEQUENTIAL_BLOCKS} * ${BLOCK_SIZE} ) >= ( 65536.0 * 65536.0 ) ) {exit 0;} else {exit 1;}}" )
+then
+	echo "$0: Notice: It may caught General Protection Fault when SEQUENTIAL_BLOCKS * BLOCK_SIZE is bigger than 4Gi. SEQUENTIAL_BLOCKS=${SEQUENTIAL_BLOCKS}, BLOCK_SIZE=${BLOCK_SIZE}"
+	SEQUENTIAL_BLOCKS=`awk "BEGIN { print ( 256.0 * 1024 * 1024 ) / ${BLOCK_SIZE} }"`
+	echo "$0: Notice: Truncate SEQUENTIAL_BLOCKS * BLOCK_SIZE under 256Mi. SEQUENTIAL_BLOCKS=${SEQUENTIAL_BLOCKS}, BLOCK_SIZE=${BLOCK_SIZE}"
+fi
+
+# Get uid.
+# Strongly recommended root.
+
+Uid=`id | sed 's/uid=\([0-9][0-9]*\).*/\1/'`
+
+# Clean test file.
+# no arguments.
+# global TestFile
+function remove_test_file() {
+	if [[ -f ${TestFile} ]]
+	then
+		echo "${TestFile}: Info: `date '+%y-%m-%d %H:%M:%S %s'`: Remove test file."
+		[ -f ${TestFile} ] && rm ${TestFile}
+	fi
+}
+
+# Recover max_sectors_kb, read_ahead_kb kernel parameter.
+# No arguments.
+# global SavedMaxSectorsKb, MaxSectorsKb, ReadAheadKb, SavedReadAheadKb, Uid
+function recover_queue_config() {
+	if (( ${Uid} == 0 ))
+	then
+		if [[ -n ${SavedMaxSectorsKb} ]]
+		then
+			echo "${MaxSectorsKb}: Info: Restore max_sectors_kb. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
+			echo ${SavedMaxSectorsKb} > ${MaxSectorsKb}
+		fi
+		if [[ -n ${SavedReadAheadKb} ]]
+		then
+			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${SavedReadAheadKb}"
+			echo ${SavedReadAheadKb} > ${ReadAheadKb}
+		fi
+	else
+		echo "${MaxSectorsKb}: Notice: Skip restore max_sectors_kb, not root. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
+		echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${SavedReadAheadKb}"
+	fi
+}
+
+# Set read_ahead_kb.
+# @param $1 read ahead kibytes.
+function set_read_ahead_kb() {
+	if (( ${Uid} == 0 ))
+	then
+		if [[ -n $1 ]]
+		then
+			echo "${ReadAheadKb}: Info: Set read_ahead_kb. argv[1]=$1"
+			echo $1 > ${ReadAheadKb}
+		fi
+	else
+		echo "${ReadAheadKb}: Notice: Skip set read_ahead_kb, not root. argv[1]=$1"
+	fi
+}
+
+
+HungTo=/proc/sys/kernel/hung_task_timeout_secs
+
+# Recover hung_task_timeout_secs
+# No arguments.
+# global SavedMaxSectorsKb, MaxSectorsKb, Uid
+function recover_hung_task_to() {
+	if [[ -n ${SavedHungTaskTo} ]]
+	then
+		if (( ${Uid} == 0 ))
+		then
+			echo "${HungTo}: Info: Restore hung_task_timeout_secs. SavedHungTaskTo=${SavedHungTaskTo}"
+			echo ${SavedHungTaskTo} > ${HungTo}
+		else
+			echo "${HungTo}: Notice: Skip hung_task_timeout_secs, not root. SavedHungTaskTo=${SavedHungTaskTo}"
+		fi
+	fi
+}
+
+# Signal handler.
+function signaled() {
+	echo "$0: Interrupted."
+	remove_test_file
+	recover_queue_config
+	recover_hung_task_to
+	exit 2
+}
+
+# Trap signals.
+trap signaled HUP INT
 
 # Parse Argument
 
@@ -84,14 +250,366 @@ fi
 
 TestFile="${parsed_arg[${i}]}"
 
-export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-i exp"
-export RANDOM_EXTRA_OPTIONS="-i exp"
-export SEQUENTIAL_READ_EXTRA_OPTIONS="-i exp"
 
-OptionLabelArg=""
-if [[ -n "${OptionLabel}" ]]
+# This test context.
+uuid=`cat /proc/sys/kernel/random/uuid`
+
+# File or directory.
+
+
+if [[ -d ${TestFile} ]]
 then
-	OptionLabelArg="-L \"${OptionLabel}\""
+	echo "${TestFile}: Notice: It may directory."
+	TestFile=${TestFile}/${uuid}.bin
+	if ( ! touch ${TestFile} )
+	then
+		echo "${TestFile}: Error: Can not access."
+		exit 1
+	fi
 fi
 
-${my_dir}/ssdtest.sh ${OptionLabelArg} ${TestFile}
+if ( ! touch ${TestFile} )
+then
+	echo "${TestFile}: Error: Can not access."
+	exit 1
+fi
+
+# Get canonical path name.
+TestFileCanon=`readlink -f ${TestFile}`
+
+# Check canonical path name.
+if [[ -z ${TestFileCanon} ]]
+then
+	echo "${TestFile}: Error: Can not resolv canonical path name."
+	exit 1
+fi
+
+echo "${TestFile}: Info: Canonical path. TestFileCanon=${TestFileCanon}"
+
+
+# resolv volume name (mounted block device or partiton).
+# Note: This program can resolv volume not using volume group.
+
+MountList=${TempPath}/${uuid}_mount.txt
+
+cat /proc/mounts | sort -r -k 2 > ${MountList}
+
+i=1
+for mount_point in `awk '{print $2}' ${MountList}`
+do
+	if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
+	then
+		VolumeFs=(`awk "NR==${i} {printf(\"%s %s\", ${CharDollar}1, ${CharDollar}3);}" "${MountList}"`)
+		break
+	fi
+	i=$(( ${i} + 1 ))
+done
+
+Volume=${VolumeFs[0]}
+FileSystem=${VolumeFs[1]}
+
+if ( ! ( echo ${Volume} | grep -q "^/dev/" ) )
+then
+	mount | sort -r -k 3 > ${MountList}
+	i=1
+	for mount_point in `awk '{print $3}' ${MountList}`
+	do
+		if ( echo ${TestFileCanon} | grep -q "^${mount_point}" )
+		then
+			VolumeFs=(`awk "NR==${i} {printf(\"%s %s\", ${CharDollar}1, ${CharDollar}5);}" "${MountList}"`)
+			break
+		fi
+		i=$(( ${i} + 1 ))
+	done
+	Volume=${VolumeFs[0]}
+	FileSystem=${VolumeFs[1]}
+fi
+
+# Limit max file size to 16TiB (ext4 max file size)
+FileSizeFSMaxKb=$(( 65536 * 65536 * 4 - 1 ))
+
+case ${FileSystem} in
+	(vfat|fat)
+		FileSizeFSMaxKb=$(( 4096 * 1024 - 1 ))
+	;;
+esac
+
+
+rm "${MountList}"
+
+if [[ -z ${Volume} ]]
+then
+	echo "${TestFile}: Notice: Can not resolv volume."
+else
+	echo "${TestFile}: Info: Resolved volume device. Volume=${Volume}"
+fi
+
+
+if [[ -z ${SSD_DEVICE_NAME} ]]
+then
+	if ( echo ${Volume} | grep -q "^/dev/" )
+	then
+		SSD_DEVICE_NAME=`echo ${Volume##*/} | sed 's/[0-9]*$//'`
+		SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
+	else
+		echo "${FileName}: Error: Can not handle this volume type. Volume=${Volume}"
+		exit 2
+	fi
+else
+	SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
+fi
+
+# Fix hung task timeout
+
+if [[ -e ${HungTo} ]]
+then
+	SavedHungTaskTo=`cat ${HungTo}`
+else
+	SavedHungTaskTo=""
+fi
+if (( ${Uid} == 0 ))
+then
+	if [[ -e ${HungTo} ]]
+	then
+		echo 0 > ${HungTo}
+	fi
+fi
+
+# Trim max_sectors_kb, read_ahead_kb
+
+MaxHwSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_hw_sectors_kb
+MaxSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
+ReadAheadKb=/sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
+
+ReadMaxHwSectorsKb=`cat ${MaxHwSectorsKb}`
+SavedMaxSectorsKb=`cat ${MaxSectorsKb}`
+SavedReadAheadKb=`cat ${ReadAheadKb}`
+
+if (( ${Uid} == 0 ))
+then
+	NewMaxSectorsKb=$(( ${ReadMaxHwSectorsKb} - ( ${ReadMaxHwSectorsKb} % ${MAX_SECTORS_KB_UNIT} ) ))
+	if (( ${NewMaxSectorsKb} <= 0 ))
+	then
+		NewMaxSectorsKb=${ReadMaxHwSectorsKb}
+	fi
+	if (( ${NewMaxSectorsKb} >= ${SavedMaxSectorsKb} ))
+	then
+		echo "${MaxSectorsKb}: Info: Update max_sectors_kb. NewMaxSectorsKb=${NewMaxSectorsKb}"
+		echo ${NewMaxSectorsKb} > ${MaxSectorsKb}
+	else
+		echo "${MaxSectorsKb}: Info: Sekip update max_sectors_kb, already modified large enough."
+	fi
+	echo 0 > ${ReadAheadKb}
+else
+	echo "${MaxSectorsKb}: Notice: Skip update max_sectors_kb, not root."
+	echo "${ReadAheadKb}: Notice: Skip update read_ahead_kb, not root."
+fi
+
+# Estimate test file size.
+
+VolumeFreeSpace=-1
+if [[ -n ${Volume} ]]
+then
+	VolumeFreeSpace=`df -k | grep  "^${Volume}" | awk '{print $4}'`
+fi
+
+if (( ${VolumeFreeSpace} > ${FileSizeFSMaxKb} ))
+then
+	VolumeFreeSpace=${FileSizeFSMaxKb}
+fi
+
+if [[ -z ${FILE_SIZE} ]]
+then
+	# Not Specified test file size.
+	if (( ${VolumeFreeSpace} <0 ))
+	then
+		echo "${TestFile}: Can not resolv volume free space."
+		exit 2
+	fi
+
+	VolumeFreeSpaceMiB=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
+	if (( ${VolumeFreeSpaceMiB} <= 20480 ))
+	then
+		FILE_SIZE=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 ) ) }"`
+		FILE_SIZE_UNIT=m
+	else
+		FILE_SIZE=`awk "BEGIN { print int ( ( ${VolumeFreeSpace} * ${TEST_USAGE_RATIO} ) / ( 1024.0 * 1024.0 ) ) }"`
+		FILE_SIZE_UNIT=g
+	fi
+	if (( ${FILE_SIZE} < 1 ))
+	then
+		echo "${TestFile}: Error: Not enough space to test. VolumeFreeSpace=${VolumeFreeSpace}Kibytes"
+		remove_test_file
+		recover_queue_config
+		recover_hung_task_to
+		exit 2
+	fi
+	FILE_SIZE="${FILE_SIZE}${FILE_SIZE_UNIT}"
+	echo "${TestFile}: Test File size. FILE_SIZE=${FILE_SIZE}"
+fi
+
+# Get device model name.
+# To append log directory path.
+
+if [[ -n ${SSD_DEVICE} ]]
+then
+	ModelName=`/sbin/hdparm -i ${SSD_DEVICE} \
+		| grep 'Model=' \
+		| sed -n 's/.*Model=\(.*\),*/\1/p' \
+		| cut -f 1 -d ',' \
+		| tr -d '\012' \
+		| tr '[[:space:]-]' '_' \
+		`
+	if [[ -n ${ModelName} ]]
+	then
+		echo "${TestFile}: Resolved model name. ModelName=${ModelName}"
+	fi
+fi
+
+if [[ ( -z "${OptinalLabel}" )  &&  ( -z "${ModelName}" ) ]]
+then
+	case ${FileSystem} in
+		(vfat|fat)
+			OptionalLabel=`dosfslabel "${Volume}" | tail -1 \
+				| sed -n 's/^[[:space:]]*// p' | sed -n 's/[[:space:]]*$// p' \
+				| tr ' :' '_.' `
+		;;
+	esac
+fi
+
+# Show config function.
+
+function show_config() {
+	echo "TestScript: $0"
+	echo "RunLevel: `/sbin/runlevel`"
+	echo "uname: `uname -a`"
+	echo "swapon:"
+	/sbin/swapon -s
+	echo "mount:"
+	mount
+	echo "fdisk:"
+	(export LANG=C; /sbin/fdisk -u -l /dev/${SSD_DEVICE_NAME} )
+	echo "hdparm:"
+	/sbin/hdparm -i /dev/${SSD_DEVICE_NAME}
+	echo "smartctl:"
+	 /usr/sbin/smartctl --all /dev/${SSD_DEVICE_NAME}
+	echo "df:"
+	( export LANG=C; df )
+	echo "queue:"
+	(	cd /sys/block/${SSD_DEVICE_NAME}/queue
+		curdir=`pwd`
+		echo "${curdir}: BEGIN Queue configs."
+		for f in `ls`
+		do
+			if [[ -f ${f} ]]
+			then
+				echo "${curdir}/${f}: `cat ${f}`"
+			fi
+		done
+		echo "${curdir}: END Queue configs."
+	)
+	echo "DATE: `date '+%y-%m-%d %H:%M:%S'`";
+}
+
+now_date="`date +%y%m%d%H%M%S`"
+
+LOG_DIR="log-${ModelName}${OptionalLabel}-${now_date}-${FILE_SIZE}"
+
+if [[ ! -d "${LOG_DIR}" ]]
+then
+	echo "${LOG_DIR}: Create log directory."
+	CurDirUG=`stat -c '%u:%g' . `
+	mkdir -p "${LOG_DIR}"
+	chmod u+rw ${LOG_DIR}
+	chown ${CurDirUG} ${LOG_DIR}
+fi
+
+yn_index=0
+file_index=0
+
+for direct in N Y
+do
+	i=0
+	while (( ${i} < ${LOOP_MAX} ))
+	do
+		remove_test_file
+		context_seed=$(( ${i} + ${yn_index} * ${SEED_SPAN_DIRECT} + ${SEED} ))
+		level=0
+
+		# Sequential Write
+		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-%02d" ${i} ${level}`.txt
+		echo "TEST: index=${i}, SequentialWrite, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}" >> ${LogFile}
+
+		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+		-py -xb -rn -my \
+		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
+		-u ${SEQUENTIAL_BLOCKS} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+		${SEQUENTIAL_WRITE_EXTRA_OPTIONS} \
+		${TestFile} \
+		)
+
+		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
+		( show_config ) >> ${LogFile}
+		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
+
+		file_index=$(( ${file_index} + 1 ))
+		level=$(( ${level} + 1 ))
+
+		# Random Read and Write
+		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-%02d" ${i} ${level}`.txt
+		echo "TEST: index=${i}, RandomMaxBlocks=${RANDOM_BLOCKS_MAX}, DoDirectRW=${direct}" >> ${LogFile}
+
+		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+		-pn -xb -rn -my \
+		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n ${RANDOM_REPEATS} \
+		-u ${SEQUENTIAL_BLOCKS} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+		${RANDOM_EXTRA_OPTIONS} \
+		${TestFile} \
+		)
+		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+		set_read_ahead_kb ${RANDOM_READ_AHEAD_KB}
+		( show_config ) >> ${LogFile}
+		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
+
+		file_index=$(( ${file_index} + 1 ))
+		level=$(( ${level} + 1 ))
+
+		# Sequential read
+		LogFile=${LOG_DIR}/`printf "%04d" ${file_index}`-${direct}-`printf "%04d-%02d" ${i} ${level}`.txt
+		echo "TEST: index=${i}, SequentialRead, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}," >> ${LogFile}
+
+		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
+		-pn -xb -ry -my \
+		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
+		-u ${SEQUENTIAL_BLOCKS} \
+		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+		${SEQUENTIAL_READ_EXTRA_OPTIONS} \
+		${TestFile} \
+		)
+
+		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
+
+		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
+		( show_config ) >> ${LogFile}
+		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
+
+		file_index=$(( ${file_index} + 1 ))
+
+		i=$(( ${i} + 1 ))
+
+		remove_test_file
+	done
+	yn_index=$(( ${yn_index} + 1 ))
+done
+
+DoneMark="${LOG_DIR}/.mark_ssdtest_done"
+touch "${DoneMark}"
+
+recover_queue_config
+recover_hung_task_to
+exit 0

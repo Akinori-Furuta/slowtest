@@ -34,12 +34,10 @@ my_dir=`dirname "$0"`
 
 export SEQUENTIAL_DIRECT=y
 export SEQUENTIAL_BLOCKS=16384
-export RANDOM_MAX_BLOCKS_MAG=8
-export RANDOM_MAX_BLOCKS_BASE=128
-export RANDOM_MAX_BLOCKS_LEVEL=4
+export RANDOM_BLOCKS_MAX=32768
 
-export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-my -i exp"
-export RANDOM_EXTRA_OPTIONS="-my -i exp"
-export SEQUENTIAL_READ_EXTRA_OPTIONS="-rs -my -i exp"
+export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-my"
+export RANDOM_EXTRA_OPTIONS="-my"
+export SEQUENTIAL_READ_EXTRA_OPTIONS="-rs -my"
 
-${my_dir}/ssdtest.sh $*
+${my_dir}/ssdtest_exp.sh $*
