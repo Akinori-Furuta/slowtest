@@ -77,6 +77,9 @@ long	ScPageSize=4096;
 #define	BLOCK_SIZE_DIST_UNIFORM		(0)
 #define	BLOCK_SIZE_DIST_EXPONENTIAL	(1)
 
+#define	SEQUENTIAL_REPORT_TIME_STEP	(0.5)
+
+
 #define	DEF_FillFile		(DO_OPTION_NO)
 #define	DEF_DoReadFile		(DO_READ_FILE_NO)
 #define	DEF_FileSize		(0)
@@ -1308,7 +1311,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 		cur_pos+=chunk;
 		
 		dt_write_elp=TTimeSpecSubDouble(&ts_write_e_tmp, &ts_print);
-		if (  (dt_write_elp>=1.0)
+		if (  (dt_write_elp>=SEQUENTIAL_REPORT_TIME_STEP)
 		    ||(cur_pos>=end_next_pos)
 		   ) {	/* Finish filling or elapsed 1 sec from last show. */
 			double		dt_write;
@@ -1488,7 +1491,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		block_no+=opt->SequentialRWBlocks;
 		cur_pos+=chunk;
 		dt_read_elp=TTimeSpecSubDouble(&ts_read_e_tmp, &ts_print);
-		if (  (dt_read_elp>=1.0)
+		if (  (dt_read_elp>=SEQUENTIAL_REPORT_TIME_STEP)
 		    ||(cur_pos>=end_next_pos)
 		   ) {	/* Finish filling or elapsed 1 sec from last show. */
 			double		dt_read;

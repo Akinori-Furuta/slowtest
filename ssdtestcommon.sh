@@ -28,6 +28,11 @@
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 TempPath=/dev/shm
+if [[ ! -d ${TempPath} ]]
+then
+	TempPath=/tmp
+fi
+
 CharDollar='$'
 
 function CommonHelp() {

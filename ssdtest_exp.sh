@@ -27,6 +27,11 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+Result=0
+
+# This test context.
+uuid=`cat /proc/sys/kernel/random/uuid`
+
 function Help() {
 	echo "Test SSD performance."
 	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
@@ -130,6 +135,23 @@ fi
 
 Uid=`id | sed 's/uid=\([0-9][0-9]*\).*/\1/'`
 
+# Clean work file
+#
+#
+MountList=${TempPath}/${uuid}_mount.txt
+TestBinResult=${TempPath}/${uuid}_exit.txt
+
+function remove_work_file() {
+	if [[ -n "${MountList}" ]]
+	then
+		[ -f "${MountList}" ] && rm "${MountList}"
+	fi
+	if [[ -n "${TestBinResult}" ]]
+	then
+		[ -f "${TestBinResult}" ] && rm "${TestBinResult}"
+	fi
+}
+
 # Clean test file.
 # no arguments.
 # global TestFile
@@ -203,6 +225,7 @@ function signaled() {
 	remove_test_file
 	recover_queue_config
 	recover_hung_task_to
+	remove_work_file
 	exit 2
 }
 
@@ -250,10 +273,6 @@ fi
 
 TestFile="${parsed_arg[${i}]}"
 
-
-# This test context.
-uuid=`cat /proc/sys/kernel/random/uuid`
-
 # File or directory.
 
 
@@ -290,7 +309,6 @@ echo "${TestFile}: Info: Canonical path. TestFileCanon=${TestFileCanon}"
 # resolv volume name (mounted block device or partiton).
 # Note: This program can resolv volume not using volume group.
 
-MountList=${TempPath}/${uuid}_mount.txt
 
 cat /proc/mounts | sort -r -k 2 > ${MountList}
 
@@ -335,7 +353,10 @@ case ${FileSystem} in
 esac
 
 
-rm "${MountList}"
+if [[ -n "${MountList}" ]]
+then
+	rm "${MountList}"
+fi
 
 if [[ -z ${Volume} ]]
 then
@@ -442,6 +463,7 @@ then
 		remove_test_file
 		recover_queue_config
 		recover_hung_task_to
+		remove_work_file
 		exit 2
 	fi
 	FILE_SIZE="${FILE_SIZE}${FILE_SIZE_UNIT}"
@@ -530,7 +552,7 @@ file_index=0
 for direct in N Y
 do
 	i=0
-	while (( ${i} < ${LOOP_MAX} ))
+	while (( ( ${i} < ${LOOP_MAX} ) && ( ${Result} == 0 ) ))
 	do
 		remove_test_file
 		context_seed=$(( ${i} + ${yn_index} * ${SEED_SPAN_DIRECT} + ${SEED} ))
@@ -541,20 +563,27 @@ do
 		echo "TEST: index=${i}, SequentialWrite, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}" >> ${LogFile}
 
 		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
-		-py -xb -rn -my \
-		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
-		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
-		${SEQUENTIAL_WRITE_EXTRA_OPTIONS} \
-		${TestFile} \
+			-py -xb -rn -my \
+			-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
+			-u ${SEQUENTIAL_BLOCKS} \
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+			${SEQUENTIAL_WRITE_EXTRA_OPTIONS} \
+			${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
 		( show_config ) >> ${LogFile}
-		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
 
+		echo 1 > ${TestBinResult}
+		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		  && echo 0 > ${TestBinResult} \
+		) | tee -a ${LogFile}
+		if (( `cat "${TestBinResult}"` != 0 ))
+		then
+			Result=1
+		fi
 		file_index=$(( ${file_index} + 1 ))
 		level=$(( ${level} + 1 ))
 
@@ -563,19 +592,26 @@ do
 		echo "TEST: index=${i}, RandomMaxBlocks=${RANDOM_BLOCKS_MAX}, DoDirectRW=${direct}" >> ${LogFile}
 
 		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
-		-pn -xb -rn -my \
-		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n ${RANDOM_REPEATS} \
-		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
-		${RANDOM_EXTRA_OPTIONS} \
-		${TestFile} \
+			-pn -xb -rn -my \
+			-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n ${RANDOM_REPEATS} \
+			-u ${SEQUENTIAL_BLOCKS} \
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+			${RANDOM_EXTRA_OPTIONS} \
+			${TestFile} \
 		)
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${RANDOM_READ_AHEAD_KB}
 		( show_config ) >> ${LogFile}
-		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
 
+		echo 1 > ${TestBinResult}
+		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		  && echo 0 > ${TestBinResult} \
+		) | tee -a ${LogFile}
+		if (( `cat "${TestBinResult}"` != 0 ))
+		then
+			Result=1
+		fi
 		file_index=$(( ${file_index} + 1 ))
 		level=$(( ${level} + 1 ))
 
@@ -584,24 +620,32 @@ do
 		echo "TEST: index=${i}, SequentialRead, SEQUENTIAL_DIRECT=${SEQUENTIAL_DIRECT}," >> ${LogFile}
 
 		CommandBody=( ${MyBase}/${TestBin} -f ${FILE_SIZE} \
-		-pn -xb -ry -my \
-		-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
-		-u ${SEQUENTIAL_BLOCKS} \
-		-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
-		${SEQUENTIAL_READ_EXTRA_OPTIONS} \
-		${TestFile} \
+			-pn -xb -ry -my \
+			-b ${BLOCK_SIZE} -i 1 -a ${RANDOM_BLOCKS_MAX} -i exp -n 0 \
+			-u ${SEQUENTIAL_BLOCKS} \
+			-d${SEQUENTIAL_DIRECT} -d${direct} -s ${context_seed} \
+			${SEQUENTIAL_READ_EXTRA_OPTIONS} \
+			${TestFile} \
 		)
 
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
 		( show_config ) >> ${LogFile}
-		( /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 ) | tee -a ${LogFile}
 
+		echo 1 > ${TestBinResult}
+		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		  && echo 0 > ${TestBinResult} \
+		) | tee -a ${LogFile}
+
+		if (( `cat "${TestBinResult}"` != 0 ))
+		then
+			Result=1
+		fi
 		file_index=$(( ${file_index} + 1 ))
+		level=$(( ${level} + 1 ))
 
 		i=$(( ${i} + 1 ))
-
 		remove_test_file
 	done
 	yn_index=$(( ${yn_index} + 1 ))
@@ -612,4 +656,11 @@ touch "${DoneMark}"
 
 recover_queue_config
 recover_hung_task_to
-exit 0
+remove_work_file
+if (( ${Result} == 0 ))
+then
+	echo "${LOG_DIR}: PASS: Logs are stored."
+else
+	echo "${LOG_DIR}: FAIL: Logs are stored."
+fi
+exit ${Result}
