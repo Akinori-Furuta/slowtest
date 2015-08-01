@@ -339,10 +339,10 @@ then
 		fi
 		i=$(( ${i} + 1 ))
 	done
-fi
+	Volume=${VolumeFs[0]}
+	FileSystem=${VolumeFs[1]}
 
-Volume=${VolumeFs[0]}
-FileSystem=${VolumeFs[1]}
+fi
 
 rm "${MountList}"
 
@@ -487,6 +487,13 @@ then
 			OptionalLabel=`dosfslabel "${Volume}" | tail -1 \
 				| sed -n 's/^[[:space:]]*// p' | sed -n 's/[[:space:]]*$// p' \
 				| tr ' :' '_.' `
+		;;
+		(ext*)
+			OptionalLabel=`tune2fs -l ${Volume} \
+				| grep 'volume name' \
+				| cut -d ':' -f 2 \
+				| awk '{print $1}' \
+				| tr '<>' '()'`
 		;;
 	esac
 fi
