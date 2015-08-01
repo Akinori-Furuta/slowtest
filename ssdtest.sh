@@ -480,7 +480,7 @@ then
 	fi
 fi
 
-if [[ ( -z "${OptinalLabel}" )  &&  ( -z "${ModelName}" ) ]]
+if [[ ( -z "${OptionalLabel}" )  &&  ( -z "${ModelName}" ) ]]
 then
 	case ${FileSystem} in
 		(vfat|fat)
@@ -493,7 +493,7 @@ then
 				| grep 'volume name' \
 				| cut -d ':' -f 2 \
 				| awk '{print $1}' \
-				| tr '<>' '()'`
+				| tr ' :<>' '_.()'`
 		;;
 	esac
 fi
