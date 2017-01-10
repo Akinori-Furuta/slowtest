@@ -310,7 +310,7 @@ echo "${TestFile}: Info: Canonical path. TestFileCanon=${TestFileCanon}"
 # Note: This program can resolv volume not using volume group.
 
 
-cat /proc/mounts | sort -r -k 2 > ${MountList}
+cat /proc/mounts | grep '^/' | sort -r -k 2 > ${MountList}
 
 i=1
 for mount_point in `awk '{print $2}' ${MountList}`
