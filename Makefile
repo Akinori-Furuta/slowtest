@@ -45,17 +45,17 @@ CLIBS=-lrt -lm
 DIST_FILES=\
 	ssdtestcommon.sh \
 	htmlplot.sh \
-	plotlogmix.sh plotlogmix_usbmems.sh \
-	plotlogseq.sh plotlogseq_usbmems.sh \
+	plotlogmix.sh plotlogmix_usbmems.sh plotlogmix_uhs1.sh \
+	plotlogseq.sh plotlogseq_usbmems.sh plotlogseq_uhs1.sh \
 	sequential_tspeed_prog.gnuplot \
-	random_tspeed_tlength.gnuplot random_tspeed_at.gnuplot random_tlength_at.gnuplot \
+	random_tspeed_tlength.gnuplot random_tspeed_at.gnuplot random_at_tlength.gnuplot \
 	ssdtest.sh ssdtestloop.sh ssdtest_light.sh \
 	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
 	ssdstress.c Makefile README_JP readme.html
 
-DIST_DIR=ssdtest_1.01
+DIST_DIR=ssdtest_2.00
 
 TARGET=ssdstress
 
