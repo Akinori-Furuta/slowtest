@@ -1,7 +1,7 @@
 #!/usr/bin/gnuplot -persist
 # Plot script: random read, transfer length - access time.
 #
-#  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
