@@ -108,7 +108,8 @@ then
 	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
 else
 	LogDirectory="."
-	LogLabel=`basename `pwd` | cut -f 2 -d '-'`
+	cur_dir="`pwd`"
+	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
 fi
 
 cd "${LogDirectory}"
@@ -309,11 +310,11 @@ EOF
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_tspeed_at_png}.new
 		UpdateFile "${ra_r_tspeed_at_png}.new" "${ra_r_tspeed_at_png}"
 
-		ra_r_tlength_at_png=${f%.*}-mr-tl_at.png
-		echo "${f}: ${ra_r_tlength_at_png}: Plot mixed random read transfer length - access time."
+		ra_r_at_tlength_png=${f%.*}-mr-at_tl.png
+		echo "${f}: ${ra_r_at_tlength_png}: Plot mixed random read access time - transfer length."
 		if (( ${Debug} != 0 ))
 		then
-			GnuplotVarFile=${f%.*}-mr-tl_at-gp.tmp
+			GnuplotVarFile=${f%.*}-mr-at_tl-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_read_file}"
@@ -321,13 +322,13 @@ set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} l
 set title "${Model} ${CapacityGBTitle},\\n\
 plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
-${DoDirectRandom}\\ntransfer length - access time"
+${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#00c000"
 EOF
-		cat "${my_dir}/random_tlength_at.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random_at_tlength.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
-		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_tlength_at_png}.new
-		UpdateFile "${ra_r_tlength_at_png}.new" "${ra_r_tlength_at_png}"
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_at_tlength_png}.new
+		UpdateFile "${ra_r_at_tlength_png}.new" "${ra_r_at_tlength_png}"
 
 		ra_r_tspeed_tlength_png=${f%.*}-mr-ts_tl.png
 		echo "${f}: ${ra_r_tspeed_tlength_png}: Plot mixed random read transfer speed - transfer length."
@@ -393,11 +394,11 @@ EOF
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tspeed_at_png}.new
 		UpdateFile "${ra_w_tspeed_at_png}.new" "${ra_w_tspeed_at_png}"
 
-		ra_w_tlength_at_png=${f%.*}-mw-tl_at.png
-		echo "${f}: ${ra_w_tlength_at_png}: Plot mixed random write transfer length - access time."
+		ra_w_at_tlength_png=${f%.*}-mw-at_tl.png
+		echo "${f}: ${ra_w_at_tlength_png}: Plot mixed random write transfer length - access time."
 		if (( ${Debug} != 0 ))
 		then
-			GnuplotVarFile=${f%.*}-mw-tl_at-gp.tmp
+			GnuplotVarFile=${f%.*}-mw-at_tl-gp.tmp
 		fi
 		cat << EOF > ${GnuplotVarFile}
 log_file="${part_write_file}"
@@ -405,13 +406,13 @@ set grid layerdefault linetype -1 linewidth 0.5, linetype ${GridMinorLineType} l
 set title "${Model} ${CapacityGBTitle},\\n\
 plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
-${DoDirectRandom}\\ntransfer length - access time"
+${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#ff0000"
 EOF
-		cat "${my_dir}/random_tlength_at.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random_at_tlength.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
-		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tlength_at_png}.new
-		UpdateFile "${ra_w_tlength_at_png}.new" "${ra_w_tlength_at_png}"
+		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_at_tlength_png}.new
+		UpdateFile "${ra_w_at_tlength_png}.new" "${ra_w_at_tlength_png}"
 
 		ra_w_tspeed_tlength_png=${f%.*}-mw-ts_tl.png
 		echo "${f}: ${ra_w_tspeed_tlength_png}: Plot mixed random write transfer speed - transfer length."

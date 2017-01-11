@@ -106,7 +106,8 @@ then
 	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
 else
 	LogDirectory="."
-	LogLabel=`basename `pwd` | cut -f 2 -d '-'`
+	cur_dir="`pwd`"
+	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
 fi
 
 gnuplot_ver_x1000=`gnuplot --version | awk '{print $2 * 1000.0}'`
