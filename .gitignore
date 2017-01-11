@@ -1,5 +1,6 @@
 *.bak
 log_*
 log-*
-ssdtest-*
-
+ssdtest_0.*
+ssdtest_1.*
+ssdtest_2.*
