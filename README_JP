@@ -265,8 +265,13 @@ ssdtest.sh から呼ばれるバイナリプログラムです。テストの核
 	         になります。
 
 -i n ランダムアクセステストで一度にアクセスする最小ブロック数 (既定 1)
-	
 	-i 1  最小は 1 ブロックを指定する。
+
+-i {uniform | exponential} ランダムアクセステストのブロック数分布
+	-i オプションに uniform または exponential をパラメータとして与えると
+	ランダムアクセステストのブロック数分布を指定します。
+	-i uniform      ブロック数を一様分布にする。
+	-i exponential  ブロック数を指数分布にする。
 
 -a n ランダムアクセステストで一度にアクセスする最大ブロック数 (既定 8192)
 	
@@ -480,6 +485,15 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
                ディレクトリ名は次の様な書式です。
                  log-${Model}-${テスト日時}-${テストファイルサイズ}
 
+3.4.1.1. plotlogseq_usbmems.sh と plotlogseq_uhs1.sh
+- - - - - - - - - - - - - - - - - - - - - - - - - - 
+plotlogseq.sh を USB memory と UHS1 規格 SD card (MicroSD card) に適した
+軸スケールでプロットするようにパラメータを指定して呼び出すスクリプトです。
+
+plotlogseq_usbmems.sh  USB Memory に適した軸スケールでプロットします。
+plotlogseq_uhs1.sh     UHS1 規格 SD card (MicroSD card) に適した軸スケールで
+                       プロットします。
+
 3.4.2. plotlogmix.sh - ランダムアクセステストプロットスクリプト
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ランダムアクセステスト結果をプロットします。PNG ファイルが生成されます。
@@ -493,6 +507,14 @@ log_directory  ssdtest.sh が生成したログ結果を保存したディレク
                ディレクトリ名は次の様な書式です。
                  log-${Model}-${テスト日時}-${テストファイルサイズ}
 
+3.4.2.1. plotlogmix_usbmems.sh と plotlogmix_uhs1.sh
+- - - - - - - - - - - - - - - - - - - - - - - - - - 
+plotlogmix.sh を USB memory と UHS1 規格 SD card (MicroSD card) に適した
+軸スケールでプロットするようにパラメータを指定して呼び出すスクリプトです。
+
+plotlogmix_usbmems.sh  USB Memory に適した軸スケールでプロットします。
+plotlogmix_uhs1.sh     UHS1 規格 SD card (MicroSD card) に適した軸スケールで
+                       プロットします。
 
 3.4.3. htmlplot.sh - HTML ページ作成スクリプト
 - - - - - - - - - - - - - - - - - - - - - - - -
@@ -790,7 +812,8 @@ ssdstress は mmap でメモリを確保する際 page lock を試みます。pa
 次のファイル群は 2 条項 BSD ライセンスです。
 
 htmlplot.sh, pageupdater.sh, pageupdaterloop.sh, plotlogmix.sh, 
-plotlogmix_usbmems.sh, plotlogseq.sh, plotlogseq_usbmems.sh, 
+plotlogmix_usbmems.sh, plotlogmix_uhs1.sh,
+plotlogseq.sh, plotlogseq_usbmems.sh, plotlogseq_uhs1.sh,
 ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtestcommon.sh,
 ssdtestloop.sh, 
 random_tlength_at.gnuplot, random_tspeed_at.gnuplot,
