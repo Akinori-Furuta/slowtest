@@ -83,7 +83,8 @@ then
 	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
 else
 	LogDirectory="."
-	LogLabel=`basename `pwd` | cut -f 2 -d '-'`
+	cur_dir="`pwd`"
+	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
 fi
 
 if [[ -z "${IMAGE_RESIZE}" ]]
@@ -175,19 +176,19 @@ PlotRandomAccess="n"
 png_list=()
 
 function ClearRandomAccessPngPrev() {
-	png_prev_mw_tl_at=""
+	png_prev_mw_at_tl=""
 	png_prev_mw_ts_at=""
 	png_prev_mw_ts_tl=""
-	png_prev_mr_tl_at=""
+	png_prev_mr_at_tl=""
 	png_prev_mr_ts_at=""
 	png_prev_mr_ts_tl=""
 }
 
 
 function AddListRandomAccessPng() {
-	if [[ -n ${png_prev_mw_tl_at} ]]
+	if [[ -n ${png_prev_mw_at_tl} ]]
 	then
-		png_list[${i}]="${png_prev_mw_tl_at}"
+		png_list[${i}]="${png_prev_mw_at_tl}"
 		i=$(( ${i} + 1 ))
 	fi
 	if [[ -n ${png_prev_mw_ts_at} ]]
@@ -200,9 +201,9 @@ function AddListRandomAccessPng() {
 		png_list[${i}]="${png_prev_mw_ts_tl}"
 		i=$(( ${i} + 1 ))
 	fi
-	if [[ -n ${png_prev_mr_tl_at} ]]
+	if [[ -n ${png_prev_mr_at_tl} ]]
 	then
-		png_list[${i}]="${png_prev_mr_tl_at}"
+		png_list[${i}]="${png_prev_mr_at_tl}"
 		i=$(( ${i} + 1 ))
 	fi
 	if [[ -n ${png_prev_mr_ts_at} ]]
@@ -244,8 +245,8 @@ do
 		;;
 		(mw) # Random access write part.
 			case "${PlotType}" in
-				(tl_at) # Transfer length - access time
-					png_prev_mw_tl_at="${p}"
+				(at_tl) # Transfer length - access time
+					png_prev_mw_at_tl="${p}"
 				;;
 				(ts_at) # Transfer speed - access time
 					png_prev_mw_ts_at="${p}"
@@ -257,8 +258,8 @@ do
 		;;
 		(mr) # Random access read part.
 			case "${PlotType}" in
-				(tl_at) # Transfer length - access time
-					png_prev_mr_tl_at="${p}"
+				(at_tl) # Transfer length - access time
+					png_prev_mr_at_tl="${p}"
 				;;
 				(ts_at) # Transfer speed - access time
 					png_prev_mr_ts_at="${p}"
@@ -334,13 +335,13 @@ do
 		;;
 	esac
 	case "${PlotType}" in
-		(tl_at) # Transfer length - access time
+		(at_tl) # Access time - Transfer length
 			random_plot="y"
 		;;
-		(ts_at) # Transfer speed - access time
+		(ts_at) # Transfer speed - Access time
 			random_plot="y"
 		;;
-		(ts_tl) # Transfer speed - transfer length
+		(ts_tl) # Transfer speed - Transfer length
 			random_plot="y"
 		;;
 	esac
@@ -412,35 +413,35 @@ do
 			echo "</TR>"
 			echo "<TR>"
 			echo "<TD>"
-			ParagraphIdMrTlAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tlat"
-			echo "<P id=\"${ParagraphIdMrTlAt}\">"
-			echo "Random access, read transfer length - access time<BR>"
-			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\">"
-			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-tl_at.png\" ${IMAGE_RESIZE}>"
+			ParagraphIdMrAtTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_attl"
+			echo "<P id=\"${ParagraphIdMrAtTl}\">"
+			echo "Random access, read access time - transfer length<BR>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-at_tl.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-at_tl.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
-			echo "</P><!-- id=\"${ParagraphIdMrTlAt}\" -->"
+			echo "</P><!-- id=\"${ParagraphIdMrAtTl}\" -->"
 			if [[ -n "${ra_r_over100_counts}" ]]
 			then
-				ParagraphIdMrTlAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tlat_so"
-				echo "<P id=\"${ParagraphIdMrTlAtSo}\">"
+				ParagraphIdMrAtTlSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_attl_so"
+				echo "<P id=\"${ParagraphIdMrAtTlSo}\">"
 				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
-				echo "</P><!-- id=\"${ParagraphIdMrTlAtSo}\" -->"
+				echo "</P><!-- id=\"${ParagraphIdMrAtTlSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "<TD>"
-			ParagraphIdMwTlAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tlat"
-			echo "<P id=\"${ParagraphIdMwTlAt}\">"
-			echo "Random access, write transfer length - access time<BR>"
-			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\">"
-			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-tl_at.png\" ${IMAGE_RESIZE}>"
+			ParagraphIdMwAtTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_attl"
+			echo "<P id=\"${ParagraphIdMwAtTl}\">"
+			echo "Random access, write access time - transfer length<BR>"
+			echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-at_tl.png\">"
+			echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-at_tl.png\" ${IMAGE_RESIZE}>"
 			echo "</A>"
-			echo "</P><!-- id=\"${ParagraphIdMwTlAt}\" -->"
+			echo "</P><!-- id=\"${ParagraphIdMwAtTl}\" -->"
 			if [[ -n "${ra_w_over100_counts}" ]]
 			then
-				ParagraphIdMwTlAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tlat_so"
-				echo "<P id=\"${ParagraphIdMwTlAtSo}\">"
+				ParagraphIdMwAtTlSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_attl_so"
+				echo "<P id=\"${ParagraphIdMwAtTlSo}\">"
 				echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
-				echo "</P><!-- id=\"${ParagraphIdMwTlAtSo}\" -->"
+				echo "</P><!-- id=\"${ParagraphIdMwAtTlSo}\" -->"
 			fi
 			echo "</TD>"
 			echo "</TR>"
