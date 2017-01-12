@@ -356,7 +356,7 @@ ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		cat "${my_dir}/random_tspeed_tlength.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random-ts_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_tspeed_tlength_png}.new
 		UpdateFile "${ra_r_tspeed_tlength_png}.new" "${ra_r_tspeed_tlength_png}"
@@ -440,7 +440,7 @@ ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		cat "${my_dir}/random_tspeed_tlength.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random-ts_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_tspeed_tlength_png}.new
 		UpdateFile "${ra_w_tspeed_tlength_png}.new" "${ra_w_tspeed_tlength_png}"

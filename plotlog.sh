@@ -261,7 +261,7 @@ pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
+				    load \"${my_dir}/random-ts_tl.gnuplot\"; quit" \
 				> ${ra_r_tspeed_tlength_png}
 
 			rm ${part_data_file}
@@ -305,7 +305,7 @@ pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/random_tspeed_tlength.gnuplot\"; quit" \
+				    load \"${my_dir}/random-ts_tl.gnuplot\"; quit" \
 				> ${ra_w_tspeed_tlength_png}
 
 			rm "${part_data_file}"
