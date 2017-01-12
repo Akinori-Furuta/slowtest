@@ -48,7 +48,7 @@ DIST_FILES=\
 	plotlogmix.sh plotlogmix_usbmems.sh plotlogmix_uhs1.sh \
 	plotlogseq.sh plotlogseq_usbmems.sh plotlogseq_uhs1.sh \
 	sequential_tspeed_prog.gnuplot \
-	random_tspeed_tlength.gnuplot random_tspeed_at.gnuplot random-at_tl.gnuplot \
+	random_ts_at.gnuplot random-at_tl.gnuplot random_ts_tl.gnuplot \
 	ssdtest.sh ssdtestloop.sh ssdtest_light.sh \
 	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \

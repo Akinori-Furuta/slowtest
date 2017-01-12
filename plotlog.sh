@@ -247,7 +247,7 @@ ${DoDirectRandom}\\ntransfer length - access time"
 pointcolor="#00c000"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
+				    load \"${my_dir}/random-tl_at.gnuplot\"; quit" \
 				> ${ra_r_tlength_at_png}
 
 			ra_r_tspeed_tlength_png=${f%.*}-rr-ts_tl.png
@@ -291,7 +291,7 @@ ${DoDirectRandom}\\ntransfer length - access time"
 pointcolor="#ff0000"
 EOF
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/random_tlength_at.gnuplot\"; quit" \
+				    load \"${my_dir}/random-tl_at.gnuplot\"; quit" \
 				> ${ra_w_tlength_at_png}
 
 			ra_w_tspeed_tlength_png=${f%.*}-rw-ts_tl.png
