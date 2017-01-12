@@ -1,7 +1,7 @@
 #!/usr/bin/gnuplot -persist
 # Plot script: random read, transfer length - access time.
 #
-#  Copyright 2012 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -125,7 +125,7 @@ set nox2tics
 set noy2tics
 set cbtics border in scale 1,0.5 mirror norotate  offset character 0, 0, 0
 set cbtics autofreq  norangelimit
-set title  offset character 0, 0, 0 font "" norotate
+set title  offset character 0, 0, 0 font "" norotate noenhanced
 set timestamp bottom 
 set timestamp "" 
 set timestamp  offset character 0, 0, 0 font "" norotate
