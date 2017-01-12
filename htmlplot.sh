@@ -34,6 +34,7 @@ function Help() {
 	echo "directory: directory to create html page. This directory has test"
 	echo "           logs and graph plots created by plotlohseq.sh and plotlogmix.sh."
 	echo "-L model_name : Set model name at title."
+	echo "                Note: Specify model name without spaces."
 	echo "-C loop_count : Set loop count at title (optional)."
 	echo "-h            : Print this help."
 	exit 1

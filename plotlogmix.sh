@@ -34,6 +34,7 @@ function Help() {
 	echo "  Directory contains log files created by ssdtest.sh tool."
 	echo "  Graph plots will be stored in this directory."
 	echo "-L model_name : Set model name at title."
+	echo "                Note: Specify model name without spaces."
 	echo "-D            : Debug mode."
 	echo "-h            : Print this help."
 	exit 1
@@ -82,7 +83,6 @@ OptionalLabel=""
 Debug=0
 
 parsed_arg_n=${#parsed_arg[*]}
-
 i=0
 while (( ${i} < ${parsed_arg_n} ))
 do

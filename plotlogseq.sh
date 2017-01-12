@@ -34,6 +34,7 @@ function Help() {
 	echo "  Directory contains log files created by ssdtest.sh tool."
 	echo "  Graph plots will be stored in this directory."
 	echo "-L model_name : Set model name at title."
+	echo "                Note: Specify model name without spaces."
 	echo "-h            : Print this help."
 	exit 1
 }
