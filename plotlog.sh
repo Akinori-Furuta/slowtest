@@ -233,7 +233,7 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 			grep 'r' "${ra_file}"  > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
+				load \"${my_dir}/random-ts_at.gnuplot\"; quit" \
 				> ${ra_r_tspeed_at_png}
 
 
@@ -278,7 +278,7 @@ set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] norev
 EOF
 			grep 'w' "${ra_file}" > ${part_data_file}
 			gnuplot -e "log_file=\"${part_data_file}\"; load \"${GnuplotVarFile}\"; \
-				    load \"${my_dir}/random_tspeed_at.gnuplot\"; quit" \
+				    load \"${my_dir}/random-ts_at.gnuplot\"; quit" \
 				> ${ra_w_tspeed_at_png}
 
 			ra_w_tlength_at_png=${f%.*}-rw-tl_at.png
