@@ -816,7 +816,7 @@ plotlogmix_usbmems.sh, plotlogmix_uhs1.sh,
 plotlogseq.sh, plotlogseq_usbmems.sh, plotlogseq_uhs1.sh,
 ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtestcommon.sh,
 ssdtestloop.sh, 
-random_tlength_at.gnuplot, random_tspeed_at.gnuplot,
+random-at_tl.gnuplot, random_tspeed_at.gnuplot,
 random_tspeed_tlength.gnuplot, sequential_tspeed_prog.gnuplot,
 ssdstress.c, Makefile, README_JP, readme.html
 

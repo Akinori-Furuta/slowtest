@@ -335,7 +335,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, 
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#00c000"
 EOF
-		cat "${my_dir}/random_at_tlength.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_r_at_tlength_png}.new
 		UpdateFile "${ra_r_at_tlength_png}.new" "${ra_r_at_tlength_png}"
@@ -419,7 +419,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call,
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#ff0000"
 EOF
-		cat "${my_dir}/random_at_tlength.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		gnuplot -e "load \"${GnuplotVarFile}\"" > ${ra_w_at_tlength_png}.new
 		UpdateFile "${ra_w_at_tlength_png}.new" "${ra_w_at_tlength_png}"
