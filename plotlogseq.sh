@@ -75,7 +75,7 @@ fi
 
 # Parse Argument
 
-parsed_arg=( `getopt h $*` )
+parsed_arg=( `getopt L:h $*` )
 if (( $? != 0 ))
 then
 	Help

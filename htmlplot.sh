@@ -49,7 +49,7 @@ uuid=`cat /proc/sys/kernel/random/uuid`
 
 # Parse Argument
 
-parsed_arg=( `getopt C:h $*` )
+parsed_arg=( `getopt L:C:h $*` )
 if (( $? != 0 ))
 then
 	Help

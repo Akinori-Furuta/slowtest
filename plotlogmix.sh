@@ -72,7 +72,7 @@ fi
 # Parse Argument
 
 
-parsed_arg=( `getopt Dh $*` )
+parsed_arg=( `getopt DL:h $*` )
 if (( $? != 0 ))
 then
 	Help
