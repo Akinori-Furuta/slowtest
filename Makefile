@@ -43,17 +43,18 @@ CFLAGS=-O3 -Wall -Wunused -Wuninitialized -march=native -mtune=native
 CLIBS=-lrt -lm
 
 DIST_FILES=\
+	ssdtest.sh ssdtest_light.sh \
+	ssdtest_usbmems.sh ssdtestloop.sh \
 	ssdtestcommon.sh \
 	htmlplot.sh \
 	plotlogmix.sh plotlogmix_usbmems.sh plotlogmix_uhs1.sh \
 	plotlogseq.sh plotlogseq_usbmems.sh plotlogseq_uhs1.sh \
 	sequential-ts_pr.gnuplot \
 	random_ts_at.gnuplot random-at_tl.gnuplot random_ts_tl.gnuplot \
-	ssdtest.sh ssdtestloop.sh ssdtest_light.sh \
-	ssdtest_usbmems.sh \
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
-	ssdstress.c Makefile README_JP readme.html
+	ssdstress.c Makefile \
+	readme.html README_JP
 
 DIST_DIR=ssdtest_2.00
 
