@@ -29,10 +29,12 @@
 
 function Help() {
 	echo "Plot sequential log."
-	echo "$0 test_log_directory"
+	echo "$0 [-h] [-L model_name] test_log_directory"
 	echo "test_log_directory:"
 	echo "  Directory contains log files created by ssdtest.sh tool."
 	echo "  Graph plots will be stored in this directory."
+	echo "-L model_name : Set model name at title."
+	echo "-h            : Print this help."
 	exit 1
 }
 
@@ -88,6 +90,10 @@ while (( ${i} < ${parsed_arg_n} ))
 do
 	opt="${parsed_arg[${i}]}"
 	case ${opt} in
+		(-L)
+			i=$(( ${i} + 1 ))
+			OptionalLabel="${parsed_arg[${i}]}"
+		;;
 		(-h)
 			Help
 			exit 1
@@ -108,6 +114,11 @@ else
 	LogDirectory="."
 	cur_dir="`pwd`"
 	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
+fi
+
+if [[ -n "${OptionalLabel}" ]]
+then
+	LogLabel="${OptionalLabel}"
 fi
 
 gnuplot_ver_x1000=`gnuplot --version | awk '{print $2 * 1000.0}'`

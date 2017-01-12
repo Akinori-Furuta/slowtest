@@ -30,9 +30,12 @@
 function Help() {
 	#     0         1         2         3         4         5         6         7
 	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
-	echo "$0 [directory]"
+	echo "$0 [-L model_name] [-C loop_count] [-h] [directory]"
 	echo "directory: directory to create html page. This directory has test"
 	echo "           logs and graph plots created by plotlohseq.sh and plotlogmix.sh."
+	echo "-L model_name : Set model name at title."
+	echo "-C loop_count : Set loop count at title (optional)."
+	echo "-h            : Print this help."
 	exit 1
 }
 
@@ -61,6 +64,10 @@ while (( ${i} < ${parsed_arg_n} ))
 do
 	opt="${parsed_arg[${i}]}"
 	case ${opt} in
+		(-L)
+			i=$(( ${i} + 1 ))
+			OptionalLabel="${parsed_arg[${i}]}"
+		;;
 		(-C) # Loop Count.
 			i=$(( ${i} + 1 ))
 			RoundCount="${parsed_arg[${i}]}"
@@ -86,6 +93,12 @@ else
 	cur_dir="`pwd`"
 	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
 fi
+
+if [[ -n "${OptionalLabel}" ]]
+then
+	LogLabel="${OptionalLabel}"
+fi
+
 
 if [[ -z "${IMAGE_RESIZE}" ]]
 then
