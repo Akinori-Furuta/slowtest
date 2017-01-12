@@ -50,7 +50,7 @@ DIST_FILES=\
 	plotlogmix.sh plotlogmix_usbmems.sh plotlogmix_uhs1.sh \
 	plotlogseq.sh plotlogseq_usbmems.sh plotlogseq_uhs1.sh \
 	sequential-ts_pr.gnuplot \
-	random_ts_at.gnuplot random-at_tl.gnuplot random_ts_tl.gnuplot \
+	random-ts_at.gnuplot random-at_tl.gnuplot random-ts_tl.gnuplot \
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
 	ssdstress.c Makefile \
