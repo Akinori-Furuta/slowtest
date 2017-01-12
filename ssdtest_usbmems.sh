@@ -40,4 +40,4 @@ export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-my"
 export RANDOM_EXTRA_OPTIONS="-my"
 export SEQUENTIAL_READ_EXTRA_OPTIONS="-rs -my"
 
-${my_dir}/ssdtest_exp.sh $*
+${my_dir}/ssdtest.sh $*
