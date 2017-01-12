@@ -222,7 +222,7 @@ up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#ff0000"
 set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		cat "${my_dir}/sequential_tspeed_prog.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/sequential-ts_pr.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		sw_png=${f%.*}-sw.png
 		echo "${f}: ${sw_png}: Plot sequential write."
@@ -255,7 +255,7 @@ up to ${FileSizeShow} bytes, ${DoDirectSequential}\\ntransfer speed - progress"
 pointcolor="#00c000"
 set yrange [ ${SEQUENTIAL_TRANSFER_SPEED_MIN} : ${SEQUENTIAL_TRANSFER_SPEED_MAX} ] noreverse nowriteback
 EOF
-		cat "${my_dir}/sequential_tspeed_prog.gnuplot" >> ${GnuplotVarFile}
+		cat "${my_dir}/sequential-ts_pr.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
 		sr_png=${f%.*}-sr.png
 		echo "${f}: ${sr_png}: Plot sequential read."
