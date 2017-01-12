@@ -88,7 +88,7 @@ mtTest.o: mtTest.c mt19937ar.h
 
 dist: $(TARGET) $(DIST_FILES)
 	mkdir -p $(DIST_DIR)
-	cp -p $(DIST_FILES) $(TARGET) $(DIST_DIR)
+	cp -p $(DIST_FILES) $(DIST_DIR)
 	tar zcvf $(DIST_DIR).tar.gz $(DIST_DIR)
 
 clean:
