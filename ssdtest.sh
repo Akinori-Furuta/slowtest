@@ -109,8 +109,8 @@ fi
 
 if [[ -z ${RANDOM_BLOCKS_MAX} ]]
 then
-	# 128Ki blocks, 64Mibyte.
-	RANDOM_BLOCKS_MAX=$(( 128 * 1024 ))
+	# 4Mi blocks, 2Gibyte.
+	RANDOM_BLOCKS_MAX=$(( 4 * 1024 * 1024 ))
 fi
 
 if [[ -z ${RANDOM_REPEATS} ]]
