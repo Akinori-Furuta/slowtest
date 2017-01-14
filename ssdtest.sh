@@ -90,6 +90,11 @@ then
 	SEQUENTIAL_DIRECT=n
 fi
 
+if [[ -z ${O_DIRECT_ORDER} ]]
+then
+	O_DIRECT_ORDER="Y N"
+fi
+
 if [[ -z ${SEED} ]]
 then
 	# random seed.
@@ -556,7 +561,7 @@ fi
 yn_index=0
 file_index=0
 
-for direct in N Y
+for direct in ${O_DIRECT_ORDER}
 do
 	i=0
 	while (( ( ${i} < ${LOOP_MAX} ) && ( ${Result} == 0 ) ))

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Light test script.
+# Test USB / Card memories performance
+# with "strict check" and "exponential distribution".
 # This script wraps ssdtest.sh
 #
 #  Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
@@ -28,9 +29,16 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 my_base=`basename "$0"`
 my_dir=`dirname "$0"`
+
+export SEQUENTIAL_DIRECT=y
+export SEQUENTIAL_BLOCKS=16384
+export RANDOM_BLOCKS_MAX=65536
+
+export SEQUENTIAL_WRITE_EXTRA_OPTIONS="-my"
+export RANDOM_EXTRA_OPTIONS="-my"
+export SEQUENTIAL_READ_EXTRA_OPTIONS="-rs -my"
 
 export LOOP_MAX=1
 export SEED_SPAN_DIRECT=1
