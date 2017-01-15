@@ -39,7 +39,13 @@
 # $ make mtTest
 #
 
-CFLAGS=-O3 -Wall -Wunused -Wuninitialized -march=native -mtune=native
+CFLAGS=-O3 -Wall -Wunused -Wuninitialized
+
+UseNative=$(shell uname -m | grep -q -e x86_64 -e 'i[3456]86' -e athlon | echo $$? )
+ifeq ($(UseNative), 0)
+	CFLAGS+= -march=native -mtune=native
+endif
+
 CLIBS=-lrt -lm
 
 DIST_FILES=\
