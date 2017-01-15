@@ -41,7 +41,7 @@
 
 CFLAGS=-O3 -Wall -Wunused -Wuninitialized
 
-UseNative=$(shell uname -m | grep -q -e x86_64 -e 'i[3456]86' -e athlon | echo $$? )
+UseNative=$(shell uname -m | grep -q -e x86_64 -e 'i[3456]86' -e athlon ; echo $$? )
 ifeq ($(UseNative), 0)
 	CFLAGS+= -march=native -mtune=native
 endif
@@ -61,6 +61,7 @@ DIST_FILES=\
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
 	ssdstress.c Makefile \
 	readme.html README_JP
+
 
 DIST_DIR=ssdtest_2.00
 
