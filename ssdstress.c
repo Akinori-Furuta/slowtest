@@ -1769,12 +1769,12 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 		rw_time=TTimeSpecToDouble(&ts_rw_delta);
 		mem_time=TTimeSpecToDouble(&ts_mem_delta);
 		/*       i, elp, rw, pos, len, rw_time, bps, touchtime */
-		printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8lx, %10.4e, %10.4e, %10.4e\n"
+		printf("%8ld, %10.4e, %c, 0x%.16" PRIx64 ", 0x%.8zx, %10.4e, %10.4e, %10.4e\n"
 			,i
 			,TTimeSpecToDouble(TTimeSpecSub(&ts_elapsed,&ts_op_done,&ts_0))
 			,read_write
 			,seek_to
-			,(long)length
+			,length
 			,rw_time
 			,((double)length)/rw_time
 			,mem_time
