@@ -1685,7 +1685,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			int	done;
 
 			if (length>mem_size) {
-				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, mem_size=%zx\n"
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%zx, mem_size=%lx\n"
 					, opt->Argv0, length, mem_size
 				);
 				return 0; /* failed */
@@ -1745,7 +1745,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 				MarkFileImage(img_work,length,seek_to_block,opt->BlockSize);
 			}
 			if ((img_offset+length)>img_size) {
-				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%zx, img_size=%zx\n"
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%zx, img_size=%lx\n"
 					, opt->Argv0, length, img_size
 				);
 				return 0; /* failed */
