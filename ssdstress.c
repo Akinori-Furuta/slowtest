@@ -1618,7 +1618,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 		off64_t		seek_to;
 		off64_t		seek_result;
 		size_t		length;
-		int		ioresult;
+		ssize_t		ioresult;
 
 		TTimeSpec	ts_mem;
 		TTimeSpec	ts_rw_start;
@@ -1702,8 +1702,8 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			/* Record time at done read. */
 			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
-				printf("%s: Error: read failed. %s length=0x%zx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno), length, (long)(ioresult));
+				printf("%s: Error: read failed. %s length=0x%zx, ioresult=0x%zx.\n"
+				,opt->PathName,strerror(errno), length, ioresult);
 				return 0; /* failed */
 			}
 			if (opt->DoMark!=0) {
@@ -1756,8 +1756,8 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			/* Record time at touch. */
 			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
-				printf("%s: Error: write failed. %s length=0x%zx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno), length, (long)ioresult);
+				printf("%s: Error: write failed. %s length=0x%zx, ioresult=0x%zx.\n"
+				,opt->PathName,strerror(errno), length, ioresult);
 				return 0;
 			}
 			TTimeSpecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
