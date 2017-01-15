@@ -276,6 +276,12 @@ then
 	exit 1
 fi
 
+if [[ ! -x ${MyBase}/${TestBin} ]]
+then
+	echo "${MyBase}/${TestBin}: Can not find or execute. To build this file, invoke make command."
+	exit 2
+fi
+
 TestFile="${parsed_arg[${i}]}"
 
 # File or directory.
