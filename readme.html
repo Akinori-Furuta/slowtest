@@ -6,35 +6,67 @@
 </head>
 <body>
 <h1>ssdtest manual</h1>
-<p>ssdtest は SSD の性能を測定してグラフ化するツール群です。ランダムアクセス性能を 2 次元
-空間上にプロットします。平均化した値では見えなかった Turn Around Time, SSD 内外のキャッシュ影響、セクタ消去、
-ウエアレベリング、エラー訂正、SSD 内のメモリデバイスアクセス並列度などによると考えられるアクセス速度分布が得られます。</p>
-
+<p>ssdtest は SSD の性能を測定してグラフ化するツール群です。
+ランダムアクセス性能を 2 次元空間上にプロットします。
+平均化した値では見えなかった Turn Around Time,
+SSD 内外のキャッシュ影響、セクタ消去、ウエアレベリング、エラー訂正、
+SSD 内のメモリデバイスアクセス並列度などによると考えられる
+アクセス速度分布が得られます。</p>
+<p>Copyright (C) 2012, 2017 Akinori Furuta&lt;afuruta&#64;m7.dion.ne.jp&gt;</p>
 <hr />
 <H1>1. 動作条件</H1>
 
 <H2>1.1. 実行環境</H2>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th align="left" valign="top">項目</th><th align="left" valign="top">説明</th></tr>
-<tr><td align="left" valign="top">OS</td><td>Linux kernel 2.6.34 or later, 64bit addressing.</td></tr>
-<tr><td align="left" valign="top">Memory</td><td>8GiBytes or more main memory.</td></tr>
-<tr><td align="left" valign="top">Disk Space</td><td>1MiBytes to store test programs,<br />1GiBytes to store test output logs and plots.</td></tr>
-<tr><td align="left" valign="top">Packages</td><td>gcc, gawk(ubuntu の場合、awk では動作しません), smartctl(smartmontools), hdparm, gnuplot 4.2 or later</td></tr>
+<tr><th align="left" valign="top">項目</th>
+	<th align="left" valign="top">説明</th>
+</tr>
+<tr><td align="left" valign="top">OS</td>
+	<td>Linux kernel 2.6.34 or later, 64bit addressing.</td>
+</tr>
+<tr><td align="left" valign="top">Memory</td>
+	<td>8GiBytes or more main memory.</td>
+</tr>
+<tr><td align="left" valign="top">Disk Space</td>
+	<td>1MiBytes to store test programs,
+		<br />1GiBytes to store test output logs and plots.
+	</td>
+</tr><tr>
+	<td align="left" valign="top">Packages</td>
+	<td>
+		gcc,
+		gawk(ubuntu の場合、awk では動作しません),
+		smartctl(smartmontools),
+		hdparm,
+		gnuplot 4.2 or later
+	</td>
+</tr>
 </table>
 
 <H2>1.2. テスト対象</H2>
 <table border="1" cellspacing="0" cellpadding="2">
 <tr><th align="left" valign="top">項目</th><th align="left" valign="top">説明</th></tr>
-<tr><td>種別</td><td>SSD</td></tr>
-<tr><td>接続形態</td><td>SATA (途中に USB 等の変換アダプタがないこと)</td></tr>
-<tr><td>容量</td><td>60GByte 以上の空きが有ること (100GBytes 以上が望ましい)</td></tr>
+<tr><td>種別</td><td><ul>
+	<li>SSD</li>
+	<li>USB memory, SD card (容量、ファイルシステム形式、スピードによっては上手く動作しません)</li>
+</ul></td></tr>
+<tr><td>接続形態</td><td>SSD の場合は SATA (途中に USB 等の変換アダプタがないこと)</td></tr>
+<tr><td>容量</td><td><UL>
+	<LI>SSD: 60GByte 以上の空きが有ること (100GBytes 以上が望ましい)</LI>
+	<li>USB memory: 1Gbyte 以上</li>
+	</UL></td>
+</tr>
 <tr><td>ボリューム構成</td><td>シングルパーティション (RAID, Volume Group 不可)</td></tr>
-<tr><td>ファイルシステム形式</td><td>ext3, ext4 など (ボリュームサイズに対し 90% のサイズのファイルを保持できること)</td></tr>
+<tr><td>ファイルシステム形式</td><td><ul>
+	<li>ext3, ext4 など (ボリュームサイズに対し 90% のサイズのファイルを保持できること)</li>
+	<li>FAT/FAT32 ファイルシステムの場合は最大 4095Mibyte のファイルサイズでテストします。</li>
+	</ul></td>
+</tr>
 </table>
 
 <H2>1.3. テストファイルサイズ</H2>
 <p>
-空き容量の 90% をテストファイルとして使用します。vfat(FAT32) ファイルシステム
+空き容量の 90% をテストファイルとして使用します。VFAT(FAT32) ファイルシステム
 では 4095MiBytes をテストファイルとして使用します。/, /tmp, /home, /var 等を
 マウントした場所をテストする場合、容量不足に注意してください。容量不足になると、
 突然再起動するなど不測の事態が発生します。
@@ -47,8 +79,12 @@ SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SS
 </p>
 
 <H2>1.5. 寿命負荷</H2>
-<p>1 回のテストに付き SSD に対して 約 空き容量 x 3.6 + 5.4Ti Byte 書き込みます。
-</p>
+<p>1 回のテストに付き SSD に対して次の表に示す容量を書き込みます。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>テスト対象</th><th>書き込み容量</th></tr>
+<tr><td>SSD</td><td>約 空き容量 x 3.6 + 12Ti byte</td></tr>
+<tr><td>USB Memory</td><td>約 空き容量 x 3.6 + 45.6G byte</td></tr>
+</table>
 
 <H1>2. 展開とコンパイル</H1>
 
@@ -68,9 +104,11 @@ ssdstress コマンドのヘルプメッセージを出力することができ�
 </p>
 
 <pre style="font-size: small; font-weight: normal; font-style: normal; font-family: 'Courier New', Courier, monospace">
-% ./ssdstress
-ssdstress: SSD stress test tool. Copyright (C) 2012 Akinori Furuta&lt;afuruta@m7.dion.ne.jp&gt;.
-Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name
+% ./ssdstress -h
+./ssdstress: Info: Show help.
+./ssdstress: Error: Need path name to read/write test.
+ssdstress: SSD stress test tool. Copyright (C) 2012, 2017 Akinori Furuta&lt;afuruta@m7.dion.ne.jp&gt;.
+Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n}] [-b n] [-u n] [-i n] [-i {u|e}] [-a n] [-e n] [-n n] [-s n] path_name
 -f n work file size.
 -p{y|n} Fill file with initial image(y: fill, n: truncate)(n).
 -x{b|r|w} Random read/write method (b: Do both read and write, r: Do read only, w: Do write only)(b).
@@ -81,6 +119,7 @@ Command line: [-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}] [-m {y|n
 -u n Sequential read/write blocks per one IO (if zero or not set, same as "-a n" * 2)(0).
 -i n Random read/write minimum blocks(1).
 -a n Random read/write maximum blocks(8192).
+-i {uniform | exponential} Random read/write blocks distribution as uniform or exponential (uniform).
 -o n Start block number to read/write(0).
 -e n End block number to read/write(0).
 -n n number of random read/write access(4096).
@@ -91,7 +130,7 @@ Number n can be specified with unit {k|m|g|t}. k: x1024, m: x1024^2, g: x1024^3,
 Output format: sequential write.
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total
 Output format: random access.
-count, elapsed_time, rw, seek_position, length, read_time, bps, memory_access_time
+index, elapsed_time, rw, seek_position, length, access_time, bps, memory_access_time
 Output format: sequential read.
 cur b/s, total b/s, cur_el b/s, elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total
 </pre>
@@ -136,6 +175,8 @@ S.M.A.R.T. 情報、kernel チューニング等が行われずテスト結果�
 </pre>
 
 <h3>プロット</h3>
+<p>plotlogseq.sh でシーケンシャルアクセステストの結果をプロットします。
+plotlogmix.sh でランダムアクセステストの結果をプロットします。</p>
 <pre>
 $ ${tool_path}/plotlogseq.sh log_directory
 $ ${tool_path}/plotlogmix.sh log_directory
@@ -148,43 +189,166 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 
 <H2>3.3. 各ツール詳細</H2>
 
-<h3>3.3.1. ssdtest.sh - SSD テストスクリプト</h3>
-<p>ssdtest.sh はテスト実行スクリプトです。スクリプト内で ssdstress を呼び出します。
+<h3>3.3.1. ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtest_light_usbmems.sh - SSD, USB メモリ テストスクリプト</h3>
+<p>ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtest_light_usbmems.sh はテスト実行スクリプトです。
+それぞれ次の表に示すテストを行います。
 </p>
-<pre>
-# ${tool_path}/ssdtest.sh [-L ModelNameLabel] /path/to/test
-</pre>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th align="left" valign="top">Option or Argument</th><th align="left" valign="top">説明</th></tr>
-<tr><td valign="top"><nobr>-L ModelNameLabel</nobr></td>
+<tr><th>スクリプト名</th><th>機能</th><th>テスト構成</th><th>シーケンシャルアクセス単位<br />(blocks, (bytes))</th><th>ランダムアクセス単位<br />(BlocksMin .. BlocksMax, (BytesMin .. BytesMax))</th></tr>
+<tr>
+	<td >ssdtest.sh</td>
+	<td>SSD の完全テスト</td>
+	<td>
+		次の一連のテストを行います。
+		<table>
+		<tr><th>Step Symbol</th><th>Access Pattern</th><th>OS cache</th></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">enabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">enabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">enabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove test file</td>     <td align="center">-</td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">enabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">enabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove test file</td>     <td align="center">-</td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">enabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">enabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">enabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove test file</td>     <td align="center">-</td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">enabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">enabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove test file</td>     <td align="center">-</td></tr>
+		</table>
+	<td align="center">2Mi, (1Gi)</td>
+	<td align="center">1 .. 4Mi, (512 .. 2Gi)</td>
+</tr>
+<tr><td>ssdtest_light.sh</td>
+	<td>SSD の軽量テスト</td>
+	<td>
+		次の一連のテストを行います。
+		<table>
+		<tr><th>Step Symbol</th><th>Access Pattern</th><th>OS cache</th></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">enabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">enabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove test file</td>     <td align="center">-</td></tr>
+		</table>
+	</td>
+	<td align="center">2Mi, (1Gi)</td>
+	<td align="center">1 .. 4Mi, (512 .. 2Gi)</td>
+</tr>
+<tr><td>ssdtest_usbmem.sh</td>
+	<td>USB memory の完全テスト</td>
+	<td>
+		次の一連のテストを行います。
+		<table>
+		<tr><th>Step Symbol</th><th>Access Pattern</th><th>OS cache</th></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">disabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">enabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">disabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove file</td>          <td align="center">-</td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">disabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">disabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove file</td>          <td align="center">-</td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">disabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">enabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">disabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove file</td>          <td align="center">- </td></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">disabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">disabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove file</td>          <td align="center">- </td></tr>
+		</table>
+		<p>sequential write、読み出しはキャッシュ無しです。
+		USB memory 容量が小さい場合は書き込みが全て主記憶にバッファされるのを防ぐためです。</p>
+		<p>USB memory の容量と速度は多種存在します。このスクリプトのパラメータはどんな USB memory
+		にも適するパラメータではありません。テスト時間が長すぎたり、性能を把握するのには不十分な
+		結果が得られる場合もあります。
+		</p>
+	</td>
+	<td align="center">32Ki, (16Mi)</td>
+	<td align="center">1 .. 64Ki, (512 .. 32Mi)</td>
+</tr>
+<tr><td>ssdtest_light_usbmem.sh</td>
+	<td>USB memory の軽量テスト</td>
+	<td>
+		次の一連のテストを行います。
+		<table>
+		<tr><th>Step Symbol</th><th>Access Pattern</th><th>OS cache</th></tr>
+		<tr><td align="center">(a1)</td><td>sequential write</td>     <td align="center">disabled</td></tr>
+		<tr><td align="center">(a2)</td><td>random read and write</td><td align="center">disabled</td></tr>
+		<tr><td align="center">(a3)</td><td>sequential read</td>      <td align="center">disabled</td></tr>
+		<tr><td align="center">(a4)</td><td>remove file</td>          <td align="center"> -  </td></tr>
+		</table>
+		<p>USB memory の容量と速度は多種存在します。このスクリプトのパラメータはどんな USB memory
+		にも適するパラメータではありません。テスト時間が長すぎたり、性能を把握するのには不十分な
+		結果が得られる場合もあります。
+		</p>
+	</td>
+	<td align="center">32Ki, (16Mi)</td>
+	<td align="center">1 .. 64Ki, (512 .. 32Mi)</td>
+</tr>
+</table>
+<p>Note: グラフのタイトルに OS cache enabled の場合は "without O_DIRECT"、OS cache disabled の場合は "with O_DIRECT" という文言が入ります。</p>
+<p>それぞれのコマンドラインは次の通りです。スクリプト内で ssdstress を呼び出します。</p>
+<pre># ${tool_path}/ssdtest.sh [-L ModelNameLabel] /path/to/test
+# ${tool_path}/ssdtest_light.sh [-L ModelNameLabel] /path/to/test
+# ${tool_path}/ssdtest_usbmems.sh [-L ModelNameLabel] /path/to/test
+# ${tool_path}/ssdtest_light_usbmems.sh [-L ModelNameLabel] /path/to/test
+</pre>
+<p>コマンドライン引数は次の通りです。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th align="left" valign="top">Parameter</th><th align="left" valign="top">Description</th></tr>
+<tr><td valign="top"><nobr>-L <i>ModelNameLabel</i></nobr></td>
 <td valign="top">
-任意で指定できます。SSD のモデル名に付加したい文字列を
-ModelNameLabel で指定します。モデル名の接尾辞として扱われます。
+SSD をテストする場合は任意で指定できます。SSD のモデル名に付加したい文字列を
+<i>ModelNameLabel</i> で指定します。モデル名の接尾辞として扱われます。
+<br />USB memory をテストする場合は、
+USB memory または memory card にボリュームラベルを付けていないならば必ず指定してください。
 </td></tr>
-<tr><td valign="top"><nobr>/path/to/test</nobr></td>
-<td valign="top">テストしようとする SSD をマウントしたパス、またはそれより深い
+<tr><td valign="top"><nobr><i>/path/to/test</i></nobr></td>
+<td valign="top">テストしようとする SSD, USB memory をマウントしたパス、またはそれより深い
 階層のパスを指定します。ディレクトリを指定すれば、そのディレクトリに UUID 形式
 の名前が付いたファイルを生成してテストをします。ファイル名を指定すれば、その名
 前でファイルを生成してテストをします。</td></tr>
 </table>
 
 <p>テスト結果(テストログ)はカレントディレクトリの下に次の名前で生成したディレクト
-リ内に格納されます。ModelName は デバイスから読み取ったモデル名です。
+リ内に格納されます。
+<i>ModelName</i> は デバイスから読み取ったモデル名です。
+<i>ModelNameLabel</i> はテストスクリプトに -L オプションで与えた文字列です。
+<i>TestDateTime</i> はテスト実施日時です。
+<i>TestFileSize</i> はテストに使用したファイルサイズです。ボリュームの空き容量に対して
+おおよそ 90% を占めるサイズになります。
 </p>
 
 <pre>
-log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサイズ}
+log-${<i>ModelName</i>}${<i>ModelNameLabel</i>}-${<i>TestDateTime</i>}-${<i>TestFileSize</i>}
 </pre>
 
-<p>テスト内容は次の (a1) から (a4) を 2 回、(b1) から (b4) を 2 回実施します。</p>
+<p>ステップ (a1) から (a4) は次のような動作をします。</p>
 
 <table cellspacing="2">
-<tr><th valign="top" align="left"><nobr>手順</nobr></th><th valign="top" align="left">説明</th></tr>
-<tr><th valign="top" align="left">(a1)</th>
-<td><b>sequential write without O_DIRECT</b>
-<p>空き容量の 90% まで OS のキャッシュを有効にして書き込みます。
-1 回のアクセス単位は 256Mi バイトです。
-以下このファイルを使用します。
+<tr><th valign="top" align="left"><nobr>Step Symbol</nobr></th><th valign="top" align="left">Method</th></tr>
+<tr><th valign="top" align="center"><a name="TestStepA1">(a1)</a></th>
+<td><b>sequential write</b>
+<p>空き容量の 90% まで書き込みます。
+1 回のアクセス単位は次の通りです。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>テスト対象</th><th>アクセス単位</th></tr>
+<tr><td>SSD</td><td>1Gi byte</td></tr>
+<tr><td>USB Memory</td><td>16Mi byte</td></tr>
+</table>
+<p>アクセス単位はシステムコールの引数として渡す値です。SSD の場合は SATA ドライバの制限、USB の場合は
+USB Mass Storage Driver の制限を受けてドライブに対対するアクセス要求は分割されます。ログファイルには
+max_sectors_kb として分割サイズがバイト数として記録されます。</p>
+<p>
+キャッシュが有効な場合、書き込み始めは OS のキャッシュにため込む動作になります。
+書き込み速度は OS の内部処理速度になります。ドライブのアクセス速度より速い速度を示します。
+</p>
+<p>
+以下 (a2), (a3), (a4) でこのファイルを使用します。
 </p>
 <table cellpadding="2">
 <tr><td valign="top" align="left">※</td>
@@ -195,53 +359,59 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><th valign="top" align="left">(a2)</th>
-<td><b>random read/write without O_DIRECT</b>
-<p>以下の 8 つのサイズ条件で OS のキャッシュを有効にしてランダムな読み出しと書き込みを行います。
-ブロックサイズ(最小単位)は 512 バイトです。
+<tr><th valign="top" align="center"><a name="TestStepA2">(a2)</a></th>
+<td><b>random read and write</b>
+<p><a name="exp_blocks">以下に示す式でブロック数を計算し</a> (a1) で作ったファイルに対して
+ランダムな均等分布位置で読み出しと書き込みを合計 8192 回行います。ブロックサイズ(最小単位)は
+512 バイトです。
 </p>
+<p><i>RatioL</i> = Log2( <i>BlocksMax</i> / <i>BlocksMin</i> )</p>
+<p><i>Blocks</i> = Int( 0.5 + <i>BlocksMin</i> * 2<sup><i>RatioL</i> * Rand(1.0)</sup> )</p>
+<p>数式の関数は次の通りです。</p>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th>Sub Step</th><th>Min Size (bytes)</th><th>Max Size (bytes)</th></tr>
-<tr><td align="right">01</td><td align="right">512</td><td align="right">2Gi</td></tr>
-<tr><td align="right">02</td><td align="right">512</td><td align="right">512Mi</td></tr>
-<tr><td align="right">03</td><td align="right">512</td><td align="right">128Mi</td></tr>
-<tr><td align="right">04</td><td align="right">512</td><td align="right">32Mi</td></tr>
-<tr><td align="right">05</td><td align="right">512</td><td align="right">8Mi</td></tr>
-<tr><td align="right">06</td><td align="right">512</td><td align="right">2Mi</td></tr>
-<tr><td align="right">07</td><td align="right">512</td><td align="right">512Ki</td></tr>
-<tr><td align="right">08</td><td align="right">512</td><td align="right">128Ki</td></tr>
+<tr><th>functions</th><th>definitions</th></tr>
+<tr><td>Rand(<i>x</i>)</td><td>random number in range [0, <i>x</i>]</td></tr>
+<tr><td>Log2(<i>x</i>)</td><td>Base-2 logarithm of <i>x</i></td></tr>
+<tr><td>Int(<i>x</i>)</td><td>convert <i>x</i> to integer by truncating fractional part.</td></tr>
 </table>
-</td>
-</tr>
-<tr><th valign="top" align="left">(a3)</th>
-<td><b>sequential read without O_DIRECT</b>
-<p>OS のキャッシュを有効にしてテスト用ファイルを最初から最後まで読みます。
-1 回のアクセス単位は 256Mi バイトです。
+<p>各パラメータは次の通りです。</p>
+<p>SSD の場合</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Params</th><th>Values</th></tr>
+<tr><td><i>BlocksMin</i></td><td align="right">1</td></tr>
+<tr><td><i>BlocksMax</i></td><td align="right">4194304 (4Mi)</td></tr>
+</table>
+<p>USB memory の場合</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Params</th><th>Values</th></tr>
+<tr><td><i>BlocksMin</i></td><td align="right">1</td></tr>
+<tr><td><i>BlocksMax</i></td><td align="right">65536 (64Ki)</td></tr>
+</table>
+<p>
+OS のキャッシュを有効にした場合、キャッシュとドライブの相互の作用によって、ランダムアクセスの
+応答時間が 10 秒以上になる場合があります。「プチフリーズ」と呼ばれる現象に相当します。
+OS キャッシュ無しの場合には見えなかったドライブの問題が顕在化することがあります。
+ssdtest_light_*.sh スクリプトは OS のキャッシュを無効にして単純に状況におけるドライブの実力を
+測ることができます。しかし、「プチフリーズ」等の問題を見る場合、キャッシュを有効にして、テストを
+行うスクリプト ssdtest.sh, ssdtest_usbmems.sh を使用してください。
 </p>
 </td>
 </tr>
-<tr><th valign="top" align="left">(a4)</th>
-<td><b>(a1) で作成したファイルを削除します。</b>
-</td>
-</tr>
-<tr><th valign="top" align="left">(b1)</th>
-<td><b>sequential write without O_DIRECT</b>
-<p>(a1) と同様です。</p>
-</td>
-</tr>
-<tr><th valign="top" align="left">(b2)</th>
-<td><b>random read/write with O_DIRECT</b>
-<p>(a2) と同じ 8 つのサイズ条件で OS のキャッシュを無効にしてランダムな読み出しと書き込みを行います。
+<tr><th valign="top" align="center"><a name="TestStepA3">(a3)</a></th>
+<td><b>sequential read</b>
+<p>テスト用ファイルを最初から最後まで読みます。1 回のアクセス単位は (a1) と同じです。
+</p>
+<p>ドライブによっては直前に行った「(a2) ランダムアクセス」において OS のキャッシュ条件が
+アクセス速度の乱れ (短期的に急激な速度低下を起こす現象) と関係する場合があります。
 </p>
 </td>
 </tr>
-<tr><th valign="top" align="left">(b3)</th>
-<td><b>sequential read without O_DIRECT</b>
-<p>(a3) と同様です。</p>
-</td>
-</tr>
-<tr><th valign="top" align="left">(b4)</th>
-<td><b>(b1) で作成したファイルを削除します。</b>
+<tr><th valign="top" align="center"><a name="TestStepA4">(a4)</a></th>
+<td><b>Remove test file created at (a1) step.</b>
+<p>
+(a1)で作成したファイルを削除します。テスト実行中に SIGINT ([Ctrl] + [C]) で中断した場合は、
+ファイルを削除します。
+</p>
 </td>
 </tr>
 </table>
@@ -258,15 +428,15 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 
 <p>コマンドライン書式:<br />
 <tt>[-f n] [-p {y|n}] [-x {b|r|w}] [-r {y|n}] [-d {y|n}{Y|N}]
-[-m {y|n}] [-b n] [-u n] [-i n] [-a n] [-e n] [-n n] [-s n] path_name</tt>
+[-m {y|n}] [-b n] [-u n] [-i n] [-i {uniform | exponential}] [-a n] [-e n] [-n n] [-s n] path_name</tt>
 </p>
 
 <p>コマンドラインオプションの (既定) 内の値と文字列は既定値です。</p>
 
 <table border="1" cellspacing="0" cellpadding="2">
 <tr><th align="left" valign="top">Option or Argument</th><th align="left" valign="top">説明</th></tr>
-<tr><td valign="top"><nobr>-f n</nobr></td><td valign="top">テスト作業用ファイルサイズ</td></tr>
-<tr><td valign="top"><nobr>-p{y|n}</nobr></td>
+<tr><td valign="top"><nobr>-f <i>n</i></nobr></td><td valign="top">テスト作業用ファイルサイズ</td></tr>
+<tr><td valign="top"><nobr>-p<i>{y|n}</i></nobr></td>
 <td valign="top">シーケンシャルライトテスト実施指定 (既定 n)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-p y</nobr></td><td valign="top">シーケンシャルライトを実施する。</td></tr>
@@ -274,7 +444,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-x{b|r|w}</nobr></td>
+<tr><td valign="top"><nobr>-x<i>{b|r|w}</i></nobr></td>
 <td valign="top">ランダムアクセスで実施するアクセス (既定 b)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-x b</nobr></td><td valign="top">Read/Write 両方を実施する。</td></tr>
@@ -283,7 +453,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-r{s|y|n}</nobr></td>
+<tr><td valign="top"><nobr>-r<i>{s|y|n}</i></nobr></td>
 <td valign="top">シーケンシャルリードテストの実施方法 (既定 n)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-r s</nobr></td><td valign="top">シーケンシャルリードテストを実施し、内容を厳密に検査する。</td></tr>
@@ -292,7 +462,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-d{y|n}{Y|N}</nobr></td>
+<tr><td valign="top"><nobr>-d<i>{y|n}{Y|N}</i></nobr></td>
 <td valign="top">O_DIRECT (OS のキャッシュを使用しない) 指定 (既定 yY)
 <p>小文字 yn はシーケンシャルアクセステストに対する指定<br />
 大文字 YN はランダムアクセステストに対する指定</p>
@@ -305,7 +475,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 <p>-d y と -d Y を一緒にして -d yY と指定することが出来できます。</p>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-m{y|n}</nobr></td>
+<tr><td valign="top"><nobr>-m<i>{y|n}</i></nobr></td>
 <td valign="top">ファイルイメージ整合検査用の符号を付ける (既定 y)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-m y</nobr></td><td valign="top">符号を付ける。</td></tr>
@@ -316,7 +486,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </p>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-b n</nobr></td>
+<tr><td valign="top"><nobr>-b <i>n</i></nobr></td>
 <td valign="top">ブロック(アクセス単位)サイズ (既定 512)<br />
 このオプションで指定した整数倍が 1 回のアクセスサイズになります。
 <table cellpadding="2">
@@ -325,12 +495,12 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-u n</nobr></td>
+<tr><td valign="top"><nobr>-u <i>n</i></nobr></td>
 <td valign="top">シーケンシャルアクセステストで一度にアクセスするブロック数 (既定 0)<br />
 0 を指定した場合は "-a オプションで指定した値" x 2 がブロック数になります。
 以下の式の値が 4Gi を超える場合、General Protection Fault が発生することが有ります。<br />
 <br />
-"-b オプション" x "-a オプション" x 2<br />
+"<i>-b オプション</i>" x "<i>-a オプション</i>" x 2<br />
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-u 1024</nobr></td><td valign="top">1024 ブロックを指定し、-b 512 だった場合は、
 512Ki ( = 1024 x 512 ) バイトがシーケンシャルアクセスで一度にアクセスするバイト数になります。
@@ -338,7 +508,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-i n</nobr></td>
+<tr><td valign="top"><nobr>-i <i>n</i></nobr></td>
 <td valign="top">ランダムアクセステストで一度にアクセスする最小ブロック数 (既定 1)<br />
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-i 1</nobr></td><td valign="top">最小は 1 ブロックを指定する。
@@ -346,7 +516,19 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-a n</nobr></td>
+<tr><td valign="top"><nobr>-i <i>{uniform|exponential}</i></nobr></td>
+<td valign="top">-i オプションに数値ではなく uniform または exponential を指定すると、
+ランダムアクセステストで一度にアクセスするブロック数の分布を指定します。<br />
+<table cellpadding="2">
+<tr><td valign="top"><nobr>-i uniform</nobr></td><td valign="top">一様分布にします。
+</td></tr>
+<tr><td valign="top"><nobr>-i exponential</nobr></td><td valign="top">指数分布にします。分布の詳細は、
+<a href="#TestStepA2">(a2) random read/write</a> を参照してください。
+</td></tr>
+</table>
+</td>
+</tr>
+<tr><td valign="top"><nobr>-a <i>n</i></nobr></td>
 <td valign="top">ランダムアクセステストで一度にアクセスする最大ブロック数 (既定 8192)<br />
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-a 8192</nobr></td><td valign="top">最大は 8192 ブロックを指定する。
@@ -361,12 +543,12 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 オプションの影響を無くすには -u オプションを使用してください。
 以下の式の値が 4Gi を超える場合、General Protection Fault が発生することが有ります。<br />
 <br />
- "-b オプション" x "-a オプション" x 2<br />
+ "<i>-b オプション</i>" x "<i>-a オプション</i>" x 2<br />
 </td></tr>
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-o n</nobr></td>
+<tr><td valign="top"><nobr>-o <i>n</i></nobr></td>
 <td valign="top">シーケンシャルとランダムアクセステストでアクセスする範囲の開始ブロック
 番号、0 がファイルの先頭になる (既定 0)
 <table cellpadding="2">
@@ -376,7 +558,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-e n</nobr></td>
+<tr><td valign="top"><nobr>-e <i>n</i></nobr></td>
 <td valign="top">シーケンシャルとランダムアクセステストでアクセスする範囲の終了ブロック
 番号、0 を指定すると -f n で指定したサイズのファイル末尾までが範囲になります。(既定 0)
 <table cellpadding="2">
@@ -386,7 +568,7 @@ log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-n n</nobr></td>
+<tr><td valign="top"><nobr>-n <i>n</i></nobr></td>
 <td valign="top">ランダムアクセステストでアクセスする回数を指定します。read 回数と write
 回数を足した回数が -n n で指定した値になります (既定 4096)<br />
 <p>それぞれの回で read か write アクセスのどちらを実施するかは疑似乱数で決定します。
@@ -402,7 +584,7 @@ read と write アクセスの出現確率は半々です。疑似乱数によ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-s n</nobr></td>
+<tr><td valign="top"><nobr>-s <i>n</i></nobr></td>
 <td valign="top">疑似乱数のシード値を指定します (既定 0)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-s 10</nobr></td><td valign="top">シード値を 10 にする。
@@ -410,9 +592,9 @@ read と write アクセスの出現確率は半々です。疑似乱数によ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>-z n</nobr></td>
+<tr><td valign="top"><nobr>-z <i>n</i></nobr></td>
 <td valign="top">シーケンシャルアクセステスト、ランダムアクセステスト後に休止
-(sleep) する最小時間を指定します。テスト中、Tac="1 回のアクセス時間" x 2 が
+(sleep) する最小時間を指定します。テスト中、Tac="<a href="#random_access_time">access_time</a>" x 2 が
 この値より大きければ、休止時間は Tac になります (既定 10)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-z 20</nobr></td><td valign="top">休止時間を 20 秒にする。
@@ -420,11 +602,11 @@ read と write アクセスの出現確率は半々です。疑似乱数によ�
 </table>
 </td>
 </tr>
-<tr><td valign="top"><nobr>path_name</nobr></td>
+<tr><td valign="top"><nobr><i>path_name</i></nobr></td>
 <td valign="top">テストに使うファイル名</td>
 </tr>
 </table>
-<p>数値 n は接尾辞 k, m, g, t, p を付加出来ます。其々 n に k: 1024, m: 1024<sup>2</sup>, g: 1024<sup>3</sup>, 
+<p>数値 <i>n</i> は接尾辞 k, m, g, t, p を付加出来ます。其々 n に k: 1024, m: 1024<sup>2</sup>, g: 1024<sup>3</sup>, 
 	t: 1024<sup>4</sup>, p: 1024<sup>5</sup> を掛ける指定です。</p>
 
 <h4>3.3.2.2. 結果出力形式</h4>
@@ -478,132 +660,125 @@ index, elapsed_time, rw, seek_position, length, access_time, bps, memory_access_
 <tr><td valign="top"><nobr>rw</nobr></td><td valign="top">アクセス種別 'r' で Read, 'w' で Write</td></tr>
 <tr><td valign="top"><nobr>seek_position</nobr></td><td valign="top">ランダムアクセス開始位置 (16 進数, byte)</td></tr>
 <tr><td valign="top"><nobr>length</nobr></td><td valign="top">アクセス長 (16 進数, byte)</td></tr>
-<tr><td valign="top"><nobr>access_time</nobr></td><td valign="top">アクセス時間 (seconds) 符号検査・検査符号生成に掛かった時間は含んでいません</td></tr>
+<tr><td valign="top"><nobr><a name="random_access_time">access_time</a></nobr></td><td valign="top">アクセス時間 (seconds) 符号検査・検査符号生成に掛かった時間は含んでいません</td></tr>
 <tr><td valign="top"><nobr>bps</nobr></td><td valign="top">アクセス長 / アクセス時間 (bytes/seconds)</td></tr>
 <tr><td valign="top"><nobr>memory_access_time</nobr></td><td valign="top">符号検査、検査符号生成に掛かった時間 (seconds)</td></tr>
 </table>
-
-<h3>3.3.3. ssdtest_usbmems.sh</h3>
-<p>USB メモリ向けに規模を縮小したテストを実施するツールです。コマンドラインは次の
-様になります。ssdtest.sh と同様です。</p>
-<pre>
-# ${tool_path}/ssdtest_usbmems.sh [-L ModelNameLabel] /path/to/test
-</pre>
-<p>USB メモリ、USB カードリーダーから Model 名を得る処理は実装されていません。
--L ModelNameLabel オプションで仮のモデル名を指定する必要が有ります。</p>
-<table border="1" cellspacing="0" cellpadding="2">
-<tr><th align="left" valign="top">Option or Argument</th><th align="left" valign="top">説明</th></tr>
-<tr><td valign="top"><nobr>-L ModelNameLabel</nobr></td>
-<td valign="top">
-USB メモリの型名を指定してください。
-</td></tr>
-<tr><td valign="top"><nobr>/path/to/test</nobr></td>
-<td valign="top">テストしようとする USB メモリをマウントしたパス、またはそれより深い
-階層のパスを指定します。ディレクトリを指定すれば、そのディレクトリに UUID 形式
-の名前が付いたファイルを生成してテストをします。ファイル名を指定すれば、その名
-前でファイルを生成してテストをします。</td></tr>
-</table>
-
-<p>どんな USB メモリにも適合する様(有意義なデータが取れるよう)にパラメータを調整し
-きれていません。あるがままに提供されるツールです。</p>
-
-<p>テスト内容は次の (a1) から (a4) を 2 回、(b1) から (b4) を 2 回実施します。</p>
-
-<table cellpadding="2">
-<tr><th valign="top" align="left"><nobr>手順</nobr></th><th valign="top" align="left">説明</th></tr>
-<tr><th valign="top">(a1)</th>
-<td><b>sequential write with O_DIRECT</b>
-<p>空き容量の 90% まで OS のキャッシュを 無効* にして書き込みます。<br />
-* SSD のテストでは "有効" です。</p>
-
-<p>1 回のアクセス単位は 8Mi バイトです。以下このファイルを使用します。</p>
-
-<table>
-<tr><td>※</td><td>既にテスト用のファイルが存在する場合は、一旦削除して再生成しています。
-通常の使用方法であれば、既にファイルが存在することは無いので、
-削除する処理は起きないはずです。</td>
-</tr>
-</table>
-</td>
-</tr>
-<tr><th valign="top">(a2)</th>
-<td><b>random read/write without O_DIRECT</b>
-<p>以下の 8 つのサイズ条件で OS のキャッシュを有効にしてランダムな読み出しと
-書き込みを行います。ブロックサイズ(最小単位)は 512 バイトです。
-</p>
-<table border="1" cellspacing="0" cellpadding="2">
-<tr><th>Sub Step</th><th>Min Size (bytes)</th><th>Max Size (bytes)</th></tr>
-<tr><td align="right">01</td><td align="right">512</td><td align="right">32Mi</td></tr>
-<tr><td align="right">02</td><td align="right">512</td><td align="right">4Mi</td></tr>
-<tr><td align="right">03</td><td align="right">512</td><td align="right">512Ki</td></tr>
-<tr><td align="right">04</td><td align="right">512</td><td align="right">64Ki</td></tr>
-</table>
-</td>
-</tr>
-<tr><th valign="top">(a3)</th>
-<td><b>sequential read with O_DIRECT</b>
-<p>OS のキャッシュを 無効* にしてテスト用ファイルを最初から最後まで読みます。<br />
-* SSD のテストでは "有効" です。
-</p>
-<p>1 回のアクセス単位は 8Mi バイトです。</p>
-</td>
-</tr>
-<tr><th valign="top">(a4)</th>
-<td><b>(a1) で作成したファイルを削除します。</b>
-</td>
-</tr>
-<tr><th valign="top">(b1)</th>
-<td><b>sequential write without O_DIRECT</b>
-<p>(a1) と同様です。</p>
-</td>
-</tr>
-<tr><th valign="top">(b2)</th>
-<td><b>random read/write with O_DIRECT</b>
-<p>(a2) と同じ 8 つのサイズ条件で OS のキャッシュを無効にしてランダムな読み出しと書き込みを行います。
-</p>
-</td>
-</tr>
-<tr><th valign="top">(b3)</th>
-<td><b>sequential read with O_DIRECT</b>
-<p>(a3) と同様です。</p>
-</td>
-</tr>
-<tr><th valign="top">(b4)</th>
-<td><b>(b1) で作成したファイルを削除します。</b><br />
-</td>
-</tr>
-</table>
-
 <h2>3.4. 結果プロット、ページ作成ツール</h2>
 <p>結果をプロットする機能は bash スクリプトと gnuplot で構成されています。出力形
 式は PNG です。gnuplot のバージョンによって若干グラフの出来上がりが違います。</p>
+<p>
+次の表は結果をプロットするためのスクリプト一覧です。SSD をテストした結果をプロットするには、
+plotlogseq.sh, plotlogmix.sh の 2 つを使います。
+</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Script</th><th>Description</th></tr>
+<tr><td>plotlogseq.sh</td>
+<td>SSD のシーケンシャルアクセステスト
+(<a href="#TestStepA1">(a1) sequential read</a>,
+<a href="#TestStepA3">(a3) sequential write"</a>)
+の結果をプロットします。
+</td>
+</tr>
+<tr><td>plotlogmix.sh</td>
+<td>SSD のランダムアクセステスト
+(<a href="#TestStepA2">(a2) random read and write</a>) の結果をプロットします。</td>
+</tr>
+<tr><td>plotlogseq_usbmems.sh</td>
+<td><p>High Speed 接続 USB memory のシーケンシャルアクセステスト
+(<a href="#TestStepA1">(a1) sequential read</a>,
+<a href="#TestStepA3">(a3) sequential write"</a>)
+の結果をプロットします。</p>
+<p>グラフの軸スケールと範囲を High speed 接続 USB memory に合う様に調整してあります。
+遅い USB memory をプロットしてスケールや範囲が合わない場合はスクリプトを修正してください。
+USB 3.0 Super Speed 対応の早い USB memory や UHS1 対応の Micro SD, SD card をテスト
+した結果をプロットする場合は plotlogseq_uhs1.sh の方が適している場合があります。</p>
+</td>
+</tr>
+<tr><td>plotlogmix_usbmems.sh</td>
+<td><p>High Speed 接続 USB memory のランダムアクセステスト
+(<a href="#TestStepA2">(a2) random read and write</a>) の結果をプロットします。
+</p>
+<p>グラフの軸スケールと範囲を High speed 接続 USB memory に合う様に調整してあります。
+遅い USB memory をプロットしてスケールや範囲が合わない場合はスクリプトを修正してください。
+USB 3.0 Super Speed 対応の早い USB memory や UHS1 対応の Micro SD, SD card をテスト
+した結果をプロットする場合は plotlogmix_uhs1.sh の方が適している場合があります。</p>
+</td>
+</tr>
+<tr><td>plotlogseq_uhs1.sh</td>
+<td><p>UHS1 SD Card (Micro SD Card) のシーケンシャルアクセステスト
+(<a href="#TestStepA1">(a1) sequential read</a>,
+<a href="#TestStepA3">(a3) sequential write"</a>)
+の結果をプロットします。</p>
+<p>グラフの軸スケールと範囲を UHS1 SD card (Micro SD card) または Super speed USB memory
+に合う様に調整してあります。スケールや範囲が合わない場合はスクリプトを修正してください。
+</p>
+</td>
+</tr>
+<tr><td>plotlogmix_uhs1.sh</td>
+<td><p>UHS1 SD Card (Micro SD Card) のシーケンシャルアクセステスト
+(<a href="#TestStepA2">(a2) random read and write</a>) の結果をプロットします。
+</p>
+<p>グラフの軸スケールと範囲を  UHS1 SD card (Micro SD card) または Super speed USB memory に
+合う様に調整してあります。遅い USB memory をプロットしてスケールや範囲が合わない場合はスクリプトを
+修正してください。USB 3.0 Super Speed 対応の早い USB memory や UHS1 対応の Micro SD, SD card をテスト
+した結果をプロットする場合は plotlogmix_uhs1.sh の方が適している場合があります。</p>
+</td>
+</tr>
+</table>
+<p>グラフのスケールと範囲が適切でなく、結果がプロットされない、はみ出す、振れ幅が小さいなどの
+問題が起きた場合は、スクリプト plotlogseq_usbmems.sh, plotlomix_usbmems.sh, plotlogseq_uhs1.sh,
+plotlogmix_uhs1.sh で設定している次の環境変数を調整してください。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Exporting environment variable</th><th>Description</th></tr>
+<tr><td>SEQUENTIAL_TRANSFER_SPEED_MIN</td><td>シーケンシャルアクセスの最低転送速度を指定します。</td></tr>
+<tr><td>SEQUENTIAL_TRANSFER_SPEED_MAX</td><td>シーケンシャルアクセスの最高転送速度を指定します。</td></tr>
+<tr><td>RANDOM_TRANSFER_SPEED_MIN</td><td>ランダムアクセスの最低転送速度を指定します。</td></tr>
+<tr><td>RANDOM_TRANSFER_SPEED_MAX</td><td>ランダムアクセスの最高転送速度を指定します。</td></tr>
+</table>
 
-<h3>3.4.1. plotlogseq.sh - シーケンシャルアクセステストプロットスクリプト</h3>
+<h3>3.4.1. plotlogseq.sh, plotlogseq_usbmems.sh, plotlogseq_uhs1.sh - シーケンシャルアクセステストプロットスクリプト</h3>
 <p>シーケンシャルアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。</p>
 <pre>
-$ ${tool_path}/plotlogseq.sh log_directory
+$ ${tool_path}/plotlogseq.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogseq_usbmems.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogseq_uhs1.sh [-L model_name] log_directory
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><td valign="top">log_directory</td><td valign="top">
+<tr><th>parameter</th><th>description</th></tr>
+<tr><td valign="top"><nobr>-L <i>model_name</i></nobr></td>
+<td valign="top">
+グラフのタイトル部分を構成するモデル名を <i>model_name</i> に差し替えます。
+空白を含めることはできません。
+</td></tr>
+<tr><td valign="top"><i>log_directory</i></td><td valign="top">
 ssdtest.sh が生成したログ結果を保存したディレクトリです。
 省略するとカレントディレクトリを指定した事になります。ディレクトリ名は次の様な書式です。
-<pre>log-${Model}-${テスト日時}-${テストファイルサイズ}</pre>
+<pre>log-${<i>Model</i>}-${<i>TestDateTime</i>}-${<i>TestFileSize</i>}</pre>
 </td>
 </tr>
 </table>
 
-<h3>3.4.2. plotlogmix.sh - ランダムアクセステストプロットスクリプト</h3>
+<h3>3.4.2. plotlogmix.sh, plotlogmix_usbmems.sh, plotlogmix_uhs1.sh - ランダムアクセステストプロットスクリプト</h3>
 <p>ランダムアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。</p>
 <pre>
-$ ${tool_path}/plotlogmix.sh log_directory
+$ ${tool_path}/plotlogmix.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogmix_usbmems.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogmix_uhs1.sh [-L model_name] log_directory
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><td valign="top">log_directory</td><td valign="top">
+<tr><th>parameter</th><th>description</th></tr>
+<tr><td valign="top"><nobr>-L <i>model_name</i></nobr></td>
+<td valign="top">
+グラフのタイトル部分を構成するモデル名を <i>model_name</i> に差し替えます。
+空白を含めることはできません。
+</td></tr>
+<tr><td valign="top"><i>log_directory</i></td><td valign="top">
 ssdtest.sh が生成したログ結果を保存したディレクトリです。
 省略するとカレントディレクトリを指定した事になります。ディレクトリ名は次の様な書式です。
-<pre>log-${Model}-${テスト日時}-${テストファイルサイズ}</pre>
+<pre>log-${<i>Model</i>}-${<i>TestDateTime</i>}-${<i>TestFileSize</i>}</pre>
 </td>
 </tr>
 </table>
@@ -612,14 +787,28 @@ ssdtest.sh が生成したログ結果を保存したディレクトリです。
 <p>プロットした図を HTML ページにまとめます。次の様にコンソール出力結果をリダイレ
 クトしてページファイルに格納してください。</p>
 <pre>
-$ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
+$ ${tool_path}/htmlplot.sh [-L model_name] log_directory &gt; html_page_file.html
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><td valign="top">log_directory</td><td valign="top">
+<tr><th>parameter</th><th>description</th></tr>
+<tr><td valign="top"><nobr>-L <i>model_name</i></nobr></td>
+<td valign="top">
+ページのタイトル部分を構成するモデル名を <i>model_name</i> に差し替えます。
+空白を含めることはできません。
+</td></tr>
+<tr><td valign="top"><i>log_directory</i></td><td valign="top">
 ssdtest.sh が生成したログ結果を保存したディレクトリです。
-plotlogseq.sh, plotlogmix.sh プロットした PNG
-ファイルも含んでいるディレクトリです。省略するとカレントディレクトリを指定した事になります。ディレクトリ名は次の様な書式です。
-<pre>log-${Model}-${テスト日時}-${テストファイルサイズ}</pre>
+plotlogseq.sh, plotlogseq_usbmems.sh, plotlogseq_uhs1.sh,
+plotlogmix.sh, plotlogmix_usbmems.sh, plotlogmix_uhs1.sh で
+プロットした PNG　ファイルも含んでいるディレクトリです。
+省略するとカレントディレクトリを指定した事になります。
+ディレクトリ名は次の様な書式です。
+<pre>log-${<i>Model</i>}-${<i>TestDateTime</i>}-${<i>TestFileSize</i>}</pre>
+</td>
+</tr>
+<tr><td valign="top"><i>html_page_file.html</i></td><td valign="top">
+htmlplot.sh から HTML 形式でテキストが出力されるのでリダイレクトして
+<i>html_page_file.html</i> に格納してください。
 </td>
 </tr>
 </table>
@@ -693,7 +882,7 @@ test# ${tool_path}/ssdtestloop.sh -C 20 /ssd/mount/point
 </pre>
 
 <table cellpadding="2">
-<tr><td valign="top" align="left">Note</td>
+<tr><td valign="top" align="left">Note:</td>
 <td valign="top"align="left">/ssd/mount/point は SSD をマウントしたポイントです。</td>
 </tr>
 </table>
@@ -709,17 +898,18 @@ plot$ ${tool_path}/pageupdaterloop.sh .
 # ${tool_path}/ssdtestloop.sh -C LoopCount [-L ModelNameLabel] /path/to/test
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th align="left" valign="top">Option or Argument</th><th align="left" valign="top">説明</th></tr>
-<tr><td align="left" valign="top"><nobr>-C LoopCount</nobr></td>
+<tr><th align="left" valign="top">Option or Argument</th><th align="left" valign="top">Description</th></tr>
+<tr><td align="left" valign="top"><nobr>-C <i>LoopCount</i></nobr></td>
 <td align="left" valign="top">
-連続実行する回数を指定します。
+連続実行する回数を <i>LoopCount</i> 回にします。
 </td></tr>
-<tr><td align="left" valign="top"><nobr>-L ModelNameLabel</nobr></td>
+<tr><td align="left" valign="top"><nobr>-L <i>ModelNameLabel</i></nobr></td>
 <td align="left" valign="top">
-任意で指定できます。SSD のモデル名に付加したい文字列を
-ModelNameLabel で指定します。モデル名の接尾辞として扱われます。
+SSD のモデル名に付加したい文字列を <i>ModelNameLabel</i> で指定します。
+モデル名の接尾辞として扱われます。USB Memory の場合はモデル名を
+採取できない場合があります。この場合は必ず指定してください。
 </td></tr>
-<tr><td align="left" valign="top"><nobr>/path/to/test</nobr></td>
+<tr><td align="left" valign="top"><nobr><i>/path/to/test</i></nobr></td>
 <td align="left" valign="top">
 テストしようとする SSD をマウントしたパス、またはそれより深い
 階層のパスを指定します。ディレクトリを指定すれば、そのディレクトリに UUID 形式
@@ -729,10 +919,10 @@ ModelNameLabel で指定します。モデル名の接尾辞として扱われ�
 </table>
 
 <p>テスト結果(テストログ)はカレントディレクトリの下に次の名前で作ったディレクトリ
-に格納されます。テストの繰り返し毎に、${テスト日時} が更新されて新しいディレ
-クトリの下に結果が格納されます。</p>
+に格納されます。テストの繰り返し毎に、<i>TestDateTime</i> がテスト開始時刻に
+更新されて新しいディレクトリの下に結果が格納されます。</p>
 <pre>
-log-${ModelName}${ModelNameLabel}-${テスト日時}-${テストファイルサイズ}
+log-${<i>ModelName</i>}${<i>ModelNameLabel</i>}-${<i>TestDateTime</i>}-${<i>テストファイルサイズ</i>}
 </pre>
 <p>カレントディレクトリの下に ssdtestloop_$PID_loop.txt というファイルが作成され
 ます。$PID の部分はプロセス ID です。このファイル書かれた数値を増減させると、
@@ -748,7 +938,7 @@ $ ${tool_path}/pageupdater.sh [update-directory]
 <p>update-directory は ssdtestloop.sh を実行した(実行している)カレントディレクト
 リを指定します。update-directory 以下にテスト結果を格納した log-* ディレクトリ
 が ssdtestloop.sh によって作られた(作られている)ディレクトリです。省略した場合は
-update-directory はカレントディレクトリになります。 </p>
+<i>update-directory</i> はカレントディレクトリになります。 </p>
 
 <h3>3.5.5. pageupdaterloop.sh - 連続実行結果を逐一 HTML ページに変換する</h3>
 <p>ssdtestloop.sh で逐一生成されるログを一定間隔でプロット、
@@ -759,22 +949,23 @@ $ ${tool_path}/pageupdaterloop.sh \
 </pre>
 
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th align="left">Option or Argument</th><th align="left" valign="top">説明</th></tr>
-<tr><td align="left" valign="top"><nobr>-T IntervalTime</nobr></td>
+<tr><th align="left">Option or Argument</th><th align="left" valign="top">Description</th></tr>
+<tr><td align="left" valign="top"><nobr>-T <i>IntervalTime</i></nobr></td>
 <td align="left" valign="top">
-更新周期を指定します。(既定 60)
+更新周期を <i>IntervalTime</i> 秒に指定します。(既定 60)
 </td></tr>
-<tr><td align="left" valign="top"><nobr>update-directory</nobr></td>
+<tr><td align="left" valign="top"><nobr><i>update-directory</i></nobr></td>
 <td align="left" valign="top">
 ssdtestloop.sh を実行した(実行している)カレントディレクト
-リを指定します。update-directory 以下にテスト結果を格納した log-* ディレクトリ
+リを指定します。<i>update-directory</i> 以下にテスト結果を格納した log-* ディレクトリ
 が ssdtestloop.sh によって作られた(作られている)ディレクトリです。省略した場合
-は update-directory はカレントディレクトリになります。 
+は <i>update-directory</i> はカレントディレクトリになります。 
 </td></tr>
-<tr><td align="left" valign="top"><nobr>html_page_file.html</nobr></td>
+<tr><td align="left" valign="top"><nobr><i>html_page_file.html</i></nobr></td>
 <td align="left" valign="top">
 各 log-* ディレクトリ以下に作られたページにリンクを貼った
-インデックスページを格納するファイルです。リダイレクトで保存してください。
+インデックスページを格納するファイルを <i>html_page_file.html</i> に格納します。
+リダイレクトで保存してください。
 </td></tr>
 </table>
 
@@ -794,131 +985,226 @@ $ make mtTest
 
 <h3>4.1.1. TRIM (discard) 対応</h3>
 <p>
-SSD をマウントする際に -o discard を付けると、ファイルシステムが対応していれば
-TRIM コマンドが使われます。ssdtest の場合、ファイルの削除は殆どしないため、効果
-が薄いかもしれません。次のコマンドライン入力例は SSD の /dev/sdb1 パーティショ
-ンを discard オプションを付けてマウントする例です。</p>
+SSD をマウントする際に -o discard を付けると、ファイルシステムが対応して
+いれば TRIM コマンドが使われます。ssdtest の場合、ファイルの削除は殆ど
+しないため、効果が薄いかもしれません。次のコマンドライン入力例は SSD の
+/dev/sdb1 パーティションを discard オプションを付けてマウントする例です。</p>
 <pre>
 # mkdir /mnt/sdb1
 # mount -o discard /dev/sdb1 /mnt/sdb1
 </pre>
 <h3>4.1.2. パーティション・アラインメント</h3>
-<p>パーティションアラインメントを確認するには /sbin/fdisk に -u オプションを指定し
-て起動しパーティションテーブルを LBA 単位で表示して下さい。</p>
+<p>パーティションアラインメントを確認するには /sbin/fdisk に -u オプションを
+指定して起動しパーティションテーブルを LBA 単位で表示して下さい。</p>
 
 <H2>4.2. O_DIRECT</H2>
-<p>O_DIRECT はファイルを open する際のフラグです。</p>
+<p>測定プロットのタイトルなどに入る単語 O_DIRECT はファイルを open する際の
+フラグです。</p>
 
 <h3>4.2.1. "with O_DIRECT"</h3>
-<p>O_DIRECT が付いているテストは、OS のキャッシュを使わないアクセスをします。SSD
-の性能をそのまま測定します。</p>
+<p>O_DIRECT が付いているテスト (with O_DIRECT) は、OS のキャッシュを使わない
+アクセスをします。SSD の性能をそのまま測定します。</p>
 
 <h3>4.2.2. "without O_DIRECT"</h3>
-<p>O_DIRECT が付いていないテストは、OS のキャッシュを使うアクセスをします。実際の
-使用感に近い測定結果となります。SSD の機種によってはアクセス時間が長くなる傾向
-が出てきます。例えば 1～2MiBytes のアクセスにも関わらず 1 ～ 10 秒程掛かる場合
-が出てきます。</p>
-
-<h3>4.2.3. シーケンシャル・ランダムアクセスと O_DIRECT</h3>
-<p>シーケンシャルアクセスでは OS のキャッシュを使用してテストをしています。
-ランダムアクセスでは、OS のキャッシュを使用するテストと、使用しないテストの
-両方を実施します。</p>
+<p>O_DIRECT が付いていないテスト (without O_DIRECT) は、OS のキャッシュを使う
+アクセスをします。実際の使用感に近い測定結果となります。SSD の機種によっては
+アクセス時間が長くなる傾向が出てきます。例えば 1～2MiBytes のアクセスにも
+関わらず 1 ～ 10 秒程掛かる場合が出てきます。</p>
 
 <H2>4.3. カーネルパラメータチューニング</H2>
 <p>カーネルパラメータを調整して SSD の性能が出やすいようにしています。</p>
 
-<h3>4.3.1. /sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb</h3>
-<p>シーケンシャルアクセステストでは Linux の既定値と同じ 128KiByte に設定していま
-す。環境変数 SEQUENTIAL_READ_AHEAD_KB で設定できます。</p>
+<h3>4.3.1. /sys/block/${<i>SSD_DEVICE_NAME</i>}/queue/read_ahead_kb</h3>
+<p>シーケンシャルアクセステストでは Linux の既定値と同じ 128KiByte に
+設定しています。環境変数 SEQUENTIAL_READ_AHEAD_KB で設定できます。</p>
 <p>ランダムアクセステストでは、0KiByte に設定しています。環境変数 
-RANDOM_READ_AHEAD_KB で設定できます。Linux の既定値と違うので、実使用状態で出る
-性能と違う測定結果が得られる可能性が有ります。測定の方が転送速度が高めに出る
-傾向が有ると考えられます。</p>
+RANDOM_READ_AHEAD_KB で設定できます。Linux の既定値と違うので、実使用状態で
+出る性能と違う測定結果が得られる可能性が有ります。測定の方が転送速度が高め
+に出る傾向が有ると考えられます。</p>
 
-<h3>4.3.2. /sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb</h3>
-<p>標準的な Linux の環境では、シーケンシャルアクセステスト、ランダムアクセステスト
-双方で 30MiByte を設定しています。Linux の既定値は 512KiByte です。既定値に対し
-て大きな値にして性能向上を狙っています。</p>
+<h3>4.3.2. /sys/block/${<i>SSD_DEVICE_NAME</i>}/device/<a name="sys_max_sectors">max_sectors</a></h3>
+<p>1 回のデバイスに対するトランザクションで read/write する最大セクタ数の
+上限値です。次の <a href="#sys_max_sectors_kb">max_sectors_kb</a> の上限値を決めています。
+Linux kernel version, device driver, 転送経路のコントローラチップ,
+アクセス先のデバイスによってはこのノードが存在しないこともあります。</p>
+<p>ノードが存在し書き込み可能な場合は、値を増やすと転送効率が上昇し
+性能が上がります。</p>
+<p>しかし、何らかの不具合を起こす可能性もあります。ssdtest ツールはこの
+パラメータを変更しません。デバイスの純粋な性能を見るためには値が大きい方が
+望ましいです。大きくする場合は転送データを比較するなど入念なテストを行う
+ことをお勧めします。
+</p>
 
-<h3>4.3.3. /proc/sys/kernel/hung_task_timeout_secs</h3>
+<h3>4.3.3. /sys/block/${<i>SSD_DEVICE_NAME</i>}/queue/<a name="sys_max_sectors_kb">max_sectors_kb</a></h3>
+<p>1 回のデバイスに対するトランザクションで read/write する
+最大セクタ数です。<a href="#sys_max_sectors">max_sectors</a> または
+ドライバ内の制限値がこのパラメータの最大値を決めています。</p>
+<p>標準的な Linux の環境では、シーケンシャルアクセステスト、
+ランダムアクセステスト双方で 30Mi byte を設定しています。
+Linux の既定値は 512Ki byte です。既定値に対して大きな値にして性能向上を
+狙っています。</p>
+
+<h3>4.3.4. /proc/sys/kernel/hung_task_timeout_secs</h3>
 <p>hung_task_timeout_secs が存在する場合、テスト中は 0 に設定し、長時間処理が
-滞った場合でも強制 kill しない様にしています。テスト中 1 回の system call による 
-read/write 時間が 100 秒を超えることが有り、さらに既定値の 120 秒 を超えた場合
-テストが中断してしまう場合が有りました。</p>
+滞った場合でも強制 kill しない様にしています。テスト中 1 回の system call
+による read/write 時間が 100 秒を超えることが有り、さらに既定値の 120 秒を
+超えた場合テストが中断してしまう場合が有りました。</p>
 
-<h3>4.3.4. テスト終了後のカーネルパラメータ</h3>
-<p>テスト終了後、カーネルパラメータはテスト実行前に設定されていた値に戻ります。</p>
+<h3>4.3.5. テスト終了後のカーネルパラメータ</h3>
+<p>テスト終了後、カーネルパラメータはテスト実行前に設定されていた値に
+戻ります。</p>
 
 <H2>4.4. 専有メモリと swap 設定</H2>
 <p>ssdstress プロセスで約 6.5GiByte 使用します。page lock を試みます。常に
 6.5GiByte を主記憶に保持できる環境が理想です。他のプロセスでメモリを多く使用
 しない様にして下さい。例えば、runlevel 3 にして GUI を停止してください。</p>
 
-<p>swap の設定は変更していません。外乱を少なくするため、メモリが 8GiByte 以上ある
-場合は、メモリを多く専有するプロセスを停止し swap を off にするとよりよい結果に
-なると考えられます。</p>
+<p>swap の設定は変更していません。外乱を少なくするため、メモリが 8GiByte 以上
+ある場合は、メモリを多く専有するプロセスを停止し swap を off にするとよりよい
+結果になると考えられます。</p>
 
 <H2>4.5. テスト間の休止時間</H2>
-<p>シーケンシャルアクセステストとランダムアクセステストの間、パラメータを変えた
-ランダムアクセステストの間、一定のテスト休止時間を設けています。OS の cache
-に残留したアクセスの消化、遅延されているファイルシステムを構成している管理情
-報の更新、SSD 内の処理収束を待つ時間です。休止期間が無い場合、シーケンシャル
-アクセスに於いて、転送速度が大きく乱れる現象を確認しています。</p>
-<p>SSD 内の処理については推定するしかないのですが、wear leveling, 保留していた
-エラー訂正後の書き戻し処理が行われている可能性が有ります。</p>
+<p>シーケンシャルアクセステストとランダムアクセステストの間、パラメータを
+変えたランダムアクセステストの間、一定のテスト休止時間を設けています。OS
+の cache に残留したアクセスの消化、遅延されているファイルシステムを
+構成している管理情報の更新、SSD 内の処理収束を待つ時間です。休止期間が
+無い場合、シーケンシャルアクセスに於いて、転送速度が大きく乱れる現象を
+確認しています。</p>
+<p>SSD 内の処理については推定するしかないのですが、wear leveling,
+保留していたエラー訂正後の書き戻し処理が行われている可能性が有ります。</p>
 
 <H2>4.6. 書き込みデータ</H2>
-<p>書き込みデータは MT19937 アルゴリズムを使用した疑似乱数で生成しています。書き
-込みデータの破損が無いか検査用の符号を付加しています。検査用の符号はブロック
-位置とチェックサムで構成されています。</p>
+<p>書き込みデータは MT19937 アルゴリズムを使用した疑似乱数で生成しています。
+書き込みデータの破損が無いか検査用の符号を付加しています。検査用の符号は
+ブロック位置とチェックサムで構成されています。</p>
 
-<p>圧縮手法を使用して高速化している SSD ではその効果が出ずに、結果が低い転送速度
-を示すことがあります。</p>
+<p>圧縮手法を使用して高速化している SSD ではその効果が出ずに、結果が低い
+転送速度を示すことがあります。</p>
 
-<p>ランダムアクセステスト、シーケンシャルアクセステストの read にて破損が発見
-された場合、テストは Fail します。破損検査は、転送速度に影響が出ない程度で
-軽く行っています。</p>
+<p>ランダムアクセステスト、シーケンシャルアクセステストの read にて破損が
+発見された場合、テストは Fail します。破損検査は、転送速度に影響が出ない
+程度で軽く行っています。</p>
 
-<p>万が一、テスト対象の SSD が書き込みデータパターン照合等により、テスト用の特殊
-な挙動をしていると考えられる場合は環境変数 SEED に乱数の種値を設定してくださ
-い。SEED 値を変更するとランダムアクセスパターンも変化します。</p>
+<p>万が一、テスト対象の SSD が書き込みデータパターン照合等により、テスト用の
+特殊な挙動をしていると考えられる場合は環境変数 SEED に乱数の種値を設定して
+ください。SEED 値を変更するとランダムアクセスパターンも変化します。</p>
 
 <H2>4.7. 検査符号生成、符号検査と OS のページ管理の関係</H2>
-<p>検査符号生成と符号検査するもう一つの目的は OS のページ管理による影響を減らす
-ことを狙っています。</p>
+<p>検査符号生成と符号検査するもう一つの目的は OS のページ管理による影響を
+減らすことを狙っています。</p>
 
 <h3>4.7.1. 確実な read() 実行</h3>
-<p>Linux ではまだ積極的に取り入れていないはずですが、read() システムコールで読み
-出したデータをプログラムから memory read するまで主記憶に配置しない場合がある
-OS が存在します。memory read をしなければ read() システムコールはデバイスから
-何も読みだしません。アクセスエラー等の例外的な事象の正確性は犠牲になりますが、
-多くの場合、支障をきたすことはありません。</p>
+<p>Linux ではまだ積極的に取り入れていないはずですが、read() システムコールで
+読み出したデータをプログラムから memory read するまで主記憶に配置しない場合が
+あるOS が存在します。memory read をしなければ read() システムコールはデバイス
+から何も読みだしません。アクセスエラー等の例外的な事象の正確性は犠牲に
+なりますが、多くの場合、支障をきたすことはありません。</p>
 
 <p>この様な OS の最適化の影響を減らすため符号検査を実施しています。
 memory_access_time, Tmem_access_total の異様な増加が認められる場合、read() 
 システムコールに何らかの最適化が施されている可能性が有ります。</p>
 
 <h3>4.7.2. page lock</h3>
-<p>ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock をして
-常に主記憶上に read と write バッファを確保します。page lock が出来なかった
-場合は、ランダムアクセス時 read 前は 0x0 を、write 前は検査符号をバッファに
-書き込み、バッファを出来る限り主記憶に配置されている状態にします。</p>
+<p>ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock
+をして常に主記憶上に read と write バッファを確保します。page lock が
+出来なかった場合は、ランダムアクセス時 read 前は 0x0 を、write 前は
+検査符号をバッファに書き込み、バッファを出来る限り主記憶に配置されている
+状態にします。</p>
 
+<h3>4.8. 32bit プロセッサ または 小メモリ環境での実行</h3>
+<p>ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock
+をして常に主記憶上に read と write バッファを確保します。page lock が
+出来なかった場合は、ランダムアクセス時 read 前は 0x0 を、write 前は
+検査符号をバッファに書き込み、バッファを出来る限り主記憶に配置されている
+状態にします。</p>
 
-<H1>5. ライセンス</H1>
+<h1>5. 履歴</h1>
+<h2>5.1. 変更履歴一覧</h2>
+<p>主な変更点は次の通りです。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Version</th><th>Date</th><th>Updates</th></tr>
+<tr><td align="center">0.7</td><td>2012/11/18</td>
+<td>
+<ul>
+<li>リリース開始</li>
+</ul>
+</td>
+<tr><td align="center">0.71</td><td align="center">2012/12/23</td>
+<td>
+<ul>
+<li>説明文書追加</li>
+<li>MT-Random (mt19937ar) 添付文書追加</li>
+<li>gnuplot 4.2 対応</li>
+<li>htmlplot.sh: HTML ページにアクセス時間 100 秒越えを記録した数を表示</li>
+<li>htmlplot.sh: HTML ページに総書き込みバイト数、総読み込みバイト数表示</li>
+<li>連続テストスクリプト追加</li>
+<li>gcc コマンドライン文法変更対応</li>
+</ul>
+</td>
+<tr><td align="center">1.0</td><td align="center">2012/12/31</td>
+<td>
+<ul>
+<li>HTML 説明文書追加</li>
+<li>テスト対象ボリュームのファイルシステムが FAT, FAT32 だった場合、
+    テストファイルサイズを 4095Mibyte にする。</li>
+<li>テストログディレクトリのオーナーをカレントディレクトリと同じにして、
+    read/write 可にする。</li>
+<li>テストエンジン ssdstress.c 最適化強化</li>
+<li>ssdstress.c: Read/Write buffer の page lock を試みるようにした。
+    page lock ができない場合は page fault をテスト中に起こさない
+    様にする。</li>
+<li>ssdstress.c: 出力フォーマットのタイトル行の列名修正</li>
+<li>pageupdater.sh, pageupdaterloop.h: 連続テスト用ページ更新ツールで
+    引数無しの場合、カレントディレクトリを対象とするようにした</li>
+<li>mt19937ar.c 最適化強化</li>
+<li>make clean でエラーが出る問題解消</li>
+</ul>
+</td>
+</tr>
+<tr><td align="center">1.01</td><td align="center">2013/01/02</td>
+<td>
+<ul>
+<li>配布ファイル日付をリリース日時に付け直さず、開発作業で使っている
+    ファイルの日付とした。</li>
+<li>typo 修正。</li>
+</ul>
+</td>
+</tr>
+<tr><td align="center">2.00</td><td align="center">2017/1</td>
+<td>
+<ul>
+<li>テキスト説明文書 README_JP 廃止</li>
+<li>テスト方法変更: ランダムアクセステストにてブロック数分布を
+    指数関数分布に変更し、時間短縮、書き込み負荷軽減、
+    プロット鮮明化をした。</li>
+<li>転送長 - アクセス時間のグラフの縦軸・横軸を入れ替え
+     縦軸: アクセス時間 - 横軸: 転送長とした。</li>
+<li>グラフプロットの Model Name を差し替えられる様にした。</li>
+<li>ubuntu 14.04 またはそれ以降でテスト対象のボリュームを誤認識する
+    問題を解消した。</li>
+<li>gnuplot 5.0 対応: エラー、格子の色変わり対応、タイトル文字列の
+    一部が添え字などに変形する問題対応</li>
+<li>UHS1 SD card (MicroSD card) 向けプロットスクリプトを追加</li>
+<li>テストスクリプト整理</li>
+</ul>
+</td>
+</tr>
+</table>
+<H1>6. ライセンス</H1>
 
-<H2>5.1. SSD テストプログラム群</H2>
+<H2>6.1. SSD テストプログラム群</H2>
 <p>次のファイル群は 2 条項 BSD ライセンスです。</p>
 
-<p>htmlplot.sh, pageupdater.sh, pageupdaterloop.sh, plotlogmix.sh,
-plotlogmix_usbmems.sh, plotlogseq.sh, plotlogseq_usbmems.sh,
-ssdtest.sh, ssdtest_light.sh, ssdtest_usbmems.sh, ssdtestcommon.sh,
-ssdtestloop.sh,
+<p>htmlplot.sh, pageupdater.sh, pageupdaterloop.sh,
+plotlogmix.sh, plotlogmix_uhs1.sh, plotlogmix_usbmems.sh,
+plotlogseq.sh, plotlogseq_uhs1.sh, plotlogseq_usbmems.sh,
+ssdtest.sh, ssdtest_light.sh, ssdtest_light_usbmems.sh,
+ssdtest_usbmems.sh, ssdtestcommon.sh, ssdtestloop.sh,
 random-ts_at.gnuplot, random-at_tl.gnuplot, random-ts_tl.gnuplot,
 sequential-ts_pr.gnuplot,
-ssdstress.c, Makefile, README_JP, readme.html</p>
+ssdstress.c, Makefile, readme.html</p>
 
-<H2>5.2. MT19937 アルゴリズム</H2>
+<H2>6.2. MT19937 アルゴリズム</H2>
 <p>次の MT19937 アルゴリズムソースと文書は Makoto Matsumoto 博士と
 Takuji Nishimura 博士と が作成したソフトウエアであり、3 条項 BSD
 ライセンスです。</p>
@@ -929,7 +1215,7 @@ Takuji Nishimura 博士と が作成したソフトウエアであり、3 条項
 するための修正、コメント部分を doxygen スタイルにする修正を施しています。</p>
 
 <H1>Licence Notice</H1>
-<p>Copyright 2012 Akinori Furuta&lt;afuruta@m7.dion.ne.jp&gt;.<br />
+<p>Copyright 2012, 2017 Akinori Furuta&lt;afuruta&#64;m7.dion.ne.jp&gt;.<br />
 All rights reserved.
 </p>
 
@@ -946,8 +1232,8 @@ are met:</p>
    and/or other materials provided with the distribution.</li>
 </ol>
 
-<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
 THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
 CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
@@ -957,7 +1243,6 @@ OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
-
 
 </body>
 </html>
