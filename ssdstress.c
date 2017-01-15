@@ -1,6 +1,6 @@
 /*! ssdstress: SSD stress test tool.
 
-   Copyright 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+   Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
    All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
@@ -101,7 +101,7 @@ long	ScPageSize=4096;
 /*! Copyright notice. */
 const char copyright_notice[]=
 	"ssdstress: SSD stress test tool. "
-	"Copyright (C) 2012, 2015 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
+	"Copyright (C) 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
 
 /*! Command line argument holder. */
 typedef struct {
@@ -377,8 +377,8 @@ ssize_t TryWrite(int fd, const unsigned char *b, size_t len, int *done)
 		if ((remain>0) && (wresult<=ScPageSize)) {
 			/* Too small progress. */
 			struct timespec ts_req;
-			printf("fd=%d: Too small write progress. remain=%lld, wresult=%lld, try_count=%d\n",
-				fd, (long long)remain, (long long)wresult, try_count
+			printf("fd=%d: Too small write progress. remain=%zd, wresult=%zd, try_count=%d\n",
+				fd, remain, wresult, try_count
 			);
 			/* yeld other thread. */
 			ts_req.tv_sec=0;
@@ -433,8 +433,8 @@ ssize_t TryRead(int fd, unsigned char *b, size_t len, int *done)
 		if ((remain>0) && (rresult<=ScPageSize)) {
 			/* Too small progress. */
 			struct timespec ts_req;
-			printf("fd=%d: Too small read progress. remain=%lld, rresult=%lld, try_count=%d\n",
-				fd, (long long)remain, (long long)rresult, try_count
+			printf("fd=%d: Too small read progress. remain=%zd, rresult=%zd, try_count=%d\n",
+				fd, remain, rresult, try_count
 			);
 			/* yeld other thread. */
 			ts_req.tv_sec=0;
@@ -1295,8 +1295,8 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 		TTimeSpecGetRealTime(&ts_write_e_tmp);
 		if ((!done) || (wresult!=chunk)) {
 			/* Can't write requested. */
-			printf("%s: Error: Write failed. wresult=0x%lx,  chunk=0x%lx. %s(%d)\n"
-				,opt->PathName, (long)wresult, chunk, strerror(errno), errno
+			printf("%s: Error: Write failed. wresult=0x%zx,  chunk=0x%lx. %s(%d)\n"
+				,opt->PathName, wresult, chunk, strerror(errno), errno
 			);
 			return(0 /* false */);
 		}
@@ -1447,8 +1447,8 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 		TTimeSpecGetRealTime(&ts_read_e_tmp);
 		if ((!done) || (rresult!=chunk)) {
 			/* Can't write requested. */
-			printf("%s: Error: Read failed. rresult=0x%lx,  chunk=0x%lx. %s\n"
-				,opt->PathName, (long)rresult, chunk, strerror(errno)
+			printf("%s: Error: Read failed. rresult=0x%zx,  chunk=0x%lx. %s\n"
+				,opt->PathName, rresult, chunk, strerror(errno)
 			);
 			return(0 /* false */);
 		}
@@ -1685,7 +1685,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			int	done;
 
 			if (length>mem_size) {
-				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, mem_size=%lx\n"
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, mem_size=%zx\n"
 					, opt->Argv0, length, mem_size
 				);
 				return 0; /* failed */
@@ -1702,8 +1702,8 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			/* Record time at done read. */
 			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
-				printf("%s: Error: read failed. %s length=0x%lx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno),(long)length,(long)(ioresult));
+				printf("%s: Error: read failed. %s length=0x%zx, ioresult=0x%lx.\n"
+				,opt->PathName,strerror(errno), length, (long)(ioresult));
 				return 0; /* failed */
 			}
 			if (opt->DoMark!=0) {
@@ -1745,7 +1745,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 				MarkFileImage(img_work,length,seek_to_block,opt->BlockSize);
 			}
 			if ((img_offset+length)>img_size) {
-				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%lx, img_size=%lx\n"
+				printf("%s: Error: Internal, allocated buffer shorter than needed. length=%zx, img_size=%zx\n"
 					, opt->Argv0, length, img_size
 				);
 				return 0; /* failed */
@@ -1756,8 +1756,8 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			/* Record time at touch. */
 			TTimeSpecGetRealTime(&ts_rw_done);
 			if ((!done) || (ioresult!=length)) {
-				printf("%s: Error: write failed. %s length=0x%lx, ioresult=0x%lx.\n"
-				,opt->PathName,strerror(errno),(long)length,(long)ioresult);
+				printf("%s: Error: write failed. %s length=0x%zx, ioresult=0x%lx.\n"
+				,opt->PathName,strerror(errno), length, (long)ioresult);
 				return 0;
 			}
 			TTimeSpecSub(&ts_rw_delta,&ts_rw_done,&ts_rw_start);
