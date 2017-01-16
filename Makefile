@@ -60,7 +60,7 @@ DIST_FILES=\
 	pageupdater.sh pageupdaterloop.sh \
 	mt19937ar.c mt19937ar.h mtTest.c mt19937ar.out readme-mt.txt \
 	ssdstress.c Makefile \
-	readme.html README_JP
+	readme.html
 
 
 DIST_DIR=ssdtest_2.00
