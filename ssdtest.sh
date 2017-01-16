@@ -282,6 +282,21 @@ then
 	exit 2
 fi
 
+TIME_PROFILE=/usr/bin/time
+
+if [[ ! -x ${TIME_PROFILE} ]]
+then
+	# Not found time command.
+	TIME_PROFILE=/bin/time
+fi
+
+if [[ ! -x ${TIME_PROFILE} ]]
+then
+	# Not found time command.
+	# Try shell build in.
+	TIME_PROFILE=time
+fi
+
 TestFile="${parsed_arg[${i}]}"
 
 # File or directory.
@@ -595,7 +610,7 @@ do
 		( show_config ) >> ${LogFile}
 
 		echo 1 > ${TestBinResult}
-		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
 		  && echo 0 > ${TestBinResult} \
 		) | tee -a ${LogFile}
 		if (( `cat "${TestBinResult}"` != 0 ))
@@ -623,7 +638,7 @@ do
 		( show_config ) >> ${LogFile}
 
 		echo 1 > ${TestBinResult}
-		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
 		  && echo 0 > ${TestBinResult} \
 		) | tee -a ${LogFile}
 		if (( `cat "${TestBinResult}"` != 0 ))
@@ -652,7 +667,7 @@ do
 		( show_config ) >> ${LogFile}
 
 		echo 1 > ${TestBinResult}
-		(    /usr/bin/time  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
 		  && echo 0 > ${TestBinResult} \
 		) | tee -a ${LogFile}
 
