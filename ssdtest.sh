@@ -40,7 +40,8 @@ function Help() {
 	echo "test_file_or_directory: "
 	echo "  Test file name to read and write, or test directory to create"
 	echo "  temporal test file to read and write."
-	echo "This script create logs ./log-\${OptionalLabel}{StorageModelName}-{DateCode}"
+	echo "This script create logs to ./log-\${ModelName}\${ModelNameLabel}-\${TestDateTime}-\${TestFileSize}
+"
 	exit 1
 }
 
