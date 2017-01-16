@@ -4,3 +4,5 @@ ssdstress
 log_*
 log-*
 ssdtest_*.tar.gz
+ssdtest_[0-9]*
+mtTestOutUnderTest.txt
