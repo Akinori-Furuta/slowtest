@@ -50,7 +50,7 @@ CLIBS=-lrt -lm
 
 DIST_FILES=\
 	ssdtest.sh ssdtest_light.sh \
-	ssdtest_usbmems.sh ssdtestloop.sh \
+	ssdtest_usbmems.sh ssdtest_light_usbmems.sh ssdtestloop.sh \
 	ssdtestcommon.sh \
 	htmlplot.sh \
 	plotlogmix.sh plotlogmix_usbmems.sh plotlogmix_uhs1.sh \
