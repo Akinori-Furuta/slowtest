@@ -36,9 +36,13 @@ SSD 内のメモリデバイスアクセス並列度などによると考えら�
 	<td>
 		gcc,
 		gawk(ubuntu の場合、awk では動作しません),
+		time(外部コマンド),
 		smartctl(smartmontools),
 		hdparm,
-		gnuplot 4.2 or later
+		gnuplot 4.2 or later<br />
+		ubuntu(debian 系)の環境であれば次のコマンドを実行してパッケージをインストールしてください。
+<pre>$ sudo apt-get update
+$ sudo apt-get install gcc gawk time smartmontools hdparm gnuplot</pre>
 	</td>
 </tr>
 </table>
@@ -74,17 +78,9 @@ SSD 内のメモリデバイスアクセス並列度などによると考えら�
 
 <H2>1.4. テスト時間</H2>
 <p>
-SSD の種類にもよりますが、1 回のテストに付き 120GBytes の SSD で 12 ～ 48 時間
+SSD の種類にもよりますが、1 回の完全テスト (ssdtest.sh) に付き 120GBytes の SSD で 12 ～ 48 時間
 掛かります。
 </p>
-
-<H2>1.5. 寿命負荷</H2>
-<p>1 回のテストに付き SSD に対して次の表に示す容量を書き込みます。</p>
-<table border="1" cellspacing="0" cellpadding="2">
-<tr><th>テスト対象</th><th>書き込み容量</th></tr>
-<tr><td>SSD</td><td>約 空き容量 x 3.6 + 12Ti byte</td></tr>
-<tr><td>USB Memory</td><td>約 空き容量 x 3.6 + 45.6G byte</td></tr>
-</table>
 
 <H1>2. 展開とコンパイル</H1>
 
@@ -194,7 +190,7 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 それぞれ次の表に示すテストを行います。
 </p>
 <table border="1" cellspacing="0" cellpadding="2">
-<tr><th>スクリプト名</th><th>機能</th><th>テスト構成</th><th>シーケンシャルアクセス単位<br />(blocks, (bytes))</th><th>ランダムアクセス単位<br />(BlocksMin .. BlocksMax, (BytesMin .. BytesMax))</th></tr>
+<tr><th>スクリプト名</th><th>機能</th><th>テスト構成</th><th>シーケンシャルアクセス単位<br />(blocks, (bytes))</th><th>ランダムアクセス単位<br />(BlocksMin .. BlocksMax, (BytesMin .. BytesMax))</th><th>書き込み量 bytes</th><th>必要空きメモリ bytes</th></tr>
 <tr>
 	<td >ssdtest.sh</td>
 	<td>SSD の完全テスト</td>
@@ -221,6 +217,8 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 		</table>
 	<td align="center">2Mi, (1Gi)</td>
 	<td align="center">1 .. 4Mi, (512 .. 2Gi)</td>
+	<td align="center">約 <i>FreeSpace</i> * 3.6 + 2.2Ti</td>
+	<td align="center">約 6.03Gi</td>
 </tr>
 <tr><td>ssdtest_light.sh</td>
 	<td>SSD の軽量テスト</td>
@@ -236,6 +234,8 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 	</td>
 	<td align="center">2Mi, (1Gi)</td>
 	<td align="center">1 .. 4Mi, (512 .. 2Gi)</td>
+	<td align="center">約 <i>FreeSpace</i> * 0.9 + 570Gi</td>
+	<td align="center">約 6.03Gi</td>
 </tr>
 <tr><td>ssdtest_usbmem.sh</td>
 	<td>USB memory の完全テスト</td>
@@ -267,8 +267,10 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 		結果が得られる場合もあります。
 		</p>
 	</td>
-	<td align="center">32Ki, (16Mi)</td>
+	<td align="center">16Ki, (8Mi)</td>
 	<td align="center">1 .. 64Ki, (512 .. 32Mi)</td>
+	<td align="center">約 <i>FreeSpace</i> * 3.6 + 45.6Gi</td>
+	<td align="center">約 128Mi</td>
 </tr>
 <tr><td>ssdtest_light_usbmem.sh</td>
 	<td>USB memory の軽量テスト</td>
@@ -286,11 +288,15 @@ $ ${tool_path}/htmlplot.sh log_directory &gt; html_page_file.html
 		結果が得られる場合もあります。
 		</p>
 	</td>
-	<td align="center">32Ki, (16Mi)</td>
+	<td align="center">16Ki, (8Mi)</td>
 	<td align="center">1 .. 64Ki, (512 .. 32Mi)</td>
+	<td align="center">約 <i>FreeSpace</i> * 0.9 + 11.3Gi</td>
+	<td align="center">約 128Mi</td>
 </tr>
 </table>
-<p>Note: グラフのタイトルに OS cache enabled の場合は "without O_DIRECT"、OS cache disabled の場合は "with O_DIRECT" という文言が入ります。</p>
+<p>Note: グラフのタイトルに OS cache enabled の場合は "without O_DIRECT"、OS cache disabled の場合は "with O_DIRECT" という文言が入ります。<br />
+Note: <i>FreeSpace</i> は測定開始時点でボリュームに存在した空き容量です。
+</p>
 <p>それぞれのコマンドラインは次の通りです。スクリプト内で ssdstress を呼び出します。</p>
 <pre># ${tool_path}/ssdtest.sh [-L ModelNameLabel] /path/to/test
 # ${tool_path}/ssdtest_light.sh [-L ModelNameLabel] /path/to/test
@@ -500,7 +506,7 @@ ssdtest_light_*.sh スクリプトは OS のキャッシュを無効にして単
 0 を指定した場合は "-a オプションで指定した値" x 2 がブロック数になります。
 以下の式の値が 4Gi を超える場合、General Protection Fault が発生することが有ります。<br />
 <br />
-"<i>-b オプション</i>" x "<i>-a オプション</i>" x 2<br />
+"<i>-b オプション</i>" * "<i>-a オプション</i>" * 2<br />
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-u 1024</nobr></td><td valign="top">1024 ブロックを指定し、-b 512 だった場合は、
 512Ki ( = 1024 x 512 ) バイトがシーケンシャルアクセスで一度にアクセスするバイト数になります。
@@ -543,7 +549,7 @@ ssdtest_light_*.sh スクリプトは OS のキャッシュを無効にして単
 オプションの影響を無くすには -u オプションを使用してください。
 以下の式の値が 4Gi を超える場合、General Protection Fault が発生することが有ります。<br />
 <br />
- "<i>-b オプション</i>" x "<i>-a オプション</i>" x 2<br />
+ "<i>-b オプション</i>" * "<i>-a オプション</i>" * 2<br />
 </td></tr>
 </table>
 </td>
@@ -554,7 +560,7 @@ ssdtest_light_*.sh スクリプトは OS のキャッシュを無効にして単
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-o 4096</nobr></td><td valign="top">4096 ブロックから
 アクセステストの対象にする。<br />
--b 512 の場合、バイトオフセット 2097152 ( = 512 x 4096 )からアクセスする。</td></tr>
+-b 512 の場合、バイトオフセット 2097152 ( = 512 * 4096 )からアクセスする。</td></tr>
 </table>
 </td>
 </tr>
@@ -564,7 +570,7 @@ ssdtest_light_*.sh スクリプトは OS のキャッシュを無効にして単
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-e 67108863</nobr></td><td valign="top">67108863 ブロック目
 までをアクセス範囲として指定する。-b 512 の場合、末尾バイトオフセットは 34359738367
-( = 512 x ( 67108863 + 1) - 1) になります。</td></tr>
+( = 512 * ( 67108863 + 1) - 1) になります。</td></tr>
 </table>
 </td>
 </tr>
@@ -594,7 +600,7 @@ read と write アクセスの出現確率は半々です。疑似乱数によ�
 </tr>
 <tr><td valign="top"><nobr>-z <i>n</i></nobr></td>
 <td valign="top">シーケンシャルアクセステスト、ランダムアクセステスト後に休止
-(sleep) する最小時間を指定します。テスト中、Tac="<a href="#random_access_time">access_time</a>" x 2 が
+(sleep) する最小時間を指定します。テスト中、Tac="<a href="#random_access_time">access_time</a>" * 2 が
 この値より大きければ、休止時間は Tac になります (既定 10)
 <table cellpadding="2">
 <tr><td valign="top"><nobr>-z 20</nobr></td><td valign="top">休止時間を 20 秒にする。
@@ -741,9 +747,9 @@ plotlogmix_uhs1.sh で設定している次の環境変数を調整してくだ�
 <p>シーケンシャルアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。</p>
 <pre>
-$ ${tool_path}/plotlogseq.sh [-L model_name] log_directory
-$ ${tool_path}/plotlogseq_usbmems.sh [-L model_name] log_directory
-$ ${tool_path}/plotlogseq_uhs1.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogseq.sh [-L model_name] [log_directory]
+$ ${tool_path}/plotlogseq_usbmems.sh [-L model_name] [log_directory]
+$ ${tool_path}/plotlogseq_uhs1.sh [-L model_name] [log_directory]
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
 <tr><th>parameter</th><th>description</th></tr>
@@ -764,9 +770,9 @@ ssdtest.sh が生成したログ結果を保存したディレクトリです。
 <p>ランダムアクセステスト結果をプロットします。PNG ファイルが生成されます。
 htmlplot.sh で使用する情報も生成します。</p>
 <pre>
-$ ${tool_path}/plotlogmix.sh [-L model_name] log_directory
-$ ${tool_path}/plotlogmix_usbmems.sh [-L model_name] log_directory
-$ ${tool_path}/plotlogmix_uhs1.sh [-L model_name] log_directory
+$ ${tool_path}/plotlogmix.sh [-L model_name] [log_directory]
+$ ${tool_path}/plotlogmix_usbmems.sh [-L model_name] [log_directory]
+$ ${tool_path}/plotlogmix_uhs1.sh [-L model_name] [log_directory]
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
 <tr><th>parameter</th><th>description</th></tr>
@@ -787,7 +793,7 @@ ssdtest.sh が生成したログ結果を保存したディレクトリです。
 <p>プロットした図を HTML ページにまとめます。次の様にコンソール出力結果をリダイレ
 クトしてページファイルに格納してください。</p>
 <pre>
-$ ${tool_path}/htmlplot.sh [-L model_name] log_directory &gt; html_page_file.html
+$ ${tool_path}/htmlplot.sh [-L model_name] [log_directory] &gt; html_page_file.html
 </pre>
 <table border="1" cellspacing="0" cellpadding="2">
 <tr><th>parameter</th><th>description</th></tr>
@@ -1112,12 +1118,35 @@ memory_access_time, Tmem_access_total の異様な増加が認められる場合
 状態にします。</p>
 
 <h3>4.8. 32bit プロセッサ または 小メモリ環境での実行</h3>
-<p>ssdstress は mmap でメモリを確保する際 page lock を試みます。page lock
-をして常に主記憶上に read と write バッファを確保します。page lock が
-出来なかった場合は、ランダムアクセス時 read 前は 0x0 を、write 前は
-検査符号をバッファに書き込み、バッファを出来る限り主記憶に配置されている
-状態にします。</p>
-
+<p>ssdstress.c は 32bit プロセッサ上でもコンパイル・実行可能です。
+32 bit プロセッサ上で ssdtest_usbmem.sh, ssdtest_light_usbmem.sh
+が使用可能です。これらの必要メモリ量は 120Mibyte です。
+主記憶が少ない環境でも実行可能です。</p>
+<p>ssdtest_usbmem.sh, ssdtest_light_usbmem.sh を SSD に対して
+使用することが可能です。使用した場合、テスト規模が縮小され、
+ランダムアクセステストの転送長は最長 32Mi byte になります。
+得られる性能データにピーク性能が含まれない場合が有ります。
+あるいは SSD 内のキャッシュメモリが 16Mi byte 以上ある場合、
+書き込み速度はキャッシュメモリに書き込むまでの処理を測る事になり、
+不揮発メモリへの書き込み速度が測定されない場合があります。</p>
+<p>性能測定範囲、必要メモ量を調整するには
+ssdtest_usbmem.sh, ssdtest_light_usbmem.sh スクリプト内で設定している次の
+環境変数の値を調節してください。</p>
+<table border="1" cellspacing="0" cellpadding="2">
+<tr><th>Exporting environment variable</th><th>Description</th></tr>
+<tr><td>RANDOM_BLOCKS_MAX</td>
+	<td>ランダムアクセスで一度に read/write するブロック数の最大値。
+	必要メモリ量は約 BLOCK_SIZE * <i>RANDOM_BLOCKS_MAX</i> * 3 + 32Mi byte
+	です(BLOCK_SIZE = 512)。テスト中に同時にプロットする場合は +100Mi byte
+	程度を見込んで下さい。 
+	</td>
+</tr>
+<tr><td>SEQUENTIAL_BLOCKS</td>
+	<td>シーケンシャルアクセスで一度に read/write するブロック数。
+		<i>RANDOM_BLOCKS_MAX</i> * 2 以下の値であること。
+	</td>
+</tr>
+</table>
 <h1>5. 履歴</h1>
 <h2>5.1. 変更履歴一覧</h2>
 <p>主な変更点は次の通りです。</p>
@@ -1170,7 +1199,7 @@ memory_access_time, Tmem_access_total の異様な増加が認められる場合
 </ul>
 </td>
 </tr>
-<tr><td align="center">2.00</td><td align="center">2017/1</td>
+<tr><td align="center">2.00</td><td align="center">2017/1/16</td>
 <td>
 <ul>
 <li>テキスト説明文書 README_JP 廃止</li>
