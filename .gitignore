@@ -5,4 +5,5 @@ log_*
 log-*
 ssdtest_*.tar.gz
 ssdtest_[0-9]*
+mtTest
 mtTestOutUnderTest.txt
