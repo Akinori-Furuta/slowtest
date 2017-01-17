@@ -1,6 +1,8 @@
+*.o
+ssdstress
 *.bak
 log_*
 log-*
-ssdtest_0.*
-ssdtest_1.*
-ssdtest_2.*
+ssdtest_*.tar.gz
+ssdtest_[0-9]*
+mtTestOutUnderTest.txt
