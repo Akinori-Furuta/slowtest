@@ -323,9 +323,9 @@ do
 			TextLogFile=${p%-sw.png}.txt
 			SmartFile=${p%-sw.png}-smart.html
 			ExtractSmartctl ${TextLogFile} ${SmartFile} \
-				"S.M.A.R.T before sequential write - ${H2Title}"
+				"S.M.A.R.T. before sequential write - ${H2Title}"
 			echo "<P id=\"${ParagraphIdSw}\">Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
-			echo "<A href=\"${SmartFile}\">S.M.A.R.T before sequential write</A><BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T. before sequential write</A><BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
@@ -338,10 +338,10 @@ do
 			TextLogFile=${p%-sr.png}.txt
 			SmartFile=${p%-sr.png}-smart.html
 			ExtractSmartctl ${TextLogFile} ${SmartFile} \
-				"S.M.A.R.T before sequential write - ${H2Title}"
+				"S.M.A.R.T. before sequential write - ${H2Title}"
 
 			echo "<P id=\"${ParagraphIdSr}\">Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
-			echo "<A href=\"${SmartFile}\">S.M.A.R.T before sequential read</A><BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T. before sequential read</A><BR>"
 			echo -n "<A href=\"${p}\">"
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
