@@ -489,8 +489,8 @@ echo "<TABLE border=1 id=\"RawDataLinkTxtTable\">"
 echo "<TR><TH>File<TH>PASS<TH>FAIL</TR>"
 for f in *.txt
 do
-	pass_count=`grep '[.]bin' ${f} | grep 'PASS' | wc -l`
-	fail_count=`grep '[.]bin' ${f} | grep 'FAIL' | wc -l`
+	pass_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'PASS' | wc -l`
+	fail_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'FAIL' | wc -l`
 	echo -n "<TR>"
 	echo -n "<TD align="left"><A href=\"${f}\">${f}</A>"
 	echo -n "<TD align="right">${pass_count}<TD align="right">${fail_count}</TR>"
