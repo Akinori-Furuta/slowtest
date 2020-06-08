@@ -1,6 +1,6 @@
 #!/bin/bash
 # Test SMR HDD performance script.
-#   Brand New test, Sequential Read and Write on RAW device.
+#  "Sequential Write" and "Sequential Read" on RAW device.
 #
 #  Copyright 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
