@@ -75,6 +75,11 @@ then
 	RANDOM_READ_AHEAD_KB=0
 fi
 
+if [[ -z ${IO_TIMEOUT} ]]
+then
+	IO_TIMEOUT=$(( 120 * 1000 ))
+fi
+
 
 if [[ -z ${TEST_USAGE_RATIO} ]]
 then
@@ -193,9 +198,15 @@ function recover_queue_config() {
 			echo "${ReadAheadKb}: Info: Restore read_ahead_kb. ReadAheadKb=${SavedReadAheadKb}"
 			echo ${SavedReadAheadKb} > ${ReadAheadKb}
 		fi
+		if [[ -n ${SavedIoTimeOut} ]]
+		then
+			echo "${IoTimeOut}: Info: Restore io_timeout. IoTimeOut=${SavedIoTimeOut}"
+			echo ${SavedIoTimeOut} > ${IoTimeOut}
+		fi
 	else
 		echo "${MaxSectorsKb}: Notice: Skip restore max_sectors_kb, not root. SavedMaxSectorsKb=${SavedMaxSectorsKb}"
 		echo "${ReadAheadKb}: Notice: Skip restore read_ahead_kb, not root. ReadAheadKb=${SavedReadAheadKb}"
+		echo "${IoTimeOut}: Notice: Skip restore io_timeout, not root. IoTimeOut=${SavedIoTimeOut}"
 	fi
 }
 
@@ -465,10 +476,18 @@ fi
 MaxHwSectorsKb=/sys/block/${STORAGE_DEVICE_NAME}/queue/max_hw_sectors_kb
 MaxSectorsKb=/sys/block/${STORAGE_DEVICE_NAME}/queue/max_sectors_kb
 ReadAheadKb=/sys/block/${STORAGE_DEVICE_NAME}/queue/read_ahead_kb
+IoTimeOut=/sys/block/${STORAGE_DEVICE_NAME}/queue/io_timeout
 
 ReadMaxHwSectorsKb=`cat ${MaxHwSectorsKb}`
 SavedMaxSectorsKb=`cat ${MaxSectorsKb}`
 SavedReadAheadKb=`cat ${ReadAheadKb}`
+if [[ -e "${IoTimeOut}" ]]
+then
+	SavedIoTimeOut=`cat ${IoTimeOut}`
+else
+	echo "${SavedIoTimeOut}: Not found."
+	SavedIoTimeOut=""
+fi
 
 if (( ${Uid} == 0 ))
 then
@@ -485,9 +504,14 @@ then
 		echo "${MaxSectorsKb}: Info: Sekip update max_sectors_kb, already modified large enough."
 	fi
 	echo 0 > ${ReadAheadKb}
+	if [[ -e ${IoTimeOut} ]]
+	then
+		echo ${IO_TIMEOUT} > ${IoTimeOut}
+	fi
 else
 	echo "${MaxSectorsKb}: Notice: Skip update max_sectors_kb, not root."
 	echo "${ReadAheadKb}: Notice: Skip update read_ahead_kb, not root."
+	echo "${IoTimeOut}: Notice: Skip update io_timeout, not root."
 fi
 
 # Estimate test file size.
