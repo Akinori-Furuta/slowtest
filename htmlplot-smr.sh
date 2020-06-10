@@ -182,10 +182,6 @@ do
 	fi
 done
 
-
-PlotRandomAccess="n"
-file_no_prev=-1
-
 png_list=()
 
 function ClearRandomAccessPngPrev() {
@@ -239,6 +235,8 @@ function UpdateFileNo() {
 	file_no_prev=${FileNo}
 	return ${retval}
 }
+
+file_no_prev=-1
 
 ClearRandomAccessPngPrev
 i=0
@@ -308,8 +306,6 @@ done
 AddListRandomAccessPng
 
 SequenceNumber=0
-
-new_plot=1
 file_no_prev=-1
 
 for p in ${png_list[*]}
@@ -321,7 +317,11 @@ do
 	SeqSub="${Split[3]}"
 	Access="${Split[4]}"
 	PlotType="${Split[5]}"
-
+	new_plot=0
+	if UpdateFileNo
+	then
+		new_plot=1
+	fi
 	case ${ODirect} in
 		(N)
 		H2TitleODirect="without O_DIRECT"
@@ -349,7 +349,6 @@ do
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
 			echo "</P><!-- id=\"${ParagraphIdSw}\" -->"
-			new_plot=0
 		;;
 		(sr) # Sequential read.
 			SequenceNumber=$(( ${SequenceNumber} + 1 ))
@@ -365,7 +364,6 @@ do
 			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
 			echo -n "</A><BR>"
 			echo "</P><!-- id=\"${ParagraphIdSr}\" -->"
-			new_plot=0
 		;;
 	esac
 	random_plot=0
@@ -501,11 +499,6 @@ do
 		echo "</TD>"
 		echo "</TR>"
 		echo "</TABLE>"
-		new_plot=0
-	fi
-	if UpdateFileNo
-	then
-		new_plot=1
 	fi
 done
 echo "<HR>"
