@@ -1,0 +1,548 @@
+#!/bin/bash
+# Bind plot graphs to html page.
+#
+#  Copyright 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#
+#  1. Redistributions of source code must retain the above copyright notice,
+#     this list of conditions and the following disclaimer.
+#
+#  2. Redistributions in binary form must reproduce the above copyright notice,
+#     this list of conditions and the following disclaimer in the documentation
+#     and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+#  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+#  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+#  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+#  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#  PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+#  OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+#  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+#  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+#  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+function Help() {
+	#     0         1         2         3         4         5         6         7
+	#     01234567890123456789012345678901234567890123456789012345678901234567890123456789
+	echo "$0 [-L model_name] [-C loop_count] [-h] [directory]"
+	echo "directory: directory to create html page. This directory has test"
+	echo "           logs and graph plots created by plotlohseq.sh and plotlogmix.sh."
+	echo "-L model_name : Set model name at title."
+	echo "                Note: Specify model name without spaces."
+	echo "-C loop_count : Set loop count at title (optional)."
+	echo "-h            : Print this help."
+	exit 1
+}
+
+my_base=`basename "$0"`
+my_dir=`dirname "$0"`
+my_dir=`readlink -f "${my_dir}"`
+
+source "${my_dir}/ssdtestcommon.sh"
+
+uuid=`cat /proc/sys/kernel/random/uuid`
+
+# Parse Argument
+
+parsed_arg=( `getopt L:C:h $*` )
+if (( $? != 0 ))
+then
+	Help
+fi
+
+OptionalLabel=""
+
+parsed_arg_n=${#parsed_arg[*]}
+
+i=0
+while (( ${i} < ${parsed_arg_n} ))
+do
+	opt="${parsed_arg[${i}]}"
+	case ${opt} in
+		(-L)
+			i=$(( ${i} + 1 ))
+			OptionalLabel="${parsed_arg[${i}]}"
+		;;
+		(-C) # Loop Count.
+			i=$(( ${i} + 1 ))
+			RoundCount="${parsed_arg[${i}]}"
+		;;
+		(-h) # Help.
+			Help
+			exit 1
+		;;
+		(--)
+			i=$(( ${i} + 1 ))
+			break
+		;;
+	esac
+	i=$(( ${i} + 1 ))
+done
+
+if [[ -n ${parsed_arg[${i}]} ]]
+then
+	LogDirectory="${parsed_arg[${i}]}"
+	LogLabel=`basename "${LogDirectory}" | cut -f 2 -d '-'`
+else
+	LogDirectory="."
+	cur_dir="`pwd`"
+	LogLabel=`basename "${cur_dir}" | cut -f 2 -d '-'`
+fi
+
+if [[ -n "${OptionalLabel}" ]]
+then
+	LogLabel="${OptionalLabel}"
+fi
+
+
+if [[ -z "${IMAGE_RESIZE}" ]]
+then
+	IMAGE_RESIZE="width=640 height=480"
+fi
+
+if [[ -z "${ACCESS_TIME_SCALE_OVER}" ]]
+then
+	ACCESS_TIME_SCALE_OVER="1.0e+2"
+fi
+
+cd "${LogDirectory}"
+
+function ExtractSmartctl() {
+	(	echo "<HTML>"
+		echo "<HEAD>"
+		echo "<TITLE>$3</TITLE>"
+		echo "</HEAD>"
+		echo "<BODY>"
+		echo "<PRE>"
+	) > $2
+	sed -n '/smartctl:/,/df:/ p' $1 | grep -v -e '^smartctl:$' -e '^df:$' >> $2
+	(	echo "</PRE>"
+		echo "</BODY>"
+		echo "</HTML>"
+	) >> $2
+}
+
+LogDirectoryLast=`pwd`
+LogDirectoryLast=`basename "${LogDirectoryLast}"`
+
+DirectoryDateFormed=`FormatDirectoryDate "${LogDirectoryLast}"`
+
+LogFiles=(`ls *.txt`)
+
+f=${LogFiles[0]}
+
+ReadCondition "${f}"
+
+if [[ -z "${Model}" ]]
+then
+	Model="${LogLabel}"
+fi
+
+if [[ -n ${RoundCount} ]]
+then
+	RoundCountShow=${RoundCount}
+else
+	RoundCountShow="Unknown"
+fi
+
+echo "<HTML>"
+echo "<HEAD>"
+echo "<TITLE>Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, Round: ${RoundCountShow}</TITLE>"
+echo "</HEAD>"
+echo "<BODY>"
+echo "<H1 id=\"TestRecord\">Model: ${Model} ${CapacityGBTitle}, TestDate: ${DirectoryDateFormed}, Round: ${RoundCountShow}</H1>"
+
+TotalReadBytes=0
+TotalWrittenBytes=0
+for f in *-bytes.tmp
+do
+	if [[ ( ${f} == *-mw-bytes.tmp ) || ( ${f} == *-sw-bytes.tmp ) ]]
+	then
+		w_bytes=`cat ${f}`
+		if [[ -n ${w_bytes} ]]
+		then
+			TotalWrittenBytes=$(( ${TotalWrittenBytes} + ${w_bytes} ))
+			# echo "<!-- ${f}=${w_bytes} TotalWrittenBytes=${TotalWrittenBytes} -->"
+		fi
+	fi
+	if [[ ( ${f} == *-mr-bytes.tmp ) || ( ${f} == *-sr-bytes.tmp ) ]]
+	then
+		r_bytes=`cat ${f}`
+		if [[ -n ${r_bytes} ]]
+		then
+			TotalReadBytes=$(( ${TotalReadBytes} + ${r_bytes} ))
+			# echo "<!-- ${f}=${r_bytes} TotalReadBytes=${TotalReadBytes} -->"
+		fi
+	fi
+done
+
+
+PlotRandomAccess="n"
+file_no_prev=-1
+
+png_list=()
+
+function ClearRandomAccessPngPrev() {
+	png_prev_mw_at_tl=""
+	png_prev_mw_ts_at=""
+	png_prev_mw_ts_tl=""
+	png_prev_mr_at_tl=""
+	png_prev_mr_ts_at=""
+	png_prev_mr_ts_tl=""
+}
+
+function AddListRandomAccessPng() {
+	if [[ -n ${png_prev_mr_at_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mr_at_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mw_at_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mw_at_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mr_ts_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mr_ts_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mw_ts_tl} ]]
+	then
+		png_list[${i}]="${png_prev_mw_ts_tl}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mr_ts_at} ]]
+	then
+		png_list[${i}]="${png_prev_mr_ts_at}"
+		i=$(( ${i} + 1 ))
+	fi
+	if [[ -n ${png_prev_mw_ts_at} ]]
+	then
+		png_list[${i}]="${png_prev_mw_ts_at}"
+		i=$(( ${i} + 1 ))
+	fi
+}
+
+function UpdateFileNo() {
+	local	retval=1
+	if (( ${file_no_prev} != ${FileNo} ))
+	then
+		retval=0
+	fi
+	file_no_prev=${FileNo}
+	return ${retval}
+}
+
+ClearRandomAccessPngPrev
+i=0
+for p in *.png
+do
+	Split=(`echo ${p%.png} | tr '-' ' '`)
+	FileNo="${Split[0]}"
+	ODirect="${Split[1]}"
+	SeqMain="${Split[2]}"
+	SeqSub="${Split[3]}"
+	Access="${Split[4]}"
+	PlotType="${Split[5]}"
+	case "${Access}" in
+		(sw) # Sequential write.
+			AddListRandomAccessPng
+			ClearRandomAccessPngPrev
+			png_list[${i}]="${p}"
+			i=$(( ${i} + 1 ))
+			UpdateFileNo
+
+		;;
+		(sr) # Sequential read.
+			AddListRandomAccessPng
+			ClearRandomAccessPngPrev
+			png_list[${i}]="${p}"
+			i=$(( ${i} + 1 ))
+			UpdateFileNo
+		;;
+		(mw) # Random access write part.
+			if UpdateFileNo
+			then
+				AddListRandomAccessPng
+				ClearRandomAccessPngPrev
+			fi
+			case "${PlotType}" in
+				(at_tl) # Transfer length - access time
+					png_prev_mw_at_tl="${p}"
+				;;
+				(ts_at) # Transfer speed - access time
+					png_prev_mw_ts_at="${p}"
+				;;
+				(ts_tl) # Transfer speed - transfer length
+					png_prev_mw_ts_tl="${p}"
+				;;
+			esac
+		;;
+		(mr) # Random access read part.
+			if UpdateFileNo
+			then
+				AddListRandomAccessPng
+				ClearRandomAccessPngPrev
+			fi
+			case "${PlotType}" in
+				(at_tl) # Transfer length - access time
+					png_prev_mr_at_tl="${p}"
+				;;
+				(ts_at) # Transfer speed - access time
+					png_prev_mr_ts_at="${p}"
+				;;
+				(ts_tl) # Transfer speed - transfer length
+					png_prev_mr_ts_tl="${p}"
+				;;
+			esac
+		;;
+	esac
+done
+AddListRandomAccessPng
+
+SequenceNumber=0
+
+new_plot=1
+file_no_prev=-1
+
+for p in ${png_list[*]}
+do
+	Split=(`echo ${p%.png} | tr '-' ' '`)
+	FileNo="${Split[0]}"
+	ODirect="${Split[1]}"
+	SeqMain="${Split[2]}"
+	SeqSub="${Split[3]}"
+	Access="${Split[4]}"
+	PlotType="${Split[5]}"
+
+	case ${ODirect} in
+		(N)
+		H2TitleODirect="without O_DIRECT"
+		;;
+		(Y)
+		H2TitleODirect="with O_DIRECT"
+		;;
+	esac
+
+	TextLogFile=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}.txt
+	SmartFile=${TextLogFile}-smart.html
+
+	case "${Access}" in
+		(sw) # Sequential write.
+			SequenceNumber=$(( ${SequenceNumber} + 1 ))
+			ParagraphIdSw="SequentialWritePlot_${ODirect}_${SequenceNumber}"
+			echo "<H2 id=\"SequentialWrite_${ODirect}_${SequenceNumber}\">Sequence ${SequenceNumber}, Sequential write ${H2TitleODirect}</H2>"
+
+			ExtractSmartctl ${TextLogFile} ${SmartFile} \
+				"S.M.A.R.T. before Sequence ${SequenceNumber}, sequential write ${H2TitleODirect}"
+
+			echo "<P id=\"${ParagraphIdSw}\">Plot: Sequential write, transfer speed - progress(percent of test file size).<BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T. before sequential write</A><BR>"
+			echo -n "<A href=\"${p}\">"
+			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
+			echo -n "</A><BR>"
+			echo "</P><!-- id=\"${ParagraphIdSw}\" -->"
+			new_plot=0
+		;;
+		(sr) # Sequential read.
+			SequenceNumber=$(( ${SequenceNumber} + 1 ))
+			ParagraphIdSr="SequentialReadPlot_${ODirect}_${SequenceNumber}"
+			echo "<H2 id=\"SequentialRead_${ODirect}_${SequenceNumber}\">Sequence ${SequenceNumber}, Sequential read ${H2TitleODirect}</H2>"
+
+			ExtractSmartctl ${TextLogFile} ${SmartFile} \
+				"S.M.A.R.T. before Sequence ${SequenceNumber}, sequential read ${H2TitleODirect}"
+
+			echo "<P id=\"${ParagraphIdSr}\">Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
+			echo "<A href=\"${SmartFile}\">S.M.A.R.T. before sequential read</A><BR>"
+			echo -n "<A href=\"${p}\">"
+			echo -n "<IMG src=\"${p}\" ${IMAGE_RESIZE}>"
+			echo -n "</A><BR>"
+			echo "</P><!-- id=\"${ParagraphIdSr}\" -->"
+			new_plot=0
+		;;
+	esac
+	random_plot=0
+	case "${PlotType}" in
+		(at_tl) # Access time - Transfer length
+			random_plot=1
+		;;
+		(ts_at) # Transfer speed - Access time
+			random_plot=1
+		;;
+		(ts_tl) # Transfer speed - Transfer length
+			random_plot=1
+		;;
+	esac
+	if (( (new_plot == 1) && (random_plot == 1) ))
+	then
+		ra_r_over100_counts=""
+		ra_r_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-over100.tmp
+		if [[ -f "${ra_r_over100_tmp}" ]]
+		then
+			ra_r_over100_counts=`cat "${ra_r_over100_tmp}"`
+		fi
+		ra_w_over100_counts=""
+		ra_w_over100_tmp=${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-over100.tmp
+		if [[ -f "${ra_w_over100_tmp}" ]]
+		then
+			ra_w_over100_counts=`cat "${ra_w_over100_tmp}"`
+		fi
+		SequenceNumber=$(( ${SequenceNumber} + 1 ))
+		echo "<H2 id=\"RandomReadWrite_${ODirect}_${SequenceNumber}\">Sequence ${SequenceNumber}, Random read/write ${H2TitleODirect}</H2>"
+
+		ExtractSmartctl ${TextLogFile} ${SmartFile} \
+			"S.M.A.R.T. before Sequence ${SequenceNumber}, random read/write ${H2TitleODirect}"
+
+		ParagraphIdMrwSmart="RandomReadWritePlot_${ODirect}_${SequenceNumber}_smart"
+		echo "<P id=\"${ParagraphIdMrwSmart}\">"
+		echo "<A href=\"${SmartFile}\">S.M.A.R.T. before random read/write</A>"
+		echo "</P><!-- id=\"${ParagraphIdMrwSmart}\" -->"
+
+		echo "<TABLE id=\"PlotTable_${ODirect}_${SequenceNumber}\" border=1>"
+
+		# Transfer Time - Transfer Length
+		echo "<TR>"
+		echo "<TD>"
+		ParagraphIdMrAtTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_attl"
+		echo "<P id=\"${ParagraphIdMrAtTl}\">"
+		echo "Random access, read access time - transfer length<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-at_tl.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-at_tl.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMrAtTl}\" -->"
+		if [[ -n "${ra_r_over100_counts}" ]]
+		then
+			ParagraphIdMrAtTlSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_attl_so"
+			echo "<P id=\"${ParagraphIdMrAtTlSo}\">"
+			echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+			echo "</P><!-- id=\"${ParagraphIdMrAtTlSo}\" -->"
+		fi
+		echo "</TD>"
+		echo "<TD>"
+		ParagraphIdMwAtTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_attl"
+		echo "<P id=\"${ParagraphIdMwAtTl}\">"
+		echo "Random access, write access time - transfer length<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-at_tl.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-at_tl.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMwAtTl}\" -->"
+		if [[ -n "${ra_w_over100_counts}" ]]
+		then
+			ParagraphIdMwAtTlSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_attl_so"
+			echo "<P id=\"${ParagraphIdMwAtTlSo}\">"
+			echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+			echo "</P><!-- id=\"${ParagraphIdMwAtTlSo}\" -->"
+		fi
+		echo "</TD>"
+		echo "</TR>"
+
+		# Transfer Speed - Transfer Length
+		echo "<TR>"
+		echo "<TD>"
+		ParagraphIdMrTsTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tstl"
+		echo "<P id=\"${ParagraphIdMrTsTl}\">"
+		echo "Random access, read transfer speed - transfer length<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_tl.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMrTsTl}\" -->"
+		echo "</TD>"
+		echo "<TD>"
+		ParagraphIdMwTsTl="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tstl"
+		echo "<P id=\"${ParagraphIdMwTsTl}\">"
+		echo "Random access, write transfer speed - transfer length<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_tl.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMwTsTl}\" -->"
+		echo "</TD>"
+		echo "</TR>"
+
+		# Transfer Speed - Access Time
+		echo "<TR>"
+		echo "<TD>"
+		ParagraphIdMrTsAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tsat"
+		echo "<P id=\"${ParagraphIdMrTsAt}\">"
+		echo "Random access, read transfer speed - access time<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mr-ts_at.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMrTsAt}\" -->"
+		if [[ -n "${ra_r_over100_counts}" ]]
+		then
+			ParagraphIdMrTsAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mr_tsat_so"
+			echo "<P id=\"${ParagraphIdMrTsAtSo}\">"
+			echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_r_over100_counts}"
+			echo "</P><!-- id=\"${ParagraphIdMrTsAtSo}\" -->"
+		fi
+		echo "</TD>"
+		echo "<TD>"
+		ParagraphIdMwTsAt="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tsat"
+		echo "<P id=\"${ParagraphIdMwTsAt}\">"
+		echo "Random access, write transfer speed - access time<BR>"
+		echo -n "<A href=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\">"
+		echo -n "<IMG src=\"${FileNo}-${ODirect}-${SeqMain}-${SeqSub}-mw-ts_at.png\" ${IMAGE_RESIZE}>"
+		echo "</A>"
+		echo "</P><!-- id=\"${ParagraphIdMwTsAt}\" -->"
+		if [[ -n "${ra_w_over100_counts}" ]]
+		then
+			ParagraphIdMwTsAtSo="RandomReadWrite_${ODirect}_${SequenceNumber}_mw_tsat_so"
+			echo "<P id=\"${ParagraphIdMwTsAtSo}\">"
+			echo "The number of \"access time &gt; ${ACCESS_TIME_SCALE_OVER}\" record(s): ${ra_w_over100_counts}"
+			echo "</P><!-- id=\"${ParagraphIdMwTsAtSo}\" -->"
+		fi
+		echo "</TD>"
+		echo "</TR>"
+		echo "</TABLE>"
+		new_plot=0
+	fi
+	if UpdateFileNo
+	then
+		new_plot=1
+	fi
+done
+echo "<HR>"
+echo "<H2 id=\"Summary\">Summary</H2>"
+echo "<P id=\"SummaryStatistics\">"
+
+TotalWrittenBytesShow=`BytesToShowBytes ${TotalWrittenBytes}`
+echo "Total Written Bytes: ${TotalWrittenBytesShow} (${TotalWrittenBytes}) bytes<BR>"
+echo ${TotalWrittenBytes} > total_written_bytes.tmp
+
+TotalReadBytesShow=`BytesToShowBytes ${TotalReadBytes}`
+echo "Total Read Bytes: ${TotalReadBytesShow} (${TotalReadBytes}) bytes<BR>"
+echo ${TotalReadBytes} > total_read_bytes.tmp
+
+echo "</P><!-- id=\"SummaryStatistics\" -->"
+
+echo "<HR>"
+
+pass_count_all=0
+fail_count_all=0
+
+echo "<H2 id=\"RawDataLink\">Raw data link</H2>"
+echo "<TABLE border=1 id=\"RawDataLinkTxtTable\">"
+echo "<TR><TH>File<TH>PASS<TH>FAIL</TR>"
+for f in *.txt
+do
+	pass_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'PASS' | wc -l`
+	fail_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'FAIL' | wc -l`
+	echo -n "<TR>"
+	echo -n "<TD align=\"left\"><A href=\"${f}\">${f}</A>"
+	echo -n "<TD align=\"right\">${pass_count}<TD align=\"right\">${fail_count}"
+	echo "</TR>"
+	pass_count_all=$(( ${pass_count_all} + ${pass_count} ))
+	fail_count_all=$(( ${fail_count_all} + ${fail_count} ))
+done
+echo "</TABLE><!-- id=\"RawDataLinkTxtTable\" -->"
+echo ${pass_count_all} > pass_count_all.tmp
+echo ${fail_count_all} > fail_count_all.tmp
+echo "</BODY>"
+echo "</HTML>"
