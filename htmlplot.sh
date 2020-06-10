@@ -492,8 +492,9 @@ do
 	pass_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'PASS' | wc -l`
 	fail_count=`grep -e '[.]bin' -e '^/dev/[a-z]*[0-9]*:' ${f} | grep 'FAIL' | wc -l`
 	echo -n "<TR>"
-	echo -n "<TD align="left"><A href=\"${f}\">${f}</A>"
-	echo -n "<TD align="right">${pass_count}<TD align="right">${fail_count}</TR>"
+	echo -n "<TD align=\"left\"><A href=\"${f}\">${f}</A>"
+	echo -n "<TD align=\"right\">${pass_count}<TD align=\"right\">${fail_count}"
+	echo "</TR>"
 	pass_count_all=$(( ${pass_count_all} + ${pass_count} ))
 	fail_count_all=$(( ${fail_count_all} + ${fail_count} ))
 done
