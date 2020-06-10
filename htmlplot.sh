@@ -338,7 +338,7 @@ do
 			TextLogFile=${p%-sr.png}.txt
 			SmartFile=${p%-sr.png}-smart.html
 			ExtractSmartctl ${TextLogFile} ${SmartFile} \
-				"S.M.A.R.T. before sequential write - ${H2Title}"
+				"S.M.A.R.T. before sequential read - ${H2Title}"
 
 			echo "<P id=\"${ParagraphIdSr}\">Plot: Sequential read, transfer speed - progress(percent of test file size).<BR>"
 			echo "<A href=\"${SmartFile}\">S.M.A.R.T. before sequential read</A><BR>"
