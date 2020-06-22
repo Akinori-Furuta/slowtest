@@ -78,7 +78,7 @@ long	ScPageSize=4096;
 #define	BLOCK_SIZE_DIST_EXPONENTIAL	(1)
 
 #define	SEQUENTIAL_REPORT_TIME_STEP	(0.5)
-
+#define	REPORT_FLUSH_PERIOD_MASK	(0x7)
 
 #define	DEF_FillFile		(DO_OPTION_NO)
 #define	DEF_DoReadFile		(DO_READ_FILE_NO)
@@ -101,7 +101,7 @@ long	ScPageSize=4096;
 /*! Copyright notice. */
 const char copyright_notice[]=
 	"ssdstress: SSD stress test tool. "
-	"Copyright (C) 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
+	"Copyright (C) 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.\n";
 
 /*! Command line argument holder. */
 typedef struct {
@@ -951,6 +951,7 @@ void TCommandLineOptionShow(TCommandLineOption *opt)
 		 ,opt->Seed
 		 ,opt->TestToTestSleeps
 		);
+	fflush(stdout);
 }
 
 /*! Read memory stepping by page size, to make sure read data from device.
@@ -1107,6 +1108,7 @@ off64_t CheckStrictlyFileImage(unsigned char *b, long len, off64_t block_number,
 				,(int64_t)a0
 			);
 			DumpMemory(b,block_size,block_number*block_size);
+			fflush(stdout);
 			*result=0;
 			return(block_number);
 		}
@@ -1126,6 +1128,7 @@ off64_t CheckStrictlyFileImage(unsigned char *b, long len, off64_t block_number,
 				,(int64_t)a
 			);
 			DumpMemory(b-block_size,block_size,block_number*block_size);
+			fflush(stdout);
 			*result=0;
 			return(block_number);
 		}
@@ -1160,6 +1163,7 @@ off64_t CheckLightFileImage(unsigned char *b, long len, off64_t block_number, lo
 				,(int64_t)a0
 			);
 			DumpMemory(b,block_size,block_number*block_size);
+			fflush(stdout);
 			*result=0;
 			return(block_number);
 		}
@@ -1215,6 +1219,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 	off64_t		print_pos;
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
+	int		report_count = 0;
 
 	TTimeSpec	ts_write_0;
 	TTimeSpec	ts_print;
@@ -1264,6 +1269,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 	);
 	/*      0123456789  0123456789  0123456789  0123456789  cur_pos progress, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total */
 	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total\n");
+	fflush(stdout);
 
 	if (!TTimeSpecGetRealTime(&ts_write_0)) {
 		printf("%s(): Error: clock_gettime failed. %s(%d)\n",__func__,strerror(errno),errno);
@@ -1340,6 +1346,10 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 				, dt_elp
 				, dt_mem
 			);
+			report_count++;
+			if ((report_count & REPORT_FLUSH_PERIOD_MASK) == 0x0) {
+				fflush(stdout);
+			}
 			ts_print=ts_write_e_tmp;
 			ts_write_ap=ts_write_aa;
 			print_pos=cur_pos;
@@ -1372,6 +1382,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 	off64_t		print_pos;
 	off64_t		cur_pos;
 	off64_t		end_next_pos;
+	int		report_count = 0;
 
 	TTimeSpec	ts_read_0;
 	TTimeSpec	ts_print;
@@ -1521,6 +1532,10 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 				, dt_elp
 				, dt_mem
 			);
+			report_count++;
+			if ((report_count & REPORT_FLUSH_PERIOD_MASK) == 0x0) {
+				fflush(stdout);
+			}
 			ts_print=ts_read_e_tmp;
 			ts_read_ap=ts_read_aa;
 			print_pos=cur_pos;
@@ -1784,6 +1799,9 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			rw_time_max=rw_time;
 		}
 		i++;
+		if ((i & REPORT_FLUSH_PERIOD_MASK) == 0x0) {
+			fflush(stdout);
+		}
 	}
 	/* Estimate sleep time before start next test. */
 	sleeps_prefer=(unsigned int)(rw_time_max*2.0);
@@ -1936,6 +1954,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 			}
 		}
 	}
+	fflush(stdout);
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
@@ -1945,6 +1964,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)(time(0)));
 	printf("%s: Info: Sync.\n", opt->Argv0);
+	fflush(stdout);
 	sync();
 
 	if (opt->FillFile!=0) {
@@ -1977,7 +1997,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 		result=0;
 		goto EXIT_CLOSE_ERROR;
 	}
-
+	fflush(stdout);
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
@@ -1987,6 +2007,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
 	printf("%s: Info: Sync.\n", opt->Argv0);
+	fflush(stdout);
 	sync();
 
 	if (opt->Repeats>0) {
@@ -2016,6 +2037,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 			result=0;
 		}
 	}
+	fflush(stdout);
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
@@ -2025,6 +2047,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
 	printf("%s: Info: Sync.\n", opt->Argv0);
+	fflush(stdout);
 	sync();
 	if (opt->DoReadFile!=0) {
 		/* Need sleep to stabilize drive. */
@@ -2034,6 +2057,7 @@ int MainTestRW(unsigned char *img, long img_size, char img_locked
 	return(result);
 
 EXIT_CLOSE_ERROR:;
+	fflush(stdout);
 	if (fsync(fd)!=0) {
 		printf("%s: Warning: fsync() failed. %s(%d)\n", opt->PathName, strerror(errno),errno);
 	}
@@ -2043,6 +2067,7 @@ EXIT_CLOSE_ERROR:;
 	}
 	printf("%s: Info: close. fd=%d, time=%" PRId64 "\n",opt->PathName, fd, (int64_t)time(0));
 	printf("%s: Info: Sync.\n", opt->Argv0);
+	fflush(stdout);
 	sync();
 	printf("%s: Info: Sleep. TestToTestSleeps=%u\n", opt->Argv0, opt->TestToTestSleeps);
 	sleep(opt->TestToTestSleeps);
@@ -2248,6 +2273,7 @@ int main(int argc, char **argv)
 	ScPageSize=sysconf(_SC_PAGESIZE);
 	if (ScPageSize<0) {
 		printf("%s: Error: Failed sysconf(). %s(%d)\n", argv[0], strerror(errno), errno);
+		fflush(stdout);
 		return 1;
 	}
 	if (!TCommandLineOptionGetopt(&CommandLine,argc,argv)) {
@@ -2256,9 +2282,11 @@ int main(int argc, char **argv)
 	}
 	if (!MainB(&CommandLine)) {
 		printf("%s: Fail: Test FAIL.\n",CommandLine.PathName);
+	fflush(stdout);
 		return 2;
 	}
 	printf("%s: Pass: Test PASS.\n",CommandLine.PathName);
+	fflush(stdout);
 	return(0);
 }
 
