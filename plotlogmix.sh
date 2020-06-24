@@ -1,7 +1,7 @@
 #!/bin/bash
 # plot random-read/write performance from composite of log files.
 #
-#  Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -65,10 +65,21 @@ then
 	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
 fi
 
+if [[ -z ${ACCESS_TIME_SCALE_MIN} ]]
+then
+	ACCESS_TIME_SCALE_MIN="1.0e-6"
+fi
+
+if [[ -z ${ACCESS_TIME_SCALE_MAX} ]]
+then
+	ACCESS_TIME_SCALE_MAX="1.0e+2"
+fi
+
 if [[ -z "${ACCESS_TIME_SCALE_OVER}" ]]
 then
-	ACCESS_TIME_SCALE_OVER="1.0e+2"
+	ACCESS_TIME_SCALE_OVER="${ACCESS_TIME_SCALE_MAX}"
 fi
+
 
 # Parse Argument
 
@@ -314,6 +325,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, 
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set xrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-ts_at.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -334,6 +346,7 @@ plot reads of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, \
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#00c000"
+set yrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -398,6 +411,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call,
 ${DoDirectRandom}\\ntransfer speed - access time"
 pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set xrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-ts_at.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -418,6 +432,7 @@ plot writes of random read/write \(mixed size range\)\\n\
 ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call, \
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#ff0000"
+set yrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}

@@ -1,7 +1,7 @@
 #!/usr/bin/gnuplot -persist
 # Plot script: random read, transfer speed - access time.
 #
-#  Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -137,7 +137,7 @@ set xlabel "access time (sec)"
 set xlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate
-set xrange [ 1.00000e-06 : 1.0e+2 ] noreverse nowriteback
+# set xrange [ 1.00000e-06 : 1.0e+2 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
 set ylabel "transfer speed (bytes/sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270

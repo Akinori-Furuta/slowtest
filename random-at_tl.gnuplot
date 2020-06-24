@@ -1,7 +1,7 @@
 #!/usr/bin/gnuplot -persist
 # Plot script: random read, transfer length - access time.
 #
-#  Copyright 2012, 2017 Akinori Furuta<afuruta@m7.dion.ne.jp>.
+#  Copyright 2012, 2017, 2020 Akinori Furuta<afuruta@m7.dion.ne.jp>.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -144,7 +144,7 @@ set x2range [ * : * ] noreverse nowriteback  # (currently [-5.00000:1.00000] )
 
 set ylabel "access time (sec)" 
 set ylabel  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
-set yrange [ 1.00000e-06 : 1.0e+2 ] noreverse nowriteback
+# set yrange [ 1.00000e-06 : 1.0e+2 ] noreverse nowriteback
 
 set y2label ""
 set y2label  offset character 0, 0, 0 font "" textcolor lt -1 rotate by -270
