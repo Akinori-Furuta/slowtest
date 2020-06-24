@@ -77,7 +77,7 @@ fi
 
 if [[ -z ${IO_TIMEOUT} ]]
 then
-	IO_TIMEOUT=$(( 120 * 1000 ))
+	IO_TIMEOUT=$(( 180 * 1000 ))
 fi
 
 
