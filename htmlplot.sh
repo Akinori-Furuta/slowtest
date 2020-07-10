@@ -106,9 +106,19 @@ then
 	IMAGE_RESIZE="width=640 height=480"
 fi
 
+if [[ -z ${ACCESS_TIME_SCALE_MIN} ]]
+then
+	ACCESS_TIME_SCALE_MIN="1.0e-6"
+fi
+
+if [[ -z ${ACCESS_TIME_SCALE_MAX} ]]
+then
+	ACCESS_TIME_SCALE_MAX="1.0e+2"
+fi
+
 if [[ -z "${ACCESS_TIME_SCALE_OVER}" ]]
 then
-	ACCESS_TIME_SCALE_OVER="1.0e+2"
+	ACCESS_TIME_SCALE_OVER="${ACCESS_TIME_SCALE_MAX}"
 fi
 
 cd "${LogDirectory}"
