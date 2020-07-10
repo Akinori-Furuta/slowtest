@@ -94,7 +94,8 @@ fi
 
 if [[ -z ${O_DIRECT_ORDER} ]]
 then
-	O_DIRECT_ORDER="Y N"
+	# Sequential only
+	O_DIRECT_ORDER="N"
 fi
 
 if [[ -z ${SEED} ]]
