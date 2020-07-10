@@ -84,7 +84,7 @@ fi
 if [[ -z ${LOOP_MAX} ]]
 then
 	# Test loops per "at with direct" and "at without direct".
-	LOOP_MAX=2
+	LOOP_MAX=1
 fi
 
 if [[ -z ${SEQUENTIAL_DIRECT} ]]
@@ -94,7 +94,8 @@ fi
 
 if [[ -z ${O_DIRECT_ORDER} ]]
 then
-	O_DIRECT_ORDER="Y N"
+	# Sequential access only
+	O_DIRECT_ORDER="N"
 fi
 
 if [[ -z ${SEED} ]]
@@ -635,6 +636,7 @@ yn_index=0
 file_index=0
 
 for direct in ${O_DIRECT_ORDER}
+# Sequential access only, direct varies N only.
 do
 	i=0
 	while (( ( ${i} < ${LOOP_MAX} ) && ( ${Result} == 0 ) ))
