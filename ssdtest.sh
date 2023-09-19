@@ -29,6 +29,11 @@
 
 Result=0
 
+if [[ -z ${DEBUG_DRY_RUN} ]]
+then
+	DEBUG_DRY_RUN=0
+fi
+
 # This test context.
 uuid=`cat /proc/sys/kernel/random/uuid`
 
@@ -397,7 +402,13 @@ if [[ -z ${SSD_DEVICE_NAME} ]]
 then
 	if ( echo ${Volume} | grep -q "^/dev/" )
 	then
-		SSD_DEVICE_NAME=`echo ${Volume##*/} | sed 's/[0-9]*$//'`
+		SsdDeviceName=`echo ${Volume##*/}`
+		if [[ ( ${SsdDeviceName} =~ sd* ) || ( ${SsdDeviceName} =~ hd* ) ]]
+		then
+			SSD_DEVICE_NAME=`echo ${Volume##*/} | sed 's/[0-9]*$//'`
+		else
+			SSD_DEVICE_NAME=`echo ${Volume##*/} | sed 's/p[0-9]*$//'`
+		fi
 		SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
 	else
 		echo "${FileName}: Error: Can not handle this volume type. Volume=${Volume}"
@@ -509,6 +520,25 @@ then
 		| tr -d '\012' \
 		| tr '[[:space:]-]' '_' \
 		`
+
+	if [[ -z ${ModelName} ]]
+	then
+		ModelName=`/usr/sbin/smartctl -a ${SSD_DEVICE} \
+			| grep -i '^Model[[:space:]]*Number' \
+			| awk 'BEGIN {FS=":[[:space:]]*";} {print $2;}' \
+			| tr -d '\012' \
+			| sed 's/[-[:space:]]/_/g' \
+			`
+	fi
+
+	if [[ -z ${ModelName} ]]
+	then
+		ModelName=`cat /sys/block/${SSD_DEVICE_NAME}/device/model \
+			| tr -d '\012' \
+			| sed 's/[[:space:]-]/_/g' \
+			`
+	fi
+
 	if [[ -n ${ModelName} ]]
 	then
 		echo "${TestFile}: Resolved model name. ModelName=${ModelName}"
@@ -545,8 +575,13 @@ function show_config() {
 	mount
 	echo "fdisk:"
 	(export LANG=C; /sbin/fdisk -u -l /dev/${SSD_DEVICE_NAME} )
+	echo "gdisk:"
+	(export LANG=C; /sbin/gdisk -l /dev/${SSD_DEVICE_NAME} )
 	echo "hdparm:"
-	/sbin/hdparm -i /dev/${SSD_DEVICE_NAME}
+	if [[ ( ${SSD_DEVICE_NAME} =~ hd* ) || ( ${SSD_DEVICE_NAME} =~ sd* ) ]]
+	then
+		/sbin/hdparm -i /dev/${SSD_DEVICE_NAME}
+	fi
 	echo "smartctl:"
 	 /usr/sbin/smartctl --all /dev/${SSD_DEVICE_NAME}
 	echo "df:"
@@ -608,12 +643,18 @@ do
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
-		( show_config ) >> ${LogFile}
+		( show_config ) | tee -a ${LogFile}
 
 		echo 1 > ${TestBinResult}
-		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
-		  && echo 0 > ${TestBinResult} \
-		) | tee -a ${LogFile}
+		if (( ${DEBUG_DRY_RUN} == 0 ))
+		then
+			(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+			  && echo 0 > ${TestBinResult} \
+			) | tee -a ${LogFile}
+		else
+			echo "DEBUG: Dry run." | tee -a ${LogFile}
+			echo 0 > ${TestBinResult}
+		fi
 		if (( `cat "${TestBinResult}"` != 0 ))
 		then
 			Result=1
@@ -636,12 +677,18 @@ do
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${RANDOM_READ_AHEAD_KB}
-		( show_config ) >> ${LogFile}
+		( show_config ) | tee -a ${LogFile}
 
-		echo 1 > ${TestBinResult}
-		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
-		  && echo 0 > ${TestBinResult} \
-		) | tee -a ${LogFile}
+		if (( ${DEBUG_DRY_RUN} == 0 ))
+		then
+			echo 1 > ${TestBinResult}
+			(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+			  && echo 0 > ${TestBinResult} \
+			) | tee -a ${LogFile}
+		else
+			echo "DEBUG: Dry run." | tee -a ${LogFile}
+			echo 0 > ${TestBinResult}
+		fi
 		if (( `cat "${TestBinResult}"` != 0 ))
 		then
 			Result=1
@@ -665,13 +712,18 @@ do
 		echo "COMMAND: ${CommandBody[*]}" >> ${LogFile}
 
 		set_read_ahead_kb ${SEQUENTIAL_READ_AHEAD_KB}
-		( show_config ) >> ${LogFile}
+		( show_config ) | tee -a ${LogFile}
 
-		echo 1 > ${TestBinResult}
-		(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
-		  && echo 0 > ${TestBinResult} \
-		) | tee -a ${LogFile}
-
+		if (( ${DEBUG_DRY_RUN} == 0 ))
+		then
+			echo 1 > ${TestBinResult}
+			(    ${TIME_PROFILE}  -f 'U:%U, S:%S, E:%e' ${CommandBody[*]} 2>&1 \
+			  && echo 0 > ${TestBinResult} \
+			) | tee -a ${LogFile}
+		else
+			echo "DEBUG: Dry run." | tee -a ${LogFile}
+			echo 0 > ${TestBinResult}
+		fi
 		if (( `cat "${TestBinResult}"` != 0 ))
 		then
 			Result=1
