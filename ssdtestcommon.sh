@@ -116,6 +116,12 @@ function ReadCondition() {
 	else
 		FileSizeShow="${FileSizeGi}Gi"
 	fi
+
+	if [[ -z ${LBASectors} ]]
+	then
+		LBASectors=`grep '^Disk.*sectors' "${s_header}" | tail -n 1 | sed -n 's/^[dD]isk.*[[:space:],:]\+\([0-9]\+\)[[:space:]]*[Ss]ectors.*/\1/p'`
+	fi
+
 	if [[ -z ${LBASectors} ]]
 	then
 		s_fdisk_sectors=`grep '^[0-9][0-9]*[[:space:]]*heads,[[:space:]]*[0-9][0-9]*[[:space:]]*sectors' ${s_header} \
