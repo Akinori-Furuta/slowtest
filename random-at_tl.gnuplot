@@ -136,7 +136,7 @@ set vrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 
 set xlabel "transfer length (byte)" 
 set xlabel  offset character 0, 0, 0 font "" textcolor lt -1 norotate
-set xrange [ 100.000 : 1.00000e+10 ] noreverse nowriteback
+# set xrange [ 100.000 : 1.00000e+10 ] noreverse nowriteback
 
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "" textcolor lt -1 norotate

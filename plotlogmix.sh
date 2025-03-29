@@ -80,6 +80,16 @@ then
 	ACCESS_TIME_SCALE_OVER="${ACCESS_TIME_SCALE_MAX}"
 fi
 
+if [[ -z ${RANDOM_TRANSFER_LENGTH_MIN} ]]
+then
+	RANDOM_TRANSFER_LENGTH_MIN="100"
+fi
+
+if [[ -z ${RANDOM_TRANSFER_LENGTH_MAX} ]]
+then
+	RANDOM_TRANSFER_LENGTH_MAX="1.0e+10"
+fi
+
 
 # Parse Argument
 
@@ -347,6 +357,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, 
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#00c000"
 set yrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
+set xrange [ ${RANDOM_TRANSFER_LENGTH_MIN} : ${RANDOM_TRANSFER_LENGTH_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -368,6 +379,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one read\(\) call, 
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#00c000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set xrange [ ${RANDOM_TRANSFER_LENGTH_MIN} : ${RANDOM_TRANSFER_LENGTH_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-ts_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -433,6 +445,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call,
 ${DoDirectRandom}\\naccess time - transfer length"
 pointcolor="#ff0000"
 set yrange [ ${ACCESS_TIME_SCALE_MIN} : ${ACCESS_TIME_SCALE_MAX} ] noreverse nowriteback
+set xrange [ ${RANDOM_TRANSFER_LENGTH_MIN} : ${RANDOM_TRANSFER_LENGTH_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-at_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
@@ -454,6 +467,7 @@ ${RandomRWMinBytesKi}Ki to ${RandomRWMaxBytesKi}Ki bytes per one write\(\) call,
 ${DoDirectRandom}\\ntransfer speed - transfer length"
 pointcolor="#ff0000"
 set yrange [ ${RANDOM_TRANSFER_SPEED_MIN} : ${RANDOM_TRANSFER_SPEED_MAX} ] noreverse nowriteback
+set xrange [ ${RANDOM_TRANSFER_LENGTH_MIN} : ${RANDOM_TRANSFER_LENGTH_MAX} ] noreverse nowriteback
 EOF
 		cat "${my_dir}/random-ts_tl.gnuplot" >> ${GnuplotVarFile}
 		echo "quit" >> ${GnuplotVarFile}
