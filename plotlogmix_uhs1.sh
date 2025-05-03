@@ -28,8 +28,8 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-my_base=`basename "$0"`
-my_dir=`dirname "$0"`
+my_base="$(basename "$0")"
+my_dir="$(dirname "$0")"
 
 export	SEQUENTIAL_TRANSFER_SPEED_MIN="0.0"
 export	SEQUENTIAL_TRANSFER_SPEED_MAX="1.0e+8"
@@ -37,4 +37,4 @@ export	SEQUENTIAL_TRANSFER_SPEED_MAX="1.0e+8"
 export	RANDOM_TRANSFER_SPEED_MIN="1.0e+3"
 export	RANDOM_TRANSFER_SPEED_MAX="1.0e+10"
 
-${my_dir}/plotlogmix.sh $*
+${my_dir}/plotlogmix.sh "$@"
