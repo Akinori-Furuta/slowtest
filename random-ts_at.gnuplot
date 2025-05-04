@@ -72,7 +72,7 @@ set key inside right top vertical Right noreverse enhanced autotitles nobox
 set key noinvert samplen 4 spacing 1 width 0 height 0 
 unset label
 unset arrow
-set style increment default
+# set style increment default
 unset style line
 unset style arrow
 set style histogram clustered gap 2 title  offset character 0, 0, 0
