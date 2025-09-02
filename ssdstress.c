@@ -2179,7 +2179,7 @@ int MainB(TCommandLineOption *opt)
 			);
 		}
 	} else {/* Map write buffer memory with lock */
-		img_locked=1;
+		img_locked = ((MAP_LOCKED) != 0);
 	}
 	FillRandomFileImage(img, img_size);
 	if (opt->DoMark!=0) {
