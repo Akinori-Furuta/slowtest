@@ -427,7 +427,7 @@ then
 		then
 			exit 2
 		else
-			SSD_DEVICE_NAME="---"
+			SSD_DEVICE_NAME=""
 		fi
 	fi
 else
@@ -456,18 +456,25 @@ MaxHwSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_hw_sectors_kb
 MaxSectorsKb=/sys/block/${SSD_DEVICE_NAME}/queue/max_sectors_kb
 ReadAheadKb=/sys/block/${SSD_DEVICE_NAME}/queue/read_ahead_kb
 
-ReadMaxHwSectorsKb=`cat ${MaxHwSectorsKb}`
-SavedMaxSectorsKb=`cat ${MaxSectorsKb}`
-SavedReadAheadKb=`cat ${ReadAheadKb}`
+if [ -n "${SSD_DEVICE_NAME}" ]
+then
+	ReadMaxHwSectorsKb=`cat ${MaxHwSectorsKb}`
+	SavedMaxSectorsKb=`cat ${MaxSectorsKb}`
+	SavedReadAheadKb=`cat ${ReadAheadKb}`
+else
+	ReadMaxHwSectorsKb=
+	SavedMaxSectorsKb=
+	SavedReadAheadKb=
+fi
 
-if (( ${Uid} == 0 ))
+if (( ( ${Uid} == 0 ) && ( ( ${ReadMaxHwSectorsKb} + 0 ) != 0 ) ))
 then
 	NewMaxSectorsKb=$(( ${ReadMaxHwSectorsKb} - ( ${ReadMaxHwSectorsKb} % ${MAX_SECTORS_KB_UNIT} ) ))
 	if (( ${NewMaxSectorsKb} <= 0 ))
 	then
 		NewMaxSectorsKb=${ReadMaxHwSectorsKb}
 	fi
-	if (( ${NewMaxSectorsKb} >= ${SavedMaxSectorsKb} ))
+	if (( ${NewMaxSectorsKb} >= ( ${SavedMaxSectorsKb} + 0 ) ))
 	then
 		echo "${MaxSectorsKb}: Info: Update max_sectors_kb. NewMaxSectorsKb=${NewMaxSectorsKb}"
 		echo ${NewMaxSectorsKb} > ${MaxSectorsKb}
@@ -549,10 +556,13 @@ then
 
 	if [[ -z ${ModelName} ]]
 	then
-		ModelName=`cat /sys/block/${SSD_DEVICE_NAME}/device/model \
-			| tr -d '\012' \
-			| sed 's/[[:space:]-]/_/g' \
-			`
+		if [ -n "${SSD_DEVICE_NAME}" ]
+		then
+			ModelName=`cat /sys/block/${SSD_DEVICE_NAME}/device/model \
+				| tr -d '\012' \
+				| sed 's/[[:space:]-]/_/g' \
+				`
+		fi
 	fi
 
 	if [[ -n ${ModelName} ]]
@@ -590,20 +600,21 @@ function show_config() {
 	echo "mount:"
 	mount
 	echo "fdisk:"
-	(export LANG=C; /sbin/fdisk -u -l /dev/${SSD_DEVICE_NAME} )
+	[ -n "${SSD_DEVICE_NAME}" ] && (export LANG=C; /sbin/fdisk -u -l /dev/${SSD_DEVICE_NAME} )
 	echo "gdisk:"
-	(export LANG=C; /sbin/gdisk -l /dev/${SSD_DEVICE_NAME} )
+	[ -n "${SSD_DEVICE_NAME}" ] && (export LANG=C; /sbin/gdisk -l /dev/${SSD_DEVICE_NAME} )
 	echo "hdparm:"
 	if [[ ( ${SSD_DEVICE_NAME} =~ hd* ) || ( ${SSD_DEVICE_NAME} =~ sd* ) ]]
 	then
 		/sbin/hdparm -i /dev/${SSD_DEVICE_NAME}
 	fi
 	echo "smartctl:"
-	 /usr/sbin/smartctl --all /dev/${SSD_DEVICE_NAME}
+	[ -n "${SSD_DEVICE_NAME}" ] && /usr/sbin/smartctl --all /dev/${SSD_DEVICE_NAME}
 	echo "df:"
 	( export LANG=C; df )
 	echo "queue:"
-	(	cd /sys/block/${SSD_DEVICE_NAME}/queue
+	[ -n "${SSD_DEVICE_NAME}" ] && (
+		cd /sys/block/${SSD_DEVICE_NAME}/queue
 		curdir=`pwd`
 		echo "${curdir}: BEGIN Queue configs."
 		for f in `ls`
