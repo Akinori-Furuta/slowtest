@@ -35,7 +35,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-
 #include <stdint.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -97,6 +96,24 @@ long	ScPageSize=4096;
 #define	DEF_DoMark		(DO_OPTION_YES)
 #define	DEF_BlockSizeDist	(BLOCK_SIZE_DIST_UNIFORM)
 #define	DEF_TestToTestSleeps	(10)
+
+#if (defined(__CYGWIN__))
+#define off64_t	_off64_t
+#define	MAP_LOCKED	(0)
+#undef PRId64
+#if ( __SIZEOF_LONG__ >= 8 )
+#define PRId64 "ld"
+#else
+#define PRId64 "lld"
+#endif
+#define lseek64	lseek
+#define	O_LARGEFILE	(0)
+#define stat64	stat
+#define fstat64	fstat
+#define ftruncate64	ftruncate
+#else /* (defined(__CYGWIN__)) */
+/* We assume on linux. */
+#endif /* (defined(__CYGWIN__)) */
 
 /*! Copyright notice. */
 const char copyright_notice[]=
@@ -1265,7 +1282,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 
 	printf("%s: Info: Fill working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
-		start_pos, end_next_pos-(opt->BlockSize)
+		(int64_t)start_pos, (int64_t)(end_next_pos-(opt->BlockSize))
 	);
 	/*      0123456789  0123456789  0123456789  0123456789  cur_pos progress, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total */
 	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Twrite, Twrite_total, Twrite_elapsed, Telapsed, Tmem_access_total\n");
@@ -1338,7 +1355,7 @@ int FillWriteFile(int fd, unsigned char *img, long img_size, TCommandLineOption 
 				, pos_delta/dt_all
 				, print_pos_delta/dt_write_elp
 				, pos_delta/dt_elp
-				, cur_pos
+				, (int64_t)cur_pos
 				, 100*pos_delta/((double)(end_next_pos-start_pos))
 				, dt_write
 				, dt_all
@@ -1431,7 +1448,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 
 	printf("%s: Info: Read working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
-		start_pos, end_next_pos-(opt->BlockSize)
+		(int64_t)start_pos, (int64_t)(end_next_pos-(opt->BlockSize))
 	);
 	/*      0123456789  0123456789  0123456789  0123456789 cur_pos progress, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total, */
 	printf("   cur b/s,  total b/s, cur_el b/s,    elp b/s, cur_pos, progs, Tread, Tread_total, Tread_elapsed, Telapsed, Tmem_access_total\n");
@@ -1524,7 +1541,7 @@ int ReadFile(int fd, unsigned char *img, long img_size, TCommandLineOption *opt)
 				, pos_delta/dt_all
 				, print_pos_delta/dt_read_elp
 				, pos_delta/dt_elp
-				, cur_pos
+				, (int64_t)cur_pos
 				, 100*pos_delta/((double)(end_next_pos-start_pos))
 				, dt_read
 				, dt_all
@@ -1617,7 +1634,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 	end_next_pos=opt->BlockSize*(opt->BlockEnd+1);
 	area_blocks=opt->BlockEnd-opt->BlockStart+1;
 	printf("%s: Info: Random access working file. s=%" PRId64 ", e=%" PRId64 "\n",opt->PathName,
-		opt->BlockStart*opt->BlockSize, end_next_pos-(opt->BlockSize)
+		(int64_t)(opt->BlockStart*opt->BlockSize), (int64_t)(end_next_pos-(opt->BlockSize))
 	);
 	rw_time_max=0;
 	/* Record time at tests begin. */
@@ -1788,7 +1805,7 @@ int RandomRWFile(int fd, unsigned char *img, long img_size, char img_locked
 			,i
 			,TTimeSpecToDouble(TTimeSpecSub(&ts_elapsed,&ts_op_done,&ts_0))
 			,read_write
-			,seek_to
+			,(int64_t)seek_to
 			,length
 			,rw_time
 			,((double)length)/rw_time
