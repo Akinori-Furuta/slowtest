@@ -37,6 +37,17 @@ fi
 # This test context.
 uuid=`cat /proc/sys/kernel/random/uuid`
 
+if [ -z "${uuid}" ]
+then
+	uuid="$(uuidgen)"
+fi
+
+windows_os=0
+if [[ "x${OS}" == x[Ww]indows* ]]
+then
+	windows_os=1
+fi
+
 function Help() {
 	echo "Test SSD performance."
 	echo "$0 [-L OptionalLabel] [-h] test_file_or_directory"
@@ -411,8 +422,13 @@ then
 		fi
 		SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
 	else
-		echo "${FileName}: Error: Can not handle this volume type. Volume=${Volume}"
-		exit 2
+		echo "${TestFile}: Error: Can not handle this volume type. Volume=${Volume}"
+		if (( ${windows_os} == 0 ))
+		then
+			exit 2
+		else
+			SSD_DEVICE_NAME="---"
+		fi
 	fi
 else
 	SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
