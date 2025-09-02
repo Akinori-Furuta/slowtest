@@ -2142,7 +2142,7 @@ int MainB(TCommandLineOption *opt)
 			);
 		}
 	} else {/* Map read memory with lock. */
-		mem_locked=1;
+		mem_locked = ((MAP_LOCKED) != 0);
 	}
 
 	/* allocate random write buffer img. */
