@@ -423,7 +423,7 @@ then
 		SSD_DEVICE=/dev/${SSD_DEVICE_NAME}
 	else
 		echo "${TestFile}: Error: Can not handle this volume type. Volume=${Volume}"
-		if (( ${windows_os} == 0)
+		if (( ${windows_os} == 0 ))
 		then
 			exit 2
 		else
